@@ -81,8 +81,11 @@ Those belong to later phases and require explicit approval before work begins.
 
 ## Technical constraints for the first build
 
-- Chrome extension, Manifest V3
-- Toolbar popup and Chrome side panel
-- Shared local task data via `chrome.storage.local`
+- Chromium extension (Chrome and Edge), Manifest V3
+- Toolbar popup and Chromium side panel
+- Shared local task data via the platform storage adapter (extension `local` storage)
+- Chrome/Edge-specific APIs live only in `src/platform/browser.js`
+- Shared task model and UI must not call `chrome.*` or other browser APIs directly
+- One app for Chromium browsers; do not fork popup, side panel, or task logic per browser
 - No unnecessary dependencies
 - No build toolchain required to load the unpacked extension

@@ -24,7 +24,14 @@ Never introduce the following without explicit approval:
 - AI services
 - Analytics or tracking
 
-The first milestone is local-only: Chrome extension popup + side panel, shared `chrome.storage.local` task data, create / check off / reorder / delete.
+The first milestone is local-only: Chromium extension popup + side panel, shared local task data, create / check off / reorder / delete.
+
+## Chromium platform boundary
+
+- Keep Chrome/Edge-specific APIs in `src/platform/browser.js` only.
+- Do not call `chrome.*` from `src/shared`, popup UI wiring, or side panel UI wiring.
+- Chrome and Edge share this one Chromium adapter and the same app. Do not duplicate task model, storage, or views per browser.
+- A future non-Chromium browser would get a new adapter, not a second copy of CueDone.
 
 ## Implementation expectations
 
