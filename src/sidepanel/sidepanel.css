@@ -1,0 +1,46 @@
+html,
+body,
+.sidepanel-view {
+  height: 100%;
+}
+
+body.sidepanel-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidepanel-view .app-header {
+  padding: 20px 20px 14px;
+}
+
+.sidepanel-view .logo-mark {
+  width: 40px;
+  height: 40px;
+}
+
+.sidepanel-view .app-header h1 {
+  font-size: 1.35rem;
+}
+
+.sidepanel-view .tagline {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+.sidepanel-view .app-main {
+  flex: 1;
+  padding: 16px 20px 24px;
+}
+
+.sidepanel-view .task-input,
+.sidepanel-view .add-button {
+  padding: 10px 12px;
+}
+
+.sidepanel-view .task-item {
+  padding: 12px 10px 12px 8px;
+}
+
+.sidepanel-view .task-text {
+  font-size: 1rem;
+}
