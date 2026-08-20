@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CueDone",
-  "version": "0.1.4",
+  "version": "0.2.1",
   "description": "See it. Do it. CueDone. A lightweight visual task-support extension.",
   "minimum_chrome_version": "116",
   "icons": {

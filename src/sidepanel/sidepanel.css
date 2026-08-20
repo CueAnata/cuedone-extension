@@ -57,3 +57,21 @@ body.sidepanel-view {
   padding: 28px 16px;
   font-size: 1rem;
 }
+
+.sidepanel-view[data-presentation="client"] .task-list {
+  gap: 18px;
+}
+
+.sidepanel-view[data-presentation="client"] .task-item {
+  padding: 16px 14px;
+}
+
+.sidepanel-view[data-presentation="client"] .task-text {
+  font-size: 1.38rem;
+  line-height: 1.45;
+}
+
+.sidepanel-view[data-presentation="client"] .progress-label,
+.sidepanel-view[data-presentation="client"] .motivator-input {
+  font-size: 1.15rem;
+}

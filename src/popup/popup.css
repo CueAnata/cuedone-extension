@@ -13,3 +13,8 @@ body.popup-view {
 .popup-view .task-text {
   font-size: 0.92rem;
 }
+
+.popup-view[data-presentation="client"] .task-text {
+  font-size: 1.12rem;
+  line-height: 1.45;
+}

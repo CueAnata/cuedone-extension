@@ -12,6 +12,22 @@ import {
   shouldAssignToolbarPopup,
   shouldRestoreSideFromPopup,
   taskEntryVisibility,
+  PRESENTATION_MODE_KEY,
+  END_MOTIVATOR_KEY,
+  loadPresentationMode,
+  loadEndMotivator,
+  normalizePresentationMode,
+  normalizeEndMotivator,
+  savePresentationMode,
+  saveEndMotivator,
+  COMPLETION_STYLE_KEY,
+  COMPLETION_SOUND_KEY,
+  loadCompletionStyle,
+  loadCompletionSound,
+  normalizeCompletionStyle,
+  normalizeCompletionSound,
+  saveCompletionStyle,
+  saveCompletionSound,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
@@ -121,4 +137,74 @@ test("collapsed entry CSS hides the form and shows only the add-task control", a
     css,
     /\[data-entry-mode="work"\] \.add-task-toggle\s*\{[\s\S]*?display:\s*inline-flex/
   );
+});
+
+test("presentation mode defaults to Personal and persists Client separately from tasks", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizePresentationMode(undefined), "personal");
+  assert.equal(normalizePresentationMode("client"), "client");
+  assert.equal(normalizePresentationMode("side"), "personal");
+  assert.equal(await loadPresentationMode(), "personal");
+  await savePresentationMode("client");
+  assert.equal(store[PRESENTATION_MODE_KEY], "client");
+  assert.equal(await loadPresentationMode(), "client");
+});
+
+test("end motivator is optional, trimmed, and persisted locally", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizeEndMotivator(undefined), "");
+  assert.equal(normalizeEndMotivator("  game time  "), "game time");
+  assert.equal(normalizeEndMotivator("x".repeat(200)).length, 120);
+  assert.equal(await loadEndMotivator(), "");
+  await saveEndMotivator("  5 minutes of your choice  ");
+  assert.equal(store[END_MOTIVATOR_KEY], "5 minutes of your choice");
+  assert.equal(await loadEndMotivator(), "5 minutes of your choice");
+});
+
+test("Client completion style persists independently from future sound preference", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizeCompletionStyle(undefined), "simple");
+  assert.equal(normalizeCompletionStyle("celebrate"), "celebrate");
+  assert.equal(normalizeCompletionStyle("confetti"), "simple");
+  assert.equal(normalizeCompletionSound(undefined), "off");
+  assert.equal(normalizeCompletionSound("on"), "on");
+  assert.equal(normalizeCompletionSound("celebrate"), "off");
+  assert.equal(await loadCompletionStyle(), "simple");
+  assert.equal(await loadCompletionSound(), "off");
+  await saveCompletionStyle("celebrate");
+  await saveCompletionSound("on");
+  assert.equal(store[COMPLETION_STYLE_KEY], "celebrate");
+  assert.equal(store[COMPLETION_SOUND_KEY], "on");
+  assert.equal(await loadCompletionStyle(), "celebrate");
+  assert.equal(await loadCompletionSound(), "on");
+});
+
+test("saving Client presentation or motivator does not alter tasks", async () => {
+  mockChromeStorage();
+  const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
+    "../src/shared/task-store.js"
+  );
+  const { createTask } = await import("../src/shared/tasks.js");
+  const tasks = [createTask("Keep me", 1, "task-keep")];
+  await saveTasks(tasks);
+  await savePresentationMode("client");
+  await saveEndMotivator("drawing");
+  await saveCompletionStyle("celebrate");
+  await saveCompletionSound("on");
+  assert.deepEqual(await loadTasks(), tasks);
+  assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
+});
+
+test("Client presentation CSS is scoped and does not restyle Personal View", async () => {
+  const { readFileSync } = await import("node:fs");
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(css, /\[data-presentation="client"\] \.task-item\.is-current-task/);
+  assert.match(css, /\[data-presentation="client"\] \.task-item\.is-complete/);
+  assert.match(
+    css,
+    /\[data-presentation="client"\] \.client-progress:not\(\[hidden\]\)/
+  );
+  for (const occurrence of css.split(".is-current-task").slice(0, -1)) {
+    assert.match(occurrence, /\[data-presentation="client"\]/);
+  }
 });

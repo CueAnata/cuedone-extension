@@ -20,7 +20,7 @@ CueDone is intentionally simpler than a project-management app. It helps a perso
 
 **Current MVP:** Adults who want a clean, compact way to see and complete a short personal task list — including people who benefit from external structure for everyday work.
 
-**Later phases (not this build):** Clinicians, educators, and clients/students during teletherapy or classroom screen sharing. Those shared-session workflows are a future use of the Side Panel / Client View, not part of the first milestone.
+**Later phases:** Celebrations, symbol libraries, timers, accounts, and professional profiles remain out of scope until explicitly approved.
 
 ## Display architecture
 
@@ -58,11 +58,25 @@ Choosing Top in the header closes Side so it is not left open. Side otherwise st
 
 Both views must use the same task data. Changes in one view are reflected in the other.
 
+### Personal and Client presentation
+
+Personal and Client are presentation modes for the **same task list**, not separate lists. Default is Personal.
+
+**Personal:** The approved Phase 2 Top/Side task workflow. Do not add progress or motivator chrome unless it stays out of this mode.
+
+**Client:** A clearer screen-share presentation for teletherapy, classroom, tutoring, and other supported-learning situations. It uses larger task text, stronger focus on the next unfinished task, quieter completed tasks, a simple progress count, and an optional locally saved end motivator. It is not a token economy.
+
+Client View can save a completion style: **Simple** (check, strike-through, dim) or **Celebrate** (reserved for later brief visual feedback). Sound is a separate stored preference and is not shown or played in Phase 3A.
+
+Do not add celebrations, sounds, mascots, symbol libraries, or timers until a later phase is explicitly approved.
+
 ## MVP feature boundary
 
 **Foundation:** Create → check off → reorder → delete tasks, persisted locally, shared by popup and side panel.
 
-**Phase 2 (approved):** Apply CueDone identity and polish core task UX in both views. Top and Side are equal working views with a compact header view control, a saved last-used view restored from the toolbar when the browser allows it, and a setup/work-mode task entry (Done collapses entry; + Add task reopens it). Do not add Client View rewards or other Phase 3 features.
+**Phase 2 (approved):** CueDone identity and equal Top/Side working views, last-used view restore, and setup/work-mode task entry.
+
+**Phase 3A (approved and frozen):** Client View presentation mode on the same local task list: Personal/Client switch, larger Client task focus, progress, an optional end motivator, and a saved Simple/Celebrate completion-style control. Do not implement celebration animations or sounds unless the user explicitly approves Phase 3B.
 
 Tasks persist locally after the extension or browser is reopened. There is no account, no cloud, and no backend.
 
@@ -79,7 +93,7 @@ Do **not** implement:
 - Timers
 - Data/history dashboards
 - Professional tiers
-- Elaborate animations
+- Elaborate animations, celebrations, confetti, sounds, or mascots
 - Reward marketplace
 - Complex settings
 - Full visual redesign beyond the approved Phase 2 identity

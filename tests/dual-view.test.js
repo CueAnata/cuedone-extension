@@ -31,3 +31,24 @@ test("shared task entry supports setup and work mode in both views", () => {
   assert.match(taskListJs, /saveTaskEntryOpen\(false\)/);
   assert.match(taskListJs, /saveTaskEntryOpen\(true\)/);
 });
+
+test("Personal and Client share the same task list presentation switch", () => {
+  for (const html of [popupHtml, sideHtml]) {
+    assert.match(html, /data-mode="personal"/);
+    assert.match(html, /data-mode="client"/);
+  }
+
+  assert.match(popupJs, /startPresentationMode/);
+  assert.match(sideJs, /startPresentationMode/);
+  assert.match(taskListJs, /from "\.\/task-store\.js"/);
+  assert.equal(taskListJs.includes("cuedone.tasks"), false);
+});
+
+test("Client View includes Simple and Celebrate completion controls without playing them", () => {
+  assert.match(taskListJs, /data-completion-style="simple"/);
+  assert.match(taskListJs, /data-completion-style="celebrate"/);
+  assert.match(taskListJs, /saveCompletionStyle/);
+  assert.equal(taskListJs.includes("confetti"), false);
+  assert.equal(taskListJs.includes("Audio"), false);
+  assert.equal(taskListJs.includes("playSound"), false);
+});

@@ -85,14 +85,23 @@ input {
   font-size: 0.78rem;
 }
 
-.view-switch {
+.view-switch,
+.mode-switch {
   display: inline-flex;
-  margin-left: auto;
   flex-shrink: 0;
   padding: 2px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg);
+}
+
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .view-switch-button {
@@ -105,6 +114,7 @@ input {
   font-size: 0.72rem;
   font-weight: 650;
   letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -167,7 +177,8 @@ input {
 .add-button:focus-visible,
 .done-button:focus-visible,
 .add-task-toggle:focus-visible,
-.icon-button:focus-visible {
+.icon-button:focus-visible,
+.motivator-input:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -358,6 +369,131 @@ input {
   border-radius: var(--radius);
 }
 
+.client-progress,
+.client-motivator {
+  display: none;
+}
+
+.client-completion-prefs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.client-pref-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.progress-label {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.client-motivator-label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.motivator-input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.motivator-input::placeholder {
+  font-weight: 500;
+  color: #9a958c;
+}
+
+body[data-presentation="client"] .client-progress:not([hidden]),
+body[data-presentation="client"] .client-motivator:not([hidden]) {
+  display: block;
+}
+
+body[data-presentation="client"] .client-progress {
+  margin: 0 0 16px;
+}
+
+body[data-presentation="client"] .client-motivator {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+body[data-presentation="client"] .client-motivator.has-value {
+  border-color: transparent;
+  background: var(--accent-soft);
+}
+
+body[data-presentation="client"] .task-list {
+  gap: 14px;
+}
+
+body[data-presentation="client"] .task-item {
+  padding: 14px 12px;
+}
+
+body[data-presentation="client"] .task-text {
+  font-size: 1.12rem;
+  line-height: 1.45;
+}
+
+body[data-presentation="client"] .task-checkbox {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+body[data-presentation="client"] .task-item.is-current-task {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+body[data-presentation="client"] .task-item.is-current-task .task-text {
+  font-weight: 650;
+}
+
+body[data-presentation="client"] .task-item.is-complete {
+  opacity: 0.55;
+}
+
+body[data-presentation="client"] .task-item.is-complete .task-text {
+  font-weight: 400;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .task-input,
   .add-button,
@@ -366,10 +502,13 @@ input {
   .icon-button,
   .view-switch-button,
   .task-item,
-  .drag-handle {
+  .drag-handle,
+  .progress-fill {
     transition:
       background-color 120ms ease,
       border-color 120ms ease,
-      color 120ms ease;
+      color 120ms ease,
+      width 160ms ease,
+      opacity 120ms ease;
   }
 }
