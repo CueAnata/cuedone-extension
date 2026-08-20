@@ -50,6 +50,21 @@ test("toggleTask flips completed for the matching id", () => {
   assert.equal(toggleTask(toggled, "b")[1].completed, false);
 });
 
+test("toggleTask keeps completed tasks in place", () => {
+  const tasks = [
+    createTask("One", 1, "a"),
+    createTask("Two", 2, "b"),
+    createTask("Three", 3, "c"),
+  ];
+  const toggled = toggleTask(tasks, "a");
+
+  assert.deepEqual(
+    toggled.map((task) => task.id),
+    ["a", "b", "c"]
+  );
+  assert.equal(toggled[0].completed, true);
+});
+
 test("deleteTask removes only the matching task", () => {
   const tasks = [createTask("One", 1, "a"), createTask("Two", 2, "b")];
   const next = deleteTask(tasks, "a");

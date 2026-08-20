@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CueDone",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "See it. Do it. CueDone. A lightweight visual task-support extension.",
   "minimum_chrome_version": "116",
   "icons": {
@@ -12,7 +12,6 @@
   },
   "action": {
     "default_title": "CueDone",
-    "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -22,6 +21,10 @@
   },
   "side_panel": {
     "default_path": "src/sidepanel/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
   },
   "permissions": ["storage", "sidePanel"]
 }

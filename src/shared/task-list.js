@@ -1,9 +1,17 @@
 import { addTask, deleteTask, reorderTasks, toggleTask } from "./tasks.js";
+import {
+  loadTaskEntryOpen,
+  onTaskEntryOpenChanged,
+  saveTaskEntryOpen,
+  taskEntryVisibility,
+} from "./preferences.js";
 import { loadTasks, onTasksChanged, saveTasks } from "./task-store.js";
 
 export async function mountTaskList(root) {
   let tasks = [];
   let draggedId = null;
+  let restoreFocus = null;
+  let entryOpen = true;
 
   root.innerHTML = `
     <form class="task-form">
@@ -17,15 +25,32 @@ export async function mountTaskList(root) {
         autocomplete="off"
       />
       <button class="add-button" type="submit">Add</button>
+      <button class="done-button" type="button">Done</button>
     </form>
-    <ul class="task-list" role="list"></ul>
+    <button class="add-task-toggle" type="button" hidden>+ Add task</button>
+    <ul class="task-list" aria-label="Tasks"></ul>
     <p class="empty-state">No tasks yet. Add one to get started.</p>
   `;
 
   const form = root.querySelector(".task-form");
   const input = root.querySelector(".task-input");
+  const doneButton = root.querySelector(".done-button");
+  const addToggle = root.querySelector(".add-task-toggle");
   const list = root.querySelector(".task-list");
   const emptyState = root.querySelector(".empty-state");
+
+  function applyEntryMode(isOpen) {
+    const visibility = taskEntryVisibility(isOpen);
+    entryOpen = visibility.showEntryForm;
+    root.dataset.entryMode = visibility.showEntryForm ? "entry" : "work";
+    root.classList.toggle("is-entry-collapsed", visibility.showAddTaskToggle);
+    form.hidden = !visibility.showEntryForm;
+    addToggle.hidden = !visibility.showAddTaskToggle;
+    form.style.display = visibility.showEntryForm ? "flex" : "none";
+    addToggle.style.display = visibility.showAddTaskToggle
+      ? "inline-flex"
+      : "none";
+  }
 
   async function persist(nextTasks) {
     tasks = nextTasks;
@@ -39,24 +64,40 @@ export async function mountTaskList(root) {
 
     tasks.forEach((task, index) => {
       const item = document.createElement("li");
+      const checkboxId = `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
       item.className = `task-item${task.completed ? " is-complete" : ""}`;
       item.dataset.id = task.id;
-      item.draggable = true;
 
       item.innerHTML = `
-        <span class="drag-handle" aria-hidden="true">⋮⋮</span>
-        <label class="task-label">
-          <input class="task-checkbox" type="checkbox" ${task.completed ? "checked" : ""} />
+        <span class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Drag to reorder">⋮⋮</span>
+        <label class="task-label" for="${checkboxId}">
+          <input
+            id="${checkboxId}"
+            class="task-checkbox"
+            type="checkbox"
+            ${task.completed ? "checked" : ""}
+          />
           <span class="task-text"></span>
         </label>
-        <button class="icon-button move-up" type="button" aria-label="Move task up" ${index === 0 ? "disabled" : ""}>↑</button>
-        <button class="icon-button move-down" type="button" aria-label="Move task down" ${index === tasks.length - 1 ? "disabled" : ""}>↓</button>
-        <button class="icon-button delete-button" type="button" aria-label="Delete task">×</button>
+        <div class="task-actions">
+          <button class="icon-button move-up" type="button" aria-label="Move task up" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button class="icon-button move-down" type="button" aria-label="Move task down" ${index === tasks.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="icon-button delete-button" type="button" aria-label="Delete task">×</button>
+        </div>
       `;
 
       item.querySelector(".task-text").textContent = task.text;
       list.append(item);
     });
+
+    if (!restoreFocus) {
+      return;
+    }
+
+    const targetItem = list.querySelector(`[data-id="${restoreFocus.id}"]`);
+    const target = targetItem?.querySelector(restoreFocus.selector);
+    target?.focus();
+    restoreFocus = null;
   }
 
   form.addEventListener("submit", async (event) => {
@@ -67,8 +108,21 @@ export async function mountTaskList(root) {
     }
 
     input.value = "";
-    input.focus();
+    restoreFocus = null;
     await persist(next);
+    input.focus();
+  });
+
+  doneButton.addEventListener("click", async () => {
+    applyEntryMode(false);
+    await saveTaskEntryOpen(false);
+    addToggle.focus();
+  });
+
+  addToggle.addEventListener("click", async () => {
+    applyEntryMode(true);
+    await saveTaskEntryOpen(true);
+    input.focus();
   });
 
   list.addEventListener("change", async (event) => {
@@ -82,6 +136,7 @@ export async function mountTaskList(root) {
       return;
     }
 
+    restoreFocus = { id, selector: ".task-checkbox" };
     await persist(toggleTask(tasks, id));
   });
 
@@ -97,23 +152,29 @@ export async function mountTaskList(root) {
     }
 
     if (event.target.closest(".delete-button")) {
+      restoreFocus = null;
       await persist(deleteTask(tasks, item.dataset.id));
+      (entryOpen ? input : addToggle).focus();
       return;
     }
 
     if (event.target.closest(".move-up")) {
+      restoreFocus = { id: item.dataset.id, selector: ".move-up" };
       await persist(reorderTasks(tasks, fromIndex, fromIndex - 1));
       return;
     }
 
     if (event.target.closest(".move-down")) {
+      restoreFocus = { id: item.dataset.id, selector: ".move-down" };
       await persist(reorderTasks(tasks, fromIndex, fromIndex + 1));
     }
   });
 
   list.addEventListener("dragstart", (event) => {
+    const handle = event.target.closest(".drag-handle");
     const item = event.target.closest(".task-item");
-    if (!item) {
+    if (!handle || !item) {
+      event.preventDefault();
       return;
     }
 
@@ -156,7 +217,15 @@ export async function mountTaskList(root) {
     render();
   });
 
+  onTaskEntryOpenChanged((isOpen) => {
+    applyEntryMode(isOpen);
+  });
+
+  applyEntryMode(true);
   tasks = await loadTasks();
+  applyEntryMode(await loadTaskEntryOpen());
   render();
-  input.focus();
+  if (entryOpen) {
+    input.focus();
+  }
 }

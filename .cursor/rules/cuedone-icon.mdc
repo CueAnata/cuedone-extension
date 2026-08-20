@@ -1,0 +1,17 @@
+---
+description: Freeze the approved CueDone favicon and extension icons
+globs: icons/**,assets/logo-mark.png
+alwaysApply: true
+---
+
+# CueDone icon freeze
+
+The official favicon/extension mark is already approved:
+
+- Black C
+- Cream background
+- Orange/amber forward arrow
+
+Source files: `icons/icon16.png`, `icons/icon32.png`, `icons/icon48.png`, `icons/icon128.png`.
+
+Do not redesign, recolor, recrop, regenerate, or reinterpret these icons. Do not replace them with a checkmark or a new mark. Leave the `icons/` files unchanged unless the user explicitly asks to replace the approved icon set.

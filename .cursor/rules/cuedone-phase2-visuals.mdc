@@ -1,0 +1,18 @@
+---
+description: Freeze approved Phase 2 CueDone visual direction
+globs: src/**/*.css,src/**/*.html
+alwaysApply: true
+---
+
+# Phase 2 visual freeze
+
+The current CueDone popup and side panel look is approved.
+
+Keep:
+
+- Black, warm cream, orange/amber
+- Official C + forward-arrow icon
+- Tagline: See it. Do it. CueDone.
+- Compact Top/Side header control instead of a large Open side panel button
+
+Do not restyle, recolor, or visually reinterpret the UI unless the user explicitly asks.

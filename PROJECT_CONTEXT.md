@@ -6,7 +6,11 @@ CueDone is a lightweight visual task-support Chrome extension owned by Cue Anata
 
 **Tagline:** See it. Do it. CueDone.
 
-**Logo mark:** A dark green open “C” with a terracotta play triangle in the opening. The official raster is `assets/logo-mark.png`. Toolbar icons are derived from this mark. Do not replace it with a generic checkmark or an invented icon.
+**Logo mark:** The official CueDone favicon/extension mark is the current treatment in `icons/icon16.png`, `icons/icon32.png`, `icons/icon48.png`, and `icons/icon128.png`: a **black C**, **cream background**, and **orange/amber forward arrow**. Keep those files exactly as approved. Do not redesign, recolor, recrop, regenerate, or reinterpret this mark. Do not replace it with a generic checkmark or an invented icon.
+
+The original full-size raster is `assets/logo-mark.png`. Toolbar/favicon icons are the approved small-size treatment of this brand, not a new design.
+
+**Phase 2 visual direction (approved and frozen):** The current popup and side panel treatment is the official CueDone look. It uses black, warm cream, and orange/amber; the official C + forward-arrow mark; and the tagline “See it. Do it. CueDone.” Do not restyle, recolor, or visually reinterpret this interface unless the user explicitly asks.
 
 **Core philosophy:** External structure → task awareness → increasing independence.
 
@@ -20,40 +24,45 @@ CueDone is intentionally simpler than a project-management app. It helps a perso
 
 ## Display architecture
 
-CueDone has two complementary, collapsible views that use the **same underlying local task data**.
+CueDone has two equal working views of the **same local task list**. Neither view exists only to launch the other. Both support add, complete, reorder, and delete.
 
-### 1. Quick Dropdown View
+A compact **Top / Side** control in the header switches views. CueDone stores the last selected view in local extension storage and restores it when the toolbar icon is used, if the browser can do so.
 
-Opened from the Chrome toolbar icon (extension popup).
+### 1. Quick Dropdown View (Top)
+
+The compact toolbar popup.
 
 Purpose:
 
 - Compact personal task list
 - Quick glance at what comes next
-- Check tasks off
-- Add simple tasks
+- Add, complete, reorder, and delete tasks
 - Collapse/close quickly
 
-This view should feel clean and appropriate for adults.
+When Top is the saved view, the toolbar icon opens this popup directly. Choosing Top in the header also assigns Top as the saved view.
 
-### 2. Side Panel / Client View
+### 2. Side Panel View (Side)
 
-Opened as a Chrome side panel.
+Opened as a Chromium side panel, from the header control, from a restored toolbar click, or from the browser side panel UI.
 
 Purpose:
 
-- Remain visible beside the user's current webpage/work
-- Show tasks more prominently
-- Eventually support teletherapy/classroom screen sharing
-- Later include larger visual tasks, progress, optional motivators, and optional celebrations
+- Remain visible beside the user's current webpage/work until the user collapses or closes it, or chooses Top
+- Show the same task list more prominently
+- Add, complete, reorder, and delete tasks
+- Eventually support teletherapy/classroom screen sharing (later Client View work)
+
+When Side is the saved view, the toolbar icon opens Side directly when the browser allows it. Older Chromium keeps the popup fallback: the toolbar may still open Top, which then restores Side if that was last used.
+
+Choosing Top in the header closes Side so it is not left open. Side otherwise stays open until the user collapses or closes it.
 
 Both views must use the same task data. Changes in one view are reflected in the other.
 
-## MVP feature boundary (this milestone)
+## MVP feature boundary
 
-Implement only:
+**Foundation:** Create → check off → reorder → delete tasks, persisted locally, shared by popup and side panel.
 
-**Create → check off → reorder → delete tasks**
+**Phase 2 (approved):** Apply CueDone identity and polish core task UX in both views. Top and Side are equal working views with a compact header view control, a saved last-used view restored from the toolbar when the browser allows it, and a setup/work-mode task entry (Done collapses entry; + Add task reopens it). Do not add Client View rewards or other Phase 3 features.
 
 Tasks persist locally after the extension or browser is reopened. There is no account, no cloud, and no backend.
 
@@ -73,7 +82,7 @@ Do **not** implement:
 - Elaborate animations
 - Reward marketplace
 - Complex settings
-- Full visual redesign / final branding polish
+- Full visual redesign beyond the approved Phase 2 identity
 - AI features
 - Analytics or tracking (unless a later phase explicitly requires it for development)
 

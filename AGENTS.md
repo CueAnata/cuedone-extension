@@ -26,6 +26,8 @@ Never introduce the following without explicit approval:
 
 The first milestone is local-only: Chromium extension popup + side panel, shared local task data, create / check off / reorder / delete.
 
+Phase 2 is approved and frozen: keep the current identity and popup/side panel visual direction. Do not alter Phase 2 visuals unless the user explicitly asks. Do not begin Phase 3 unless the user explicitly approves it.
+
 ## Chromium platform boundary
 
 - Keep Chrome/Edge-specific APIs in `src/platform/browser.js` only.
@@ -35,9 +37,13 @@ The first milestone is local-only: Chromium extension popup + side panel, shared
 
 ## Implementation expectations
 
-- Keep the UI basic but clean unless a visual pass is explicitly requested.
-- Use the approved CueDone logo mark in `assets/logo-mark.png`. Do not invent a replacement icon.
+- Keep the current Phase 2 visual direction exactly as approved. Do not restyle the popup, side panel, or shared UI unless the user explicitly asks.
+- Keep the official CueDone favicon/extension mark exactly as approved: black C, cream background, orange/amber forward arrow.
+- Do not edit, regenerate, restyle, or reinterpret files in `icons/`. Do not invent a replacement icon.
+- `assets/logo-mark.png` is the original brand raster; do not use it as a reason to change the approved toolbar icons.
 - Reuse the shared task module for both views. Do not fork task state per view.
+- Treat Top (Quick Dropdown) and Side (side panel) as equal working views of the same list. Do not turn the popup into a launcher for the side panel; if the popup still opens while Side is saved, restore Side as a fallback only.
+- The toolbar icon restores the last-used view when the browser allows it. Older Chromium keeps the popup fallback. Choosing Top in the header closes Side so it is not left open. Side View otherwise stays open until the user closes it.
 - Avoid unnecessary dependencies and build tooling.
 - Test changes before declaring them complete.
 

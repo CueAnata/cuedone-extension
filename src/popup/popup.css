@@ -2,6 +2,14 @@ body.popup-view {
   width: 360px;
 }
 
-.side-panel-button {
-  width: 100%;
+.popup-view .app-header {
+  padding: 12px 14px 10px;
+}
+
+.popup-view .app-main {
+  padding: 12px 14px 14px;
+}
+
+.popup-view .task-text {
+  font-size: 0.92rem;
 }
