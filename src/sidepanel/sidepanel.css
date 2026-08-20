@@ -71,7 +71,10 @@ body.sidepanel-view {
   line-height: 1.45;
 }
 
-.sidepanel-view[data-presentation="client"] .progress-label,
-.sidepanel-view[data-presentation="client"] .motivator-input {
+.sidepanel-view[data-presentation="client"] .progress-label {
   font-size: 1.15rem;
+}
+
+.sidepanel-view[data-presentation="client"] .client-reward-value {
+  font-size: 1.4rem;
 }

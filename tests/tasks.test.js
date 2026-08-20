@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   addTask,
+  canResetList,
   createTask,
   deleteTask,
   isTaskList,
   normalizeTaskText,
   reorderTasks,
+  resetCompletedTasks,
   toggleTask,
 } from "../src/shared/tasks.js";
 
@@ -71,6 +73,45 @@ test("deleteTask removes only the matching task", () => {
 
   assert.equal(next.length, 1);
   assert.equal(next[0].id, "b");
+});
+
+test("resetCompletedTasks clears checks without deleting or reordering", () => {
+  const tasks = [
+    { ...createTask("One", 1, "a"), completed: true },
+    { ...createTask("Two", 2, "b"), completed: true },
+    { ...createTask("Three", 3, "c"), completed: true },
+  ];
+  const next = resetCompletedTasks(tasks);
+
+  assert.deepEqual(
+    next.map((task) => task.id),
+    ["a", "b", "c"]
+  );
+  assert.deepEqual(
+    next.map((task) => task.text),
+    ["One", "Two", "Three"]
+  );
+  assert.deepEqual(
+    next.map((task) => task.createdAt),
+    [1, 2, 3]
+  );
+  assert.equal(
+    next.every((task) => task.completed === false),
+    true
+  );
+  assert.equal(canResetList(tasks), true);
+  assert.equal(canResetList(next), false);
+  assert.equal(resetCompletedTasks(next), next);
+  assert.equal(canResetList([]), false);
+  assert.equal(canResetList(null), false);
+  assert.equal(canResetList([createTask("One", 1, "a")]), false);
+
+  const mixed = [
+    { ...createTask("One", 1, "a"), completed: true },
+    createTask("Two", 2, "b"),
+  ];
+  assert.equal(canResetList(mixed), false);
+  assert.equal(resetCompletedTasks(mixed), mixed);
 });
 
 test("reorderTasks moves an item to a new index", () => {

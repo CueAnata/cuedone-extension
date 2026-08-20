@@ -14,20 +14,27 @@ import {
   taskEntryVisibility,
   PRESENTATION_MODE_KEY,
   END_MOTIVATOR_KEY,
+  REWARD_KEY,
   loadPresentationMode,
   loadEndMotivator,
+  loadReward,
   normalizePresentationMode,
   normalizeEndMotivator,
   savePresentationMode,
   saveEndMotivator,
+  saveReward,
   COMPLETION_STYLE_KEY,
   COMPLETION_SOUND_KEY,
+  FINAL_CELEBRATION_KEY,
   loadCompletionStyle,
   loadCompletionSound,
+  loadFinalCelebration,
   normalizeCompletionStyle,
   normalizeCompletionSound,
+  normalizeFinalCelebration,
   saveCompletionStyle,
   saveCompletionSound,
+  saveFinalCelebration,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
@@ -157,11 +164,41 @@ test("end motivator is optional, trimmed, and persisted locally", async () => {
   assert.equal(normalizeEndMotivator("x".repeat(200)).length, 120);
   assert.equal(await loadEndMotivator(), "");
   await saveEndMotivator("  5 minutes of your choice  ");
-  assert.equal(store[END_MOTIVATOR_KEY], "5 minutes of your choice");
   assert.equal(await loadEndMotivator(), "5 minutes of your choice");
+  assert.deepEqual(store[REWARD_KEY], {
+    id: "custom",
+    customText: "5 minutes of your choice",
+  });
 });
 
-test("Client completion style persists independently from future sound preference", async () => {
+test("Client reward selection persists independently from custom text", async () => {
+  const store = mockChromeStorage();
+  assert.deepEqual(await loadReward(), { id: "none", customText: "" });
+  await saveReward({ id: "game-time", customText: "  extra  " });
+  assert.deepEqual(store[REWARD_KEY], {
+    id: "game-time",
+    customText: "extra",
+  });
+  assert.deepEqual(await loadReward(), {
+    id: "game-time",
+    customText: "extra",
+  });
+  await saveReward({ id: "custom", customText: "pizza" });
+  assert.deepEqual(await loadReward(), {
+    id: "custom",
+    customText: "pizza",
+  });
+});
+
+test("legacy freeform motivator migrates to a Custom reward", async () => {
+  mockChromeStorage({ [END_MOTIVATOR_KEY]: "  drawing time  " });
+  assert.deepEqual(await loadReward(), {
+    id: "custom",
+    customText: "drawing time",
+  });
+});
+
+test("Client completion style persists independently from sound preference", async () => {
   const store = mockChromeStorage();
   assert.equal(normalizeCompletionStyle(undefined), "simple");
   assert.equal(normalizeCompletionStyle("celebrate"), "celebrate");
@@ -179,6 +216,23 @@ test("Client completion style persists independently from future sound preferenc
   assert.equal(await loadCompletionSound(), "on");
 });
 
+test("final celebration preference persists locally", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizeFinalCelebration(undefined), "random");
+  assert.equal(normalizeFinalCelebration("balloons"), "balloons");
+  assert.equal(normalizeFinalCelebration("stars"), "stars");
+  assert.equal(normalizeFinalCelebration("cars"), "cars");
+  assert.equal(normalizeFinalCelebration("butterflies"), "butterflies");
+  assert.equal(normalizeFinalCelebration("random"), "random");
+  assert.equal(normalizeFinalCelebration("confetti"), "random");
+  assert.equal(await loadFinalCelebration(), "random");
+  await saveFinalCelebration("cars");
+  assert.equal(store[FINAL_CELEBRATION_KEY], "cars");
+  assert.equal(await loadFinalCelebration(), "cars");
+  await saveFinalCelebration("balloons");
+  assert.equal(await loadFinalCelebration(), "balloons");
+});
+
 test("saving Client presentation or motivator does not alter tasks", async () => {
   mockChromeStorage();
   const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
@@ -189,8 +243,10 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveTasks(tasks);
   await savePresentationMode("client");
   await saveEndMotivator("drawing");
+  await saveReward({ id: "music", customText: "" });
   await saveCompletionStyle("celebrate");
   await saveCompletionSound("on");
+  await saveFinalCelebration("butterflies");
   assert.deepEqual(await loadTasks(), tasks);
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
 });
@@ -203,6 +259,15 @@ test("Client presentation CSS is scoped and does not restyle Personal View", asy
   assert.match(
     css,
     /\[data-presentation="client"\] \.client-progress:not\(\[hidden\]\)/
+  );
+  assert.match(
+    css,
+    /\[data-presentation="client"\] \.client-motivator:not\(\[hidden\]\)/
+  );
+  assert.match(css, /\.client-reward-setup\[hidden\]/);
+  assert.match(
+    css,
+    /\.client-motivator\.is-editing \.client-reward-setup:not\(\[hidden\]\)/
   );
   for (const occurrence of css.split(".is-current-task").slice(0, -1)) {
     assert.match(occurrence, /\[data-presentation="client"\]/);

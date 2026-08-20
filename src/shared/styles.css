@@ -135,6 +135,7 @@ input {
 }
 
 .app-main {
+  position: relative;
   padding: 14px 16px 16px;
 }
 
@@ -177,8 +178,14 @@ input {
 .add-button:focus-visible,
 .done-button:focus-visible,
 .add-task-toggle:focus-visible,
+.reset-list-button:focus-visible,
+.reset-confirm-button:focus-visible,
+.reset-cancel-button:focus-visible,
 .icon-button:focus-visible,
-.motivator-input:focus-visible {
+.reward-select:focus-visible,
+.reward-custom-input:focus-visible,
+.reward-edit:focus-visible,
+.final-celebration-select:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -357,6 +364,83 @@ input {
   color: var(--danger);
 }
 
+.list-reset {
+  margin: 14px 2px 0;
+}
+
+.list-reset[hidden],
+.reset-list-button[hidden],
+.reset-confirm[hidden] {
+  display: none !important;
+}
+
+.reset-list-button {
+  min-height: 28px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.reset-list-button:hover {
+  color: var(--accent-hover);
+}
+
+.reset-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.reset-confirm-copy {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.reset-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reset-confirm-button,
+.reset-cancel-button {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.reset-confirm-button {
+  border: 0;
+  background: var(--accent);
+  color: #fffdf8;
+}
+
+.reset-confirm-button:hover {
+  background: var(--accent-hover);
+}
+
+.reset-cancel-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.reset-cancel-button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .empty-state {
   margin: 4px 2px 0;
   padding: 18px 12px;
@@ -376,10 +460,16 @@ input {
 
 .client-completion-prefs {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.client-pref-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 10px;
 }
 
 .client-pref-label {
@@ -388,6 +478,19 @@ input {
   font-size: 0.72rem;
   font-weight: 650;
   letter-spacing: 0.02em;
+}
+
+.final-celebration-select {
+  min-width: 0;
+  max-width: 58%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
 .progress-label {
@@ -411,28 +514,78 @@ input {
   background: var(--accent);
 }
 
-.client-motivator-label {
+.client-motivator-label,
+.client-reward-heading {
   display: block;
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 650;
   letter-spacing: 0.02em;
 }
 
-.motivator-input {
-  width: 100%;
+.client-reward-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.reward-edit {
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text);
-  font-size: 1.05rem;
-  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
 }
 
-.motivator-input::placeholder {
+.reward-edit:hover {
+  color: var(--text);
+}
+
+.client-reward-setup {
+  display: none;
+  gap: 8px;
+}
+
+.client-motivator.is-editing .client-reward-setup:not([hidden]) {
+  display: grid;
+}
+
+.client-reward-setup[hidden],
+.reward-custom-input[hidden],
+.client-reward-value[hidden],
+.reward-edit[hidden] {
+  display: none !important;
+}
+
+.reward-select,
+.reward-custom-input {
+  width: 100%;
+  min-height: var(--control);
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.reward-custom-input::placeholder {
   font-weight: 500;
   color: #9a958c;
+}
+
+.client-reward-value {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 body[data-presentation="client"] .client-progress:not([hidden]),
@@ -492,6 +645,328 @@ body[data-presentation="client"] .task-item.is-complete {
 
 body[data-presentation="client"] .task-item.is-complete .task-text {
   font-weight: 400;
+}
+
+.final-trail-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.final-trail-layer.is-visible {
+  display: block;
+}
+
+body:not([data-presentation="client"]) .final-trail-layer {
+  display: none !important;
+}
+
+.final-trail-bit {
+  position: absolute;
+  left: var(--x, 50%);
+  top: 108%;
+  font-size: 1.35rem;
+  line-height: 1;
+  animation-duration: 1.55s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.final-trail-bit.is-balloons {
+  animation-name: trail-rise, trail-sway;
+  animation-duration: 1.55s, 0.7s;
+  animation-timing-function: ease-out, ease-in-out;
+  animation-iteration-count: 1, 2;
+  font-size: 1.55rem;
+}
+
+.final-trail-bit.is-stars {
+  animation-name: trail-cascade;
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+
+.final-trail-bit.is-cars {
+  top: var(--y, 40%);
+  left: -18%;
+  animation-name: trail-zoom;
+  font-size: 1.5rem;
+}
+
+.final-trail-bit.is-butterflies {
+  animation-name: trail-flutter;
+  font-size: 1.4rem;
+}
+
+.final-trail-layer.is-static .final-trail-bit,
+.final-trail-bit.is-static {
+  top: 42%;
+  left: 50%;
+  animation-name: celebration-fade;
+  animation-duration: 0.4s;
+  animation-iteration-count: 1;
+}
+
+@keyframes trail-rise {
+  0% {
+    transform: translate(-50%, 0) scale(0.85);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, var(--travel, -260px)) scale(1.08);
+    opacity: 0;
+  }
+}
+
+@keyframes trail-sway {
+  0%,
+  100% {
+    margin-left: 0;
+  }
+  50% {
+    margin-left: 12px;
+  }
+}
+
+@keyframes trail-cascade {
+  0% {
+    transform: translate(-50%, 0) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, var(--travel, -280px)) rotate(48deg) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes trail-zoom {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--zoom, 280px));
+    opacity: 0;
+  }
+}
+
+@keyframes trail-flutter {
+  0% {
+    transform: translate(-50%, 0) rotate(-10deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  45% {
+    transform: translate(calc(-50% + 16px), -42%) rotate(12deg);
+  }
+  100% {
+    transform: translate(-50%, var(--travel, -260px)) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.celebration-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body[data-presentation="client"] .celebration-layer.is-visible {
+  display: flex;
+}
+
+.celebration-burst {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 160px;
+  min-height: 108px;
+}
+
+.celebration-mark,
+.celebration-message {
+  margin: 0;
+  color: var(--text);
+  font-weight: 750;
+  text-align: center;
+}
+
+.celebration-mark {
+  font-size: 3.15rem;
+}
+
+.celebration-message {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  font-size: 1.5rem;
+}
+
+.celebration-bit {
+  position: absolute;
+  color: var(--accent);
+  font-size: 1.1rem;
+  animation: celebration-pop 1.15s ease-out both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.celebration-bit.is-final {
+  font-size: 1.55rem;
+}
+
+.celebration-layer[data-kind="final"] .celebration-burst {
+  min-width: 260px;
+  min-height: 220px;
+}
+
+.celebration-layer[data-kind="final"] .celebration-message {
+  z-index: 1;
+  font-size: 1.9rem;
+  background: var(--accent-soft);
+}
+
+.celebration-reward {
+  z-index: 1;
+  margin: 10px 0 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fffdf8;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.celebration-layer[data-kind="final"] .celebration-bit {
+  animation-duration: 1.6s;
+}
+
+.is-clap .celebration-mark,
+.is-thumbs .celebration-mark,
+.is-yay .celebration-message {
+  animation: celebration-scale 1.15s ease-out both;
+}
+
+.celebration-buddy {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  perspective: 260px;
+}
+
+.celebration-buddy-face {
+  font-size: 2.6rem;
+  line-height: 1;
+  animation: celebration-scale 1.2s ease-out both;
+}
+
+.celebration-buddy-thumb {
+  transform-style: preserve-3d;
+  animation: celebration-thumb-pop 1.2s ease-out both;
+}
+
+.is-static .celebration-mark,
+.is-static .celebration-message,
+.is-static .celebration-bit,
+.is-static .celebration-reward,
+.is-static .celebration-buddy-face,
+.is-static .celebration-buddy-thumb {
+  animation: celebration-fade 1s ease both;
+}
+
+@keyframes celebration-scale {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes celebration-thumb-pop {
+  0% {
+    transform: scale(0.7) translateZ(0);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.5) translateZ(48px);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.18) translateZ(16px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateZ(0);
+    opacity: 0;
+  }
+}
+
+@keyframes celebration-pop {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx, 0), var(--dy, -46px)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes celebration-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-mark,
+  .celebration-message,
+  .celebration-bit,
+  .celebration-reward,
+  .celebration-buddy-face,
+  .celebration-buddy-thumb,
+  .final-trail-bit {
+    animation: celebration-fade 1s ease both;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

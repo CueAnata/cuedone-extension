@@ -28,7 +28,9 @@ The first milestone is local-only: Chromium extension popup + side panel, shared
 
 Phase 2 is approved and frozen: keep the current identity and popup/side panel visual direction in Personal mode. Do not restyle Personal View unless the user explicitly asks.
 
-Phase 3A Client View presentation is approved and frozen, including a saved Simple/Celebrate completion-style control. Do not implement celebration animations or sounds unless the user explicitly approves Phase 3B. Sound must stay a separate preference from visual completion style.
+Phase 3A Client View presentation is approved and frozen: Personal/Client switch, Client focus/progress, and Simple/Celebrate as a saved completion-style control.
+
+Phase 3B Client View celebrations and sound are approved: brief randomized Client + Celebrate micro-feedback, a larger final-task celebration with a 1–2s Client-only trail (Random / Balloons / Stars / Cars / Butterflies), a persisted Sound Off/On control that is independent of Celebrate, and a Client Reward selector with a presentation card. Do not expand the micro pool or trail options, add a mascot library, or begin a later phase unless the user explicitly asks.
 
 ## Chromium platform boundary
 

@@ -1,12 +1,22 @@
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
+import { normalizeReward } from "./reward.js";
 
 export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
 export const TASK_ENTRY_OPEN_KEY = "cuedone.taskEntryOpen";
 export const PRESENTATION_MODE_KEY = "cuedone.presentationMode";
 export const END_MOTIVATOR_KEY = "cuedone.endMotivator";
+export const REWARD_KEY = "cuedone.reward";
 export const COMPLETION_STYLE_KEY = "cuedone.completionStyle";
 export const COMPLETION_SOUND_KEY = "cuedone.completionSound";
+export const FINAL_CELEBRATION_KEY = "cuedone.finalCelebration";
 const MOTIVATOR_MAX_LENGTH = 120;
+const FINAL_CELEBRATION_VALUES = [
+  "random",
+  "balloons",
+  "stars",
+  "cars",
+  "butterflies",
+];
 
 export function normalizePreferredView(value) {
   return value === "side" ? "side" : "top";
@@ -34,6 +44,10 @@ export function normalizeCompletionStyle(value) {
 
 export function normalizeCompletionSound(value) {
   return value === "on" ? "on" : "off";
+}
+
+export function normalizeFinalCelebration(value) {
+  return FINAL_CELEBRATION_VALUES.includes(value) ? value : "random";
 }
 
 export function taskEntryVisibility(isOpen) {
@@ -102,13 +116,30 @@ export function savePresentationMode(mode) {
 }
 
 export function loadEndMotivator() {
-  return getLocal(END_MOTIVATOR_KEY).then((data) =>
-    normalizeEndMotivator(data[END_MOTIVATOR_KEY])
+  return loadReward().then((reward) =>
+    reward.id === "custom" ? reward.customText : ""
   );
 }
 
 export function saveEndMotivator(value) {
-  return setLocal({ [END_MOTIVATOR_KEY]: normalizeEndMotivator(value) });
+  return saveReward({ id: "custom", customText: value });
+}
+
+export function loadReward() {
+  return getLocal(REWARD_KEY).then((data) => {
+    const stored = data[REWARD_KEY];
+    if (stored && typeof stored === "object") {
+      return normalizeReward(stored);
+    }
+
+    return getLocal(END_MOTIVATOR_KEY).then((legacy) =>
+      normalizeReward(null, legacy[END_MOTIVATOR_KEY])
+    );
+  });
+}
+
+export function saveReward(reward) {
+  return setLocal({ [REWARD_KEY]: normalizeReward(reward) });
 }
 
 export function loadCompletionStyle() {
@@ -135,6 +166,18 @@ export function saveCompletionSound(value) {
   });
 }
 
+export function loadFinalCelebration() {
+  return getLocal(FINAL_CELEBRATION_KEY).then((data) =>
+    normalizeFinalCelebration(data[FINAL_CELEBRATION_KEY])
+  );
+}
+
+export function saveFinalCelebration(value) {
+  return setLocal({
+    [FINAL_CELEBRATION_KEY]: normalizeFinalCelebration(value),
+  });
+}
+
 export function onTaskEntryOpenChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName !== "local" || !changes[TASK_ENTRY_OPEN_KEY]) {
@@ -156,12 +199,18 @@ export function onPresentationModeChanged(callback) {
 }
 
 export function onEndMotivatorChanged(callback) {
+  return onRewardChanged((reward) => {
+    callback(reward.id === "custom" ? reward.customText : "");
+  });
+}
+
+export function onRewardChanged(callback) {
   return onLocalChanged((changes, areaName) => {
-    if (areaName !== "local" || !changes[END_MOTIVATOR_KEY]) {
+    if (areaName !== "local" || !changes[REWARD_KEY]) {
       return;
     }
 
-    callback(normalizeEndMotivator(changes[END_MOTIVATOR_KEY].newValue));
+    callback(normalizeReward(changes[REWARD_KEY].newValue));
   });
 }
 
@@ -182,5 +231,15 @@ export function onCompletionSoundChanged(callback) {
     }
 
     callback(normalizeCompletionSound(changes[COMPLETION_SOUND_KEY].newValue));
+  });
+}
+
+export function onFinalCelebrationChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[FINAL_CELEBRATION_KEY]) {
+      return;
+    }
+
+    callback(normalizeFinalCelebration(changes[FINAL_CELEBRATION_KEY].newValue));
   });
 }

@@ -43,6 +43,22 @@ export function deleteTask(tasks, id) {
   return tasks.filter((task) => task.id !== id);
 }
 
+export function canResetList(tasks) {
+  return (
+    Array.isArray(tasks) &&
+    tasks.length > 0 &&
+    tasks.every((task) => task && task.completed === true)
+  );
+}
+
+export function resetCompletedTasks(tasks) {
+  if (!canResetList(tasks)) {
+    return tasks;
+  }
+
+  return tasks.map((task) => ({ ...task, completed: false }));
+}
+
 export function reorderTasks(tasks, fromIndex, toIndex) {
   if (
     fromIndex === toIndex ||

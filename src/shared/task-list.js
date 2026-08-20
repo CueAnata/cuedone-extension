@@ -1,21 +1,51 @@
-import { addTask, deleteTask, reorderTasks, toggleTask } from "./tasks.js";
+import {
+  addTask,
+  canResetList,
+  deleteTask,
+  reorderTasks,
+  resetCompletedTasks,
+} from "./tasks.js";
 import {
   formatProgressLabel,
   nextCompletionStyleAction,
+  nextFinalCelebrationAction,
+  nextSoundAction,
   nextUnfinishedTask,
+  pickFinalTrail,
+  planFromCheckboxCompletion,
+  resetListVisible,
+  snapshotTasks,
   taskProgress,
 } from "./client-view.js";
 import {
+  formatRewardCard,
+  formatRewardReveal,
+  initialRewardEditing,
+  nextRewardEditing,
+  normalizeReward,
+  rewardCardVisible,
+  rewardEditVisible,
+  rewardEditorVisible,
+  rewardShowsCustomInput,
+} from "./reward.js";
+import { playCelebrationSound, showCelebration, showFinalTrail, unlockCelebrationAudio } from "./celebrations.js";
+import {
+  loadCompletionSound,
   loadCompletionStyle,
-  loadEndMotivator,
+  loadFinalCelebration,
   loadPresentationMode,
+  loadReward,
   loadTaskEntryOpen,
+  onCompletionSoundChanged,
   onCompletionStyleChanged,
-  onEndMotivatorChanged,
+  onFinalCelebrationChanged,
   onPresentationModeChanged,
+  onRewardChanged,
   onTaskEntryOpenChanged,
+  saveCompletionSound,
   saveCompletionStyle,
-  saveEndMotivator,
+  saveFinalCelebration,
+  saveReward,
   saveTaskEntryOpen,
   taskEntryVisibility,
 } from "./preferences.js";
@@ -27,6 +57,9 @@ export async function mountTaskList(root) {
   let draggedId = null;
   let restoreFocus = null;
   let entryOpen = true;
+  let completionSnapshot = null;
+  let finalCelebrationActive = false;
+  let lastTrailPick = null;
 
   root.innerHTML = `
     <form class="task-form">
@@ -55,45 +88,114 @@ export async function mountTaskList(root) {
         <div class="progress-fill"></div>
       </div>
       <div class="client-completion-prefs">
-        <p class="client-pref-label" id="completion-style-label">On complete</p>
-        <div
-          class="mode-switch"
-          role="group"
-          aria-labelledby="completion-style-label"
-        >
-          <button
-            type="button"
-            class="view-switch-button"
-            data-completion-style="simple"
+        <div class="client-pref-row">
+          <p class="client-pref-label" id="completion-style-label">On complete</p>
+          <div
+            class="mode-switch"
+            role="group"
+            aria-labelledby="completion-style-label"
           >
-            Simple
-          </button>
-          <button
-            type="button"
-            class="view-switch-button"
-            data-completion-style="celebrate"
-            title="Saved for brief visual completion feedback later. Sound will be a separate control."
+            <button
+              type="button"
+              class="view-switch-button"
+              data-completion-style="simple"
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              class="view-switch-button"
+              data-completion-style="celebrate"
+            >
+              Celebrate
+            </button>
+          </div>
+        </div>
+        <div class="client-pref-row">
+          <p class="client-pref-label" id="completion-sound-label">Sound</p>
+          <div
+            class="mode-switch"
+            role="group"
+            aria-labelledby="completion-sound-label"
           >
-            Celebrate
-          </button>
+            <button
+              type="button"
+              class="view-switch-button"
+              data-completion-sound="off"
+            >
+              Off
+            </button>
+            <button
+              type="button"
+              class="view-switch-button"
+              data-completion-sound="on"
+            >
+              On
+            </button>
+          </div>
+        </div>
+        <div class="client-pref-row">
+          <p class="client-pref-label" id="final-celebration-label">
+            Final celebration
+          </p>
+          <select
+            id="final-celebration"
+            class="final-celebration-select"
+            aria-labelledby="final-celebration-label"
+          >
+            <option value="random">Random</option>
+            <option value="balloons">Balloons</option>
+            <option value="stars">Stars</option>
+            <option value="cars">Cars</option>
+            <option value="butterflies">Butterflies</option>
+          </select>
         </div>
       </div>
     </section>
     <ul class="task-list" aria-label="Tasks"></ul>
     <p class="empty-state">No tasks yet. Add one to get started.</p>
     <section class="client-motivator" hidden>
-      <label class="client-motivator-label" for="end-motivator"
-        >When we’re finished</label
-      >
-      <input
-        id="end-motivator"
-        class="motivator-input"
-        type="text"
-        maxlength="120"
-        placeholder="Optional: game time, drawing, a movement break…"
-        autocomplete="off"
-      />
+      <div class="client-reward-head">
+        <p class="client-reward-heading" id="reward-select-label">Reward</p>
+        <button type="button" class="reward-edit">Edit</button>
+      </div>
+      <div class="client-reward-setup">
+        <select
+          id="client-reward"
+          class="reward-select"
+          aria-labelledby="reward-select-label"
+        >
+          <option value="none">None</option>
+          <option value="your-choice">Your Choice</option>
+          <option value="game-time">Game Time</option>
+          <option value="music">Music</option>
+          <option value="drawing">Drawing</option>
+          <option value="reading">Reading</option>
+          <option value="surprise">Surprise</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input
+          id="reward-custom"
+          class="reward-custom-input"
+          type="text"
+          maxlength="120"
+          placeholder="Type a custom reward"
+          autocomplete="off"
+          hidden
+        />
+      </div>
+      <p class="client-reward-value" hidden></p>
     </section>
+    <div class="list-reset" hidden>
+      <button type="button" class="reset-list-button">Reset List</button>
+      <div class="reset-confirm" hidden>
+        <p class="reset-confirm-copy">Start this list again?</p>
+        <div class="reset-confirm-actions">
+          <button type="button" class="reset-confirm-button">Reset</button>
+          <button type="button" class="reset-cancel-button">Cancel</button>
+        </div>
+      </div>
+    </div>
   `;
 
   const form = root.querySelector(".task-form");
@@ -101,6 +203,11 @@ export async function mountTaskList(root) {
   const doneButton = root.querySelector(".done-button");
   const addToggle = root.querySelector(".add-task-toggle");
   const list = root.querySelector(".task-list");
+  const resetSection = root.querySelector(".list-reset");
+  const resetButton = root.querySelector(".reset-list-button");
+  const resetConfirm = root.querySelector(".reset-confirm");
+  const resetConfirmButton = root.querySelector(".reset-confirm-button");
+  const resetCancelButton = root.querySelector(".reset-cancel-button");
   const emptyState = root.querySelector(".empty-state");
   const progressSection = root.querySelector(".client-progress");
   const progressLabel = root.querySelector(".progress-label");
@@ -109,8 +216,19 @@ export async function mountTaskList(root) {
   const completionStyleButtons = root.querySelectorAll(
     "[data-completion-style]"
   );
+  const completionSoundButtons = root.querySelectorAll(
+    "[data-completion-sound]"
+  );
+  const finalCelebrationSelect = root.querySelector(".final-celebration-select");
   const motivatorSection = root.querySelector(".client-motivator");
-  const motivatorInput = root.querySelector(".motivator-input");
+  const rewardHeading = root.querySelector(".client-reward-heading");
+  const rewardEdit = root.querySelector(".reward-edit");
+  const rewardSetup = root.querySelector(".client-reward-setup");
+  const rewardSelect = root.querySelector(".reward-select");
+  const rewardCustomInput = root.querySelector(".reward-custom-input");
+  const rewardValue = root.querySelector(".client-reward-value");
+  let rewardEditing = true;
+  let resetConfirming = false;
 
   function applyEntryMode(isOpen) {
     const visibility = taskEntryVisibility(isOpen);
@@ -139,6 +257,115 @@ export async function mountTaskList(root) {
     }
   }
 
+  function applyCompletionSound(value) {
+    const current = value === "on" ? "on" : "off";
+    document.body.dataset.completionSound = current;
+    for (const button of completionSoundButtons) {
+      const isCurrent = button.dataset.completionSound === current;
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+  }
+
+  function applyFinalCelebration(value) {
+    const action = nextFinalCelebrationAction(value) || "random";
+    document.body.dataset.finalCelebration = action;
+    finalCelebrationSelect.value = action;
+  }
+
+  function captureCompletionSnapshot(id) {
+    completionSnapshot = {
+      id,
+      tasks: snapshotTasks(tasks),
+    };
+  }
+
+  function takeCompletionSnapshot(id) {
+    const captured = completionSnapshot;
+    completionSnapshot = null;
+    if (captured && (!id || captured.id === id)) {
+      return captured.tasks;
+    }
+    return null;
+  }
+
+  function maybeCelebrate(plan) {
+    if (!plan || (!plan.playVisualCelebration && !plan.playSound)) {
+      return;
+    }
+
+    const rewardText =
+      plan.kind === "final" ? formatRewardReveal(currentReward()) : "";
+
+    if (plan.kind === "final" && plan.playVisualCelebration) {
+      finalCelebrationActive = true;
+      updateResetAction();
+      const trail = pickFinalTrail(
+        document.body.dataset.finalCelebration,
+        lastTrailPick
+      );
+      lastTrailPick = trail;
+      showFinalTrail({
+        trail: plan.playTrail ? trail : null,
+        container: root,
+        onDone: () => {
+          showCelebration({
+            kind: "final",
+            playSound: false,
+            rewardText,
+            onDone: () => {
+              finalCelebrationActive = false;
+              updateResetAction();
+            },
+          });
+        },
+      });
+      return;
+    }
+
+    showCelebration({
+      kind: plan.kind,
+      playSound: false,
+      rewardText,
+    });
+  }
+
+  function currentReward() {
+    return normalizeReward({
+      id: rewardSelect.value,
+      customText: rewardCustomInput.value,
+    });
+  }
+
+  function applyReward(reward, { skipCustomValue = false } = {}) {
+    const next = normalizeReward(reward);
+    rewardSelect.value = next.id;
+    if (!skipCustomValue) {
+      rewardCustomInput.value = next.customText;
+    }
+    const shown = {
+      id: next.id,
+      customText: skipCustomValue ? rewardCustomInput.value : next.customText,
+    };
+    const editorOpen = rewardEditorVisible(shown, rewardEditing);
+    const cardText = formatRewardCard(shown);
+    const showCustom = editorOpen && rewardShowsCustomInput(shown);
+
+    rewardSetup.hidden = !editorOpen;
+    rewardCustomInput.hidden = !showCustom;
+    rewardValue.hidden = !rewardCardVisible(shown);
+    rewardValue.textContent = cardText;
+    rewardEdit.hidden = !rewardEditVisible(shown, rewardEditing);
+    rewardHeading.textContent = editorOpen || !cardText ? "Reward" : "When we’re finished";
+    motivatorSection.classList.toggle("has-value", Boolean(cardText));
+    motivatorSection.classList.toggle("is-editing", editorOpen);
+    motivatorSection.classList.toggle("is-custom", showCustom);
+  }
+
+  function persistReward() {
+    saveReward(currentReward());
+  }
+
   function updateClientChrome() {
     const client = isClientMode();
     const progress = taskProgress(tasks);
@@ -151,10 +378,24 @@ export async function mountTaskList(root) {
     progressTrack.setAttribute("aria-valuenow", String(progress.complete));
     progressTrack.setAttribute("aria-valuemax", String(progress.total));
     progressTrack.setAttribute("aria-label", label);
-    motivatorSection.classList.toggle(
-      "has-value",
-      Boolean(motivatorInput.value.trim())
-    );
+    applyReward(currentReward(), { skipCustomValue: true });
+  }
+
+  function updateResetAction() {
+    const canReset = resetListVisible({
+      tasks,
+      presentation: document.body.dataset.presentation,
+      style: document.body.dataset.completionStyle,
+      finalCelebrationActive,
+    });
+    if (!canResetList(tasks)) {
+      resetConfirming = false;
+      finalCelebrationActive = false;
+    }
+
+    resetSection.hidden = !canReset;
+    resetButton.hidden = !canReset || resetConfirming;
+    resetConfirm.hidden = !canReset || !resetConfirming;
   }
 
   async function persist(nextTasks) {
@@ -199,6 +440,7 @@ export async function mountTaskList(root) {
     });
 
     updateClientChrome();
+    updateResetAction();
 
     if (!restoreFocus) {
       return;
@@ -221,6 +463,33 @@ export async function mountTaskList(root) {
     restoreFocus = null;
     await persist(next);
     input.focus();
+  });
+
+  resetButton.addEventListener("click", () => {
+    if (!canResetList(tasks)) {
+      return;
+    }
+
+    resetConfirming = true;
+    updateResetAction();
+    resetConfirmButton.focus();
+  });
+
+  resetCancelButton.addEventListener("click", () => {
+    resetConfirming = false;
+    updateResetAction();
+    resetButton.focus();
+  });
+
+  resetConfirmButton.addEventListener("click", async () => {
+    const next = resetCompletedTasks(tasks);
+    if (next === tasks) {
+      return;
+    }
+
+    resetConfirming = false;
+    restoreFocus = { id: next[0].id, selector: ".task-checkbox" };
+    await persist(next);
   });
 
   doneButton.addEventListener("click", async () => {
@@ -247,7 +516,26 @@ export async function mountTaskList(root) {
     }
 
     restoreFocus = { id, selector: ".task-checkbox" };
-    await persist(toggleTask(tasks, id));
+    const snapshot = takeCompletionSnapshot(id);
+    const { nextTasks, plan } = planFromCheckboxCompletion({
+      snapshot,
+      liveTasks: tasks,
+      id,
+      completed: checkbox.checked,
+      presentation: document.body.dataset.presentation,
+      style: document.body.dataset.completionStyle,
+      sound: document.body.dataset.completionSound,
+    });
+    if (plan?.kind === "final" && plan.playVisualCelebration) {
+      finalCelebrationActive = true;
+    }
+    if (plan?.playSound) {
+      playCelebrationSound(plan.kind);
+    }
+    tasks = nextTasks;
+    render();
+    maybeCelebrate(plan);
+    await saveTasks(tasks);
   });
 
   list.addEventListener("click", async (event) => {
@@ -323,6 +611,7 @@ export async function mountTaskList(root) {
   });
 
   onTasksChanged((nextTasks) => {
+    completionSnapshot = null;
     tasks = nextTasks;
     render();
   });
@@ -333,19 +622,32 @@ export async function mountTaskList(root) {
 
   onPresentationModeChanged(() => {
     updateClientChrome();
+    updateResetAction();
   });
 
-  onEndMotivatorChanged((value) => {
-    if (document.activeElement === motivatorInput) {
+  onRewardChanged((reward) => {
+    if (
+      document.activeElement === rewardCustomInput ||
+      document.activeElement === rewardSelect
+    ) {
       return;
     }
 
-    motivatorInput.value = value;
-    updateClientChrome();
+    rewardEditing = initialRewardEditing(reward);
+    applyReward(reward);
   });
 
   onCompletionStyleChanged((style) => {
     applyCompletionStyle(style);
+    updateResetAction();
+  });
+
+  onCompletionSoundChanged((value) => {
+    applyCompletionSound(value);
+  });
+
+  onFinalCelebrationChanged((value) => {
+    applyFinalCelebration(value);
   });
 
   for (const button of completionStyleButtons) {
@@ -357,20 +659,114 @@ export async function mountTaskList(root) {
 
       applyCompletionStyle(action);
       saveCompletionStyle(action);
+      updateResetAction();
     });
   }
 
-  motivatorInput.addEventListener("input", () => {
-    updateClientChrome();
-    saveEndMotivator(motivatorInput.value);
+  for (const button of completionSoundButtons) {
+    button.addEventListener("click", () => {
+      const action = nextSoundAction(button.dataset.completionSound);
+      if (!action) {
+        return;
+      }
+
+      applyCompletionSound(action);
+      if (action === "on") {
+        unlockCelebrationAudio();
+      }
+      saveCompletionSound(action);
+    });
+  }
+
+  finalCelebrationSelect.addEventListener("change", () => {
+    const action = nextFinalCelebrationAction(finalCelebrationSelect.value);
+    if (!action) {
+      applyFinalCelebration("random");
+      return;
+    }
+
+    applyFinalCelebration(action);
+    saveFinalCelebration(action);
+  });
+
+  list.addEventListener("pointerdown", (event) => {
+    const item = event.target.closest(".task-item");
+    if (
+      item &&
+      !event.target.closest(".task-actions, .drag-handle")
+    ) {
+      captureCompletionSnapshot(item.dataset.id);
+    }
+
+    if (
+      isClientMode() &&
+      document.body.dataset.completionStyle === "celebrate" &&
+      document.body.dataset.completionSound === "on"
+    ) {
+      unlockCelebrationAudio();
+    }
+  });
+
+  list.addEventListener("keydown", (event) => {
+    if (event.key !== " " && event.key !== "Enter") {
+      return;
+    }
+
+    const item = event.target.closest(".task-item");
+    if (item && event.target.closest(".task-checkbox")) {
+      captureCompletionSnapshot(item.dataset.id);
+    }
+  });
+
+  rewardSelect.addEventListener("change", () => {
+    const reward = currentReward();
+    rewardEditing = nextRewardEditing(reward, "select");
+    applyReward(reward);
+    persistReward();
+    if (rewardShowsCustomInput(reward) && rewardEditing) {
+      rewardCustomInput.focus();
+    }
+  });
+
+  function commitCustomReward() {
+    const reward = currentReward();
+    rewardEditing = nextRewardEditing(reward, "custom-commit");
+    applyReward(reward, { skipCustomValue: true });
+    persistReward();
+  }
+
+  rewardCustomInput.addEventListener("input", () => {
+    applyReward(currentReward(), { skipCustomValue: true });
+    persistReward();
+  });
+
+  rewardCustomInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitCustomReward();
+    }
+  });
+
+  rewardCustomInput.addEventListener("blur", () => {
+    commitCustomReward();
+  });
+
+  rewardEdit.addEventListener("click", () => {
+    rewardEditing = nextRewardEditing(currentReward(), "edit");
+    applyReward(currentReward());
+    rewardSelect.focus();
   });
 
   applyEntryMode(true);
   applyPresentationMode(await loadPresentationMode());
   applyCompletionStyle(await loadCompletionStyle());
+  applyCompletionSound(await loadCompletionSound());
+  applyFinalCelebration(await loadFinalCelebration());
   tasks = await loadTasks();
   applyEntryMode(await loadTaskEntryOpen());
-  motivatorInput.value = await loadEndMotivator();
+  const savedReward = await loadReward();
+  rewardEditing = initialRewardEditing(savedReward);
+  applyReward(savedReward);
   render();
   if (entryOpen) {
     input.focus();
