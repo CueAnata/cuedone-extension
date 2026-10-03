@@ -38,12 +38,14 @@ The responsive Client layout checkpoint is implemented: compact Top and narrow S
 
 The CueDone Development Blueprint is planning context. Recording a roadmap item in this file or `PROJECT_CONTEXT.md` does not authorize implementing it. Work on one explicitly requested, bounded phase at a time.
 
-The final-task and individual-task audio checkpoints are implemented. Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, and Connected Client View. They remain unimplemented and unauthorized by roadmap documentation alone.
+The final-task and individual-task audio checkpoints are implemented. Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, Connected Client View, Edge distribution on Windows, Meta VR, and cross-device handoff. They remain unimplemented and unauthorized by roadmap documentation alone.
 
 ## Roadmap decision gates
 
-- **Public/Private content:** The current app has one task list shared across presentation modes. Before any Public/Private work, decide between separate lists and explicit per-task visibility, including migration and switching behavior. Do not treat visual mode changes as privacy controls.
-- **Connected Client View:** Before any host/student networking, decide who may complete tasks, the student interface, connection and access model, session expiry, reconnect and concurrent-edit behavior, animation ownership, and data retention. A session code is only a possibility. Do not infer approval for accounts, cloud sync, or an external backend.
+- **Personal Public/Private content:** Public and Private are planned experiences within Personal mode. Public is a clean, shareable agenda or short workflow for meetings and conference calls; Private is where optional themes, affirmations, timed breaks, animations, and audio belong. The current app has one task list shared across presentation modes. Before implementation, decide between separate lists and explicit per-task visibility, including migration, switching, restore, sharing, and handoff behavior. Do not treat a visual mode change as a privacy control, and never allow Private content to leak into Public.
+- **Connected Client View:** This is a laptop/desktop-only professional workflow for teachers, therapists, and similar hosts and their student/client display. It is separate from Meta VR and smart-glasses work. Before networking, decide who may complete tasks, the client interface, connection and access model, session expiry, reconnect and concurrent-edit behavior, animation ownership, and data retention. A session code is only a possibility. Do not infer approval for accounts, cloud sync, or an external backend.
+- **Meta VR:** Meta VR is a Personal productivity experience only; it does not include Client View or Connected Client View. Define whether the target is a browser experience, installed VR app, or another supported Meta delivery model. Do not assume the Chromium extension interface or APIs transfer unchanged. Define VR interaction, accessibility, comfort, and suspension behavior first.
+- **Cross-device handoff:** Treat handoff as single-user productivity continuity, separate from Connected Client View. The planned direction is explicit session-ownership transfer between Chrome/Edge and Meta VR, not continuous multi-device co-editing. Before implementation, define transferred state, confirmations and recovery, conflicts, offline/reconnect behavior, expiry, security, privacy, and retention. Future Meta smart glasses may reuse the handoff contract only if supported. Do not infer authorization for accounts, pairing infrastructure, cloud sync, or a backend.
 - **Alternate layouts:** Define behavior for lists longer than the visible First/Then or First/Then/Next/Last slots. Never silently discard or hide required tasks.
 - **Visual progress and lifecycle:** Define add/remove/uncheck/reset/carryover behavior, prevent empty-list finales, and decide how future theme finales coexist with existing final celebrations.
 
@@ -52,7 +54,9 @@ The final-task and individual-task audio checkpoints are implemented. Later plan
 - Keep Chrome/Edge-specific APIs in `src/platform/browser.js` only.
 - Do not call `chrome.*` from `src/shared`, popup UI wiring, or side panel UI wiring.
 - Chrome and Edge share this one Chromium adapter and the same app. Do not duplicate task model, storage, or views per browser.
+- Chrome and Edge desktop versions include the existing Personal and Client features. Microsoft Edge on Windows remains a distribution target for this same Chromium codebase; store packaging must not fork product behavior.
 - A future non-Chromium browser would get a new adapter, not a second copy of CueDone.
+- A future Meta VR Personal client must preserve shared task semantics and isolate Meta-specific APIs behind an explicit platform boundary; its exact architecture remains unresolved.
 
 ## Implementation expectations
 
