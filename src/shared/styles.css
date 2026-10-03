@@ -185,7 +185,11 @@ input {
 .reward-select:focus-visible,
 .reward-custom-input:focus-visible,
 .reward-edit:focus-visible,
-.final-celebration-select:focus-visible {
+.final-celebration-select:focus-visible,
+.final-sound-select:focus-visible,
+.task-sound-select:focus-visible,
+.sound-preview-button:focus-visible,
+.client-settings-toggle:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -465,6 +469,44 @@ input {
   margin-top: 10px;
 }
 
+.client-settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.client-settings-toggle:hover,
+.client-settings-toggle.is-open {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.client-settings-gear {
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.client-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.client-settings-panel[hidden] {
+  display: none;
+}
+
 .client-pref-row {
   display: flex;
   align-items: center;
@@ -480,9 +522,10 @@ input {
   letter-spacing: 0.02em;
 }
 
-.final-celebration-select {
+.final-celebration-select,
+.final-sound-select,
+.task-sound-select {
   min-width: 0;
-  max-width: 58%;
   min-height: 28px;
   padding: 4px 8px;
   border: 1px solid var(--line);
@@ -491,6 +534,65 @@ input {
   color: var(--text);
   font-size: 0.78rem;
   font-weight: 650;
+}
+
+.final-celebration-select {
+  max-width: 58%;
+}
+
+.client-final-sound-controls,
+.client-task-sound-controls {
+  display: flex;
+  min-width: 0;
+  max-width: 68%;
+  gap: 6px;
+}
+
+.final-sound-select,
+.task-sound-select {
+  flex: 1;
+}
+
+.sound-preview-button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.sound-preview-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sound-preview-button:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+@media (max-width: 420px) {
+  .client-final-sound-row,
+  .client-task-sound-row {
+    align-items: flex-start;
+  }
+
+  .client-final-sound-controls,
+  .client-task-sound-controls {
+    max-width: 72%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .final-sound-select,
+  .task-sound-select {
+    flex-basis: 100%;
+  }
 }
 
 .progress-label {

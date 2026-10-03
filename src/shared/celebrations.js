@@ -17,6 +17,31 @@ const MARKS = {
   "you-did-it": "You did it!",
   buddy: "👍",
 };
+export const FINAL_SOUND_ASSETS = Object.freeze({
+  yay: new URL("../../assets/audio/final-yay.mp3", import.meta.url).href,
+  applause: new URL("../../assets/audio/final-applause.mp3", import.meta.url)
+    .href,
+  "trumpet-fanfare": new URL(
+    "../../assets/audio/final-trumpet-fanfare.mp3",
+    import.meta.url
+  ).href,
+  hurrah: new URL("../../assets/audio/final-hurrah.mp3", import.meta.url).href,
+});
+export const TASK_SOUND_ASSETS = Object.freeze({
+  "bubble-pop": new URL(
+    "../../assets/audio/task-bubble-pop.wav",
+    import.meta.url
+  ).href,
+  "soft-click": new URL(
+    "../../assets/audio/task-soft-click.wav",
+    import.meta.url
+  ).href,
+  "wood-tap": new URL(
+    "../../assets/audio/task-wood-tap.wav",
+    import.meta.url
+  ).href,
+});
+const TASK_SOUND_POOL = Object.freeze(Object.keys(TASK_SOUND_ASSETS));
 
 let lastPick = null;
 let lastTrail = null;
@@ -24,7 +49,12 @@ let hideTimer = 0;
 let trailTimer = 0;
 let audioContext = null;
 let chimeElement = null;
+let finalSoundElement = null;
+let taskSoundElement = null;
 let chimeUrl = "";
+let audioEnabled = false;
+let playbackToken = 0;
+const activeOscillators = new Set();
 
 function prefersReducedMotion() {
   return Boolean(
@@ -217,12 +247,68 @@ function contentFor(name, reducedMotion, kind, rewardText = "") {
 }
 
 export function resetCelebrationAudioForTests() {
+  stopCelebrationAudio();
   audioContext = null;
   chimeElement = null;
+  finalSoundElement = null;
+  taskSoundElement = null;
+  audioEnabled = false;
+}
+
+function stopMediaElement(node) {
+  if (!node) {
+    return;
+  }
+
+  try {
+    node.pause?.();
+    node.currentTime = 0;
+  } catch {
+    // Audio is optional.
+  }
+}
+
+function stopActivePlayback({ suspendContext = false } = {}) {
+  playbackToken += 1;
+  stopMediaElement(chimeElement);
+  stopMediaElement(finalSoundElement);
+  stopMediaElement(taskSoundElement);
+  for (const oscillator of activeOscillators) {
+    try {
+      oscillator.stop?.();
+      oscillator.disconnect?.();
+    } catch {
+      // A finished oscillator may already be stopped.
+    }
+  }
+  activeOscillators.clear();
+
   if (chimeUrl && globalThis.URL?.revokeObjectURL) {
     globalThis.URL.revokeObjectURL(chimeUrl);
   }
   chimeUrl = "";
+
+  if (suspendContext && audioContext?.state === "running") {
+    audioContext.suspend?.().catch?.(() => {});
+  }
+
+  return playbackToken;
+}
+
+export function stopCelebrationAudio() {
+  stopActivePlayback({ suspendContext: true });
+}
+
+export function setCelebrationAudioEnabled(enabled) {
+  audioEnabled = enabled === true;
+  if (!audioEnabled) {
+    stopCelebrationAudio();
+  }
+  return audioEnabled;
+}
+
+export function celebrationAudioEnabledForTests() {
+  return audioEnabled;
 }
 
 function writeString(view, offset, value) {
@@ -292,6 +378,32 @@ function chimeElementNode() {
   return chimeElement;
 }
 
+function finalSoundElementNode() {
+  if (finalSoundElement) {
+    return finalSoundElement;
+  }
+
+  finalSoundElement = document.createElement("audio");
+  finalSoundElement.className = "cuedone-final-sound";
+  finalSoundElement.setAttribute("aria-hidden", "true");
+  finalSoundElement.preload = "auto";
+  document.body.append(finalSoundElement);
+  return finalSoundElement;
+}
+
+function taskSoundElementNode() {
+  if (taskSoundElement) {
+    return taskSoundElement;
+  }
+
+  taskSoundElement = document.createElement("audio");
+  taskSoundElement.className = "cuedone-task-sound";
+  taskSoundElement.setAttribute("aria-hidden", "true");
+  taskSoundElement.preload = "auto";
+  document.body.append(taskSoundElement);
+  return taskSoundElement;
+}
+
 function playHtmlChime(kind) {
   if (typeof document === "undefined" || !globalThis.URL?.createObjectURL) {
     return Promise.reject(new Error("html audio unavailable"));
@@ -313,7 +425,83 @@ function playHtmlChime(kind) {
   return node.play();
 }
 
-function startOscillators(context, kind) {
+function playBundledFinalSound(name, token) {
+  const source = FINAL_SOUND_ASSETS[name];
+  if (
+    !source ||
+    typeof document === "undefined" ||
+    !audioEnabled ||
+    token !== playbackToken
+  ) {
+    return false;
+  }
+
+  try {
+    const node = finalSoundElementNode();
+    node.src = source;
+    node.volume = 0.9;
+    node.currentTime = 0;
+    const playing = node.play?.();
+    playing?.catch?.(() => {});
+    return Boolean(playing);
+  } catch {
+    return false;
+  }
+}
+
+export function resolveTaskSound(name, random = Math.random) {
+  if (name === "none") {
+    return null;
+  }
+  if (name === "random") {
+    const index = Math.min(
+      TASK_SOUND_POOL.length - 1,
+      Math.floor(random() * TASK_SOUND_POOL.length)
+    );
+    return TASK_SOUND_POOL[Math.max(0, index)];
+  }
+  return TASK_SOUND_ASSETS[name] ? name : "bubble-pop";
+}
+
+export function playTaskSound(name = "bubble-pop", random = Math.random) {
+  if (!audioEnabled) {
+    return false;
+  }
+
+  const selected = resolveTaskSound(name, random);
+  if (!selected) {
+    return false;
+  }
+
+  const token = stopActivePlayback();
+  const source = TASK_SOUND_ASSETS[selected];
+  if (
+    !source ||
+    typeof document === "undefined" ||
+    !audioEnabled ||
+    token !== playbackToken
+  ) {
+    return false;
+  }
+
+  try {
+    const node = taskSoundElementNode();
+    node.src = source;
+    node.volume = 0.72;
+    node.currentTime = 0;
+    const playing = node.play?.();
+    playing?.catch?.(() => {});
+    return Boolean(playing);
+  } catch {
+    return false;
+  }
+}
+
+function startOscillators(context, kind, token) {
+  if (!audioEnabled || token !== playbackToken) {
+    return;
+  }
+
   const notes = kind === "final" ? [523.25, 659.25, 783.99] : [659.25, 783.99];
   const now = context.currentTime;
   notes.forEach((frequency, index) => {
@@ -323,6 +511,8 @@ function startOscillators(context, kind) {
     oscillator.frequency.value = frequency;
     oscillator.connect(gain);
     gain.connect(context.destination);
+    activeOscillators.add(oscillator);
+    oscillator.onended = () => activeOscillators.delete(oscillator);
     const start = now + index * 0.1;
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.linearRampToValueAtTime(0.24, start + 0.02);
@@ -333,6 +523,10 @@ function startOscillators(context, kind) {
 }
 
 export function unlockCelebrationAudio() {
+  if (!audioEnabled) {
+    return null;
+  }
+
   const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioCtx) {
     return null;
@@ -349,19 +543,24 @@ export function unlockCelebrationAudio() {
   return audioContext;
 }
 
-function playWebAudio(kind) {
+function playWebAudio(kind, token) {
   const context = unlockCelebrationAudio();
   if (!context) {
     return false;
   }
 
   const start = () => {
-    if (!context || context.state !== "running") {
+    if (
+      !audioEnabled ||
+      token !== playbackToken ||
+      !context ||
+      context.state !== "running"
+    ) {
       return;
     }
 
     try {
-      startOscillators(context, kind);
+      startOscillators(context, kind, token);
     } catch {
       // Audio is optional.
     }
@@ -378,17 +577,36 @@ function playWebAudio(kind) {
   return true;
 }
 
-export function playCelebrationSound(kind) {
+export function playCelebrationSound(
+  kind,
+  finalSound = "current",
+  taskSound = "bubble-pop"
+) {
+  if (!audioEnabled || (kind !== "micro" && kind !== "final")) {
+    return false;
+  }
+
+  if (kind === "micro") {
+    return playTaskSound(taskSound);
+  }
+
+  const token = stopActivePlayback();
+  if (kind === "final" && finalSound !== "current") {
+    return playBundledFinalSound(finalSound, token);
+  }
+
   const context = unlockCelebrationAudio();
   try {
     const played = playHtmlChime(kind);
     if (played?.catch) {
       played.catch(() => {
-        playWebAudio(kind);
+        if (audioEnabled && token === playbackToken) {
+          playWebAudio(kind, token);
+        }
       });
     }
   } catch {
-    playWebAudio(kind);
+    playWebAudio(kind, token);
   }
 
   return Boolean(context || typeof document !== "undefined");
@@ -397,6 +615,8 @@ export function playCelebrationSound(kind) {
 export function showCelebration({
   kind,
   playSound = false,
+  finalSound = "current",
+  taskSound = "bubble-pop",
   rewardText = "",
   onDone,
 } = {}) {
@@ -416,7 +636,7 @@ export function showCelebration({
 
   if (playSound) {
     try {
-      playCelebrationSound(kind);
+      playCelebrationSound(kind, finalSound, taskSound);
     } catch {
       // Audio is optional; visual feedback still shows.
     }

@@ -28,26 +28,41 @@ import {
   rewardEditorVisible,
   rewardShowsCustomInput,
 } from "./reward.js";
-import { playCelebrationSound, showCelebration, showFinalTrail, unlockCelebrationAudio } from "./celebrations.js";
+import {
+  playCelebrationSound,
+  playTaskSound,
+  setCelebrationAudioEnabled,
+  showCelebration,
+  showFinalTrail,
+  unlockCelebrationAudio,
+} from "./celebrations.js";
 import {
   loadCompletionSound,
   loadCompletionStyle,
   loadFinalCelebration,
+  loadFinalSound,
   loadPresentationMode,
   loadReward,
   loadTaskEntryOpen,
+  loadTaskSound,
   onCompletionSoundChanged,
   onCompletionStyleChanged,
   onFinalCelebrationChanged,
+  onFinalSoundChanged,
   onPresentationModeChanged,
   onRewardChanged,
   onTaskEntryOpenChanged,
+  onTaskSoundChanged,
   saveCompletionSound,
   saveCompletionStyle,
   saveFinalCelebration,
+  saveFinalSound,
   saveReward,
   saveTaskEntryOpen,
+  saveTaskSound,
   taskEntryVisibility,
+  normalizeFinalSound,
+  normalizeTaskSound,
 } from "./preferences.js";
 import { applyPresentationMode } from "./mode-switch.js";
 import { loadTasks, onTasksChanged, saveTasks } from "./task-store.js";
@@ -89,29 +104,6 @@ export async function mountTaskList(root) {
       </div>
       <div class="client-completion-prefs">
         <div class="client-pref-row">
-          <p class="client-pref-label" id="completion-style-label">On complete</p>
-          <div
-            class="mode-switch"
-            role="group"
-            aria-labelledby="completion-style-label"
-          >
-            <button
-              type="button"
-              class="view-switch-button"
-              data-completion-style="simple"
-            >
-              Simple
-            </button>
-            <button
-              type="button"
-              class="view-switch-button"
-              data-completion-style="celebrate"
-            >
-              Celebrate
-            </button>
-          </div>
-        </div>
-        <div class="client-pref-row">
           <p class="client-pref-label" id="completion-sound-label">Sound</p>
           <div
             class="mode-switch"
@@ -134,21 +126,81 @@ export async function mountTaskList(root) {
             </button>
           </div>
         </div>
-        <div class="client-pref-row">
-          <p class="client-pref-label" id="final-celebration-label">
-            Final celebration
-          </p>
-          <select
-            id="final-celebration"
-            class="final-celebration-select"
-            aria-labelledby="final-celebration-label"
-          >
-            <option value="random">Random</option>
-            <option value="balloons">Balloons</option>
-            <option value="stars">Stars</option>
-            <option value="cars">Cars</option>
-            <option value="butterflies">Butterflies</option>
-          </select>
+        <button
+          class="client-settings-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="client-settings-panel"
+        >
+          <span class="client-settings-gear" aria-hidden="true">&#9881;</span>
+          <span>Settings</span>
+        </button>
+        <div id="client-settings-panel" class="client-settings-panel" hidden>
+          <div class="client-pref-row">
+            <p class="client-pref-label" id="completion-style-label">On complete</p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="completion-style-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-completion-style="simple"
+              >
+                Simple
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-completion-style="celebrate"
+              >
+                Celebrate
+              </button>
+            </div>
+          </div>
+          <div class="client-pref-row client-task-sound-row">
+            <label class="client-pref-label" for="task-sound">Task sound</label>
+            <div class="client-task-sound-controls">
+              <select id="task-sound" class="task-sound-select">
+                <option value="none">None</option>
+                <option value="bubble-pop">Bubble Pop</option>
+                <option value="soft-click">Soft Click</option>
+                <option value="wood-tap">Wood Tap</option>
+                <option value="random">Random</option>
+              </select>
+              <button class="task-sound-preview sound-preview-button" type="button">Preview</button>
+            </div>
+          </div>
+          <div class="client-pref-row client-final-sound-row">
+            <label class="client-pref-label" for="final-sound">Final sound</label>
+            <div class="client-final-sound-controls">
+              <select id="final-sound" class="final-sound-select">
+                <option value="current">Current tone</option>
+                <option value="yay">Yay!</option>
+                <option value="applause">Applause</option>
+                <option value="trumpet-fanfare">Trumpet fanfare</option>
+                <option value="hurrah">Hurrah!</option>
+              </select>
+              <button class="final-sound-preview sound-preview-button" type="button">Preview</button>
+            </div>
+          </div>
+          <div class="client-pref-row">
+            <p class="client-pref-label" id="final-celebration-label">
+              Final celebration
+            </p>
+            <select
+              id="final-celebration"
+              class="final-celebration-select"
+              aria-labelledby="final-celebration-label"
+            >
+              <option value="random">Random</option>
+              <option value="balloons">Balloons</option>
+              <option value="stars">Stars</option>
+              <option value="cars">Cars</option>
+              <option value="butterflies">Butterflies</option>
+            </select>
+          </div>
         </div>
       </div>
     </section>
@@ -213,12 +265,18 @@ export async function mountTaskList(root) {
   const progressLabel = root.querySelector(".progress-label");
   const progressTrack = root.querySelector(".progress-track");
   const progressFill = root.querySelector(".progress-fill");
+  const settingsToggle = root.querySelector(".client-settings-toggle");
+  const settingsPanel = root.querySelector(".client-settings-panel");
   const completionStyleButtons = root.querySelectorAll(
     "[data-completion-style]"
   );
   const completionSoundButtons = root.querySelectorAll(
     "[data-completion-sound]"
   );
+  const finalSoundSelect = root.querySelector(".final-sound-select");
+  const finalSoundPreviewButton = root.querySelector(".final-sound-preview");
+  const taskSoundSelect = root.querySelector(".task-sound-select");
+  const taskSoundPreviewButton = root.querySelector(".task-sound-preview");
   const finalCelebrationSelect = root.querySelector(".final-celebration-select");
   const motivatorSection = root.querySelector(".client-motivator");
   const rewardHeading = root.querySelector(".client-reward-heading");
@@ -247,6 +305,13 @@ export async function mountTaskList(root) {
     return document.body.dataset.presentation === "client";
   }
 
+  function setSettingsPanelOpen(isOpen) {
+    const expanded = isOpen === true;
+    settingsPanel.hidden = !expanded;
+    settingsToggle.setAttribute("aria-expanded", String(expanded));
+    settingsToggle.classList.toggle("is-open", expanded);
+  }
+
   function applyCompletionStyle(style) {
     const current = style === "celebrate" ? "celebrate" : "simple";
     document.body.dataset.completionStyle = current;
@@ -260,11 +325,26 @@ export async function mountTaskList(root) {
   function applyCompletionSound(value) {
     const current = value === "on" ? "on" : "off";
     document.body.dataset.completionSound = current;
+    setCelebrationAudioEnabled(current === "on");
+    finalSoundPreviewButton.disabled = current !== "on";
+    taskSoundPreviewButton.disabled = current !== "on";
     for (const button of completionSoundButtons) {
       const isCurrent = button.dataset.completionSound === current;
       button.classList.toggle("is-current", isCurrent);
       button.setAttribute("aria-pressed", String(isCurrent));
     }
+  }
+
+  function applyFinalSound(value) {
+    const current = normalizeFinalSound(value);
+    document.body.dataset.finalSound = current;
+    finalSoundSelect.value = current;
+  }
+
+  function applyTaskSound(value) {
+    const current = normalizeTaskSound(value);
+    document.body.dataset.taskSound = current;
+    taskSoundSelect.value = current;
   }
 
   function applyFinalCelebration(value) {
@@ -530,7 +610,11 @@ export async function mountTaskList(root) {
       finalCelebrationActive = true;
     }
     if (plan?.playSound) {
-      playCelebrationSound(plan.kind);
+      if (plan.kind === "final") {
+        playCelebrationSound("final", document.body.dataset.finalSound);
+      } else {
+        playTaskSound(document.body.dataset.taskSound);
+      }
     }
     tasks = nextTasks;
     render();
@@ -620,6 +704,12 @@ export async function mountTaskList(root) {
     applyEntryMode(isOpen);
   });
 
+  settingsToggle.addEventListener("click", () => {
+    setSettingsPanelOpen(
+      settingsToggle.getAttribute("aria-expanded") !== "true"
+    );
+  });
+
   onPresentationModeChanged(() => {
     updateClientChrome();
     updateResetAction();
@@ -648,6 +738,14 @@ export async function mountTaskList(root) {
 
   onFinalCelebrationChanged((value) => {
     applyFinalCelebration(value);
+  });
+
+  onFinalSoundChanged((value) => {
+    applyFinalSound(value);
+  });
+
+  onTaskSoundChanged((value) => {
+    applyTaskSound(value);
   });
 
   for (const button of completionStyleButtons) {
@@ -687,6 +785,40 @@ export async function mountTaskList(root) {
 
     applyFinalCelebration(action);
     saveFinalCelebration(action);
+  });
+
+  finalSoundSelect.addEventListener("change", () => {
+    const sound = normalizeFinalSound(finalSoundSelect.value);
+    applyFinalSound(sound);
+    saveFinalSound(sound);
+  });
+
+  finalSoundPreviewButton.addEventListener("click", () => {
+    if (
+      !isClientMode() ||
+      document.body.dataset.completionSound !== "on"
+    ) {
+      return;
+    }
+
+    playCelebrationSound("final", document.body.dataset.finalSound);
+  });
+
+  taskSoundSelect.addEventListener("change", () => {
+    const sound = normalizeTaskSound(taskSoundSelect.value);
+    applyTaskSound(sound);
+    saveTaskSound(sound);
+  });
+
+  taskSoundPreviewButton.addEventListener("click", () => {
+    if (
+      !isClientMode() ||
+      document.body.dataset.completionSound !== "on"
+    ) {
+      return;
+    }
+
+    playTaskSound(document.body.dataset.taskSound);
   });
 
   list.addEventListener("pointerdown", (event) => {
@@ -761,6 +893,8 @@ export async function mountTaskList(root) {
   applyPresentationMode(await loadPresentationMode());
   applyCompletionStyle(await loadCompletionStyle());
   applyCompletionSound(await loadCompletionSound());
+  applyFinalSound(await loadFinalSound());
+  applyTaskSound(await loadTaskSound());
   applyFinalCelebration(await loadFinalCelebration());
   tasks = await loadTasks();
   applyEntryMode(await loadTaskEntryOpen());

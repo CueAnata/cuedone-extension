@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
+  celebrationAudioEnabledForTests,
+  FINAL_SOUND_ASSETS,
   playCelebrationSound,
+  playTaskSound,
   resetCelebrationAudioForTests,
+  resolveTaskSound,
+  setCelebrationAudioEnabled,
   showCelebration,
   showFinalTrail,
   TRAIL_MS,
+  TASK_SOUND_ASSETS,
   unlockCelebrationAudio,
 } from "../src/shared/celebrations.js";
 
@@ -108,10 +116,15 @@ function collectText(node) {
   return values;
 }
 
-function installAudio() {
+function installAudio({ rejectHtml = false, deferResume = false } = {}) {
   let created = 0;
   let resumes = 0;
   let htmlPlays = 0;
+  let pauses = 0;
+  let oscillatorStarts = 0;
+  let oscillatorStops = 0;
+  const playedSources = [];
+  const resumeResolvers = [];
   resetCelebrationAudioForTests();
   globalThis.URL = globalThis.URL || {};
   globalThis.URL.createObjectURL = () => "blob:cuedone-chime";
@@ -122,7 +135,13 @@ function installAudio() {
       const node = createNode();
       node.play = () => {
         htmlPlays += 1;
-        return Promise.resolve();
+        playedSources.push(node.src || "");
+        return rejectHtml
+          ? Promise.reject(new Error("audio failed"))
+          : Promise.resolve();
+      };
+      node.pause = () => {
+        pauses += 1;
       };
       node.preload = "auto";
       return node;
@@ -140,8 +159,22 @@ function installAudio() {
     }
 
     resume() {
-      this.state = "running";
       resumes += 1;
+      if (!deferResume) {
+        this.state = "running";
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve) => {
+        resumeResolvers.push(() => {
+          this.state = "running";
+          resolve();
+        });
+      });
+    }
+
+    suspend() {
+      this.state = "suspended";
       return Promise.resolve();
     }
 
@@ -150,8 +183,13 @@ function installAudio() {
         type: "sine",
         frequency: { value: 0 },
         connect() {},
-        start() {},
-        stop() {},
+        disconnect() {},
+        start() {
+          oscillatorStarts += 1;
+        },
+        stop() {
+          oscillatorStops += 1;
+        },
       };
     }
 
@@ -177,6 +215,13 @@ function installAudio() {
     created: () => created,
     resumes: () => resumes,
     htmlPlays: () => htmlPlays,
+    pauses: () => pauses,
+    oscillatorStarts: () => oscillatorStarts,
+    oscillatorStops: () => oscillatorStops,
+    playedSources: () => [...playedSources],
+    resolveResumes() {
+      resumeResolvers.splice(0).forEach((resolve) => resolve());
+    },
   };
 }
 
@@ -209,6 +254,7 @@ test("sound off means no celebration audio", () => {
 test("sound-on path plays from the user gesture and resumes AudioContext", () => {
   installDom();
   const audio = installAudio();
+  setCelebrationAudioEnabled(true);
   unlockCelebrationAudio();
   assert.equal(audio.created(), 1);
   assert.equal(audio.resumes(), 1);
@@ -216,6 +262,140 @@ test("sound-on path plays from the user gesture and resumes AudioContext", () =>
   assert.ok(audio.htmlPlays() >= 1);
   showCelebration({ kind: "micro", playSound: true });
   assert.equal(audio.created(), 1);
+});
+
+test("selected final and task sounds use their separate bundled assets", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  assert.equal(playCelebrationSound("final", "yay"), true);
+  assert.equal(audio.playedSources().at(-1), FINAL_SOUND_ASSETS.yay);
+  assert.equal(playCelebrationSound("micro", "current", "soft-click"), true);
+  assert.equal(audio.playedSources().at(-1), TASK_SOUND_ASSETS["soft-click"]);
+});
+
+test("bundled final sounds match the recorded CC0 assets", () => {
+  const expected = {
+    yay: "0ae92efea5724ce221063e7785f0067443b2d844922961ad8931ba2766a680a9",
+    applause:
+      "6246082e4722e0eaa9b3cfeefdec86ed0effc20afe6da3e744cff4dd54db66f3",
+    "trumpet-fanfare":
+      "d9ac11b54eb00bfeecbcaba90051940c92a0dfa9f9d915373e3759962bf1cd82",
+    hurrah:
+      "1b99fd8bd1353aee4de95274b869795f127eff68f78f73a599ae6455d86b4f23",
+  };
+
+  for (const [name, hash] of Object.entries(expected)) {
+    const bytes = readFileSync(fileURLToPath(FINAL_SOUND_ASSETS[name]));
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), hash);
+  }
+});
+
+test("original task sounds match provenance hashes and stay under 0.2 seconds", () => {
+  const expected = {
+    "bubble-pop":
+      "c0607ed6ca8efc5c26d254c979de928e85eb1fb3e5a4d64ab7194a21a36384ad",
+    "soft-click":
+      "aab4480fb0ec3c36d7fc8489639ef3c18f2f559b470d95559fa602f6a87e05b6",
+    "wood-tap":
+      "5590e771610b3c1f55fbb3895b18d16211ce9a38fb4ad8f927631d8caaa09d79",
+  };
+
+  for (const [name, hash] of Object.entries(expected)) {
+    const bytes = readFileSync(fileURLToPath(TASK_SOUND_ASSETS[name]));
+    const sampleRate = bytes.readUInt32LE(24);
+    const dataBytes = bytes.readUInt32LE(40);
+    const duration = dataBytes / 2 / sampleRate;
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), hash);
+    assert.ok(duration > 0 && duration < 0.2);
+  }
+});
+
+test("task sound None stays silent without disabling the selected final sound", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  assert.equal(playTaskSound("none"), false);
+  assert.equal(audio.htmlPlays(), 0);
+  assert.equal(playCelebrationSound("final", "hurrah"), true);
+  assert.equal(audio.playedSources().at(-1), FINAL_SOUND_ASSETS.hurrah);
+});
+
+test("Random selects Pop, Click, or Tap for each task completion", () => {
+  assert.equal(resolveTaskSound("random", () => 0), "bubble-pop");
+  assert.equal(resolveTaskSound("random", () => 0.4), "soft-click");
+  assert.equal(resolveTaskSound("random", () => 0.99), "wood-tap");
+  assert.equal(resolveTaskSound("unknown"), "bubble-pop");
+});
+
+test("rapid task sounds replace active playback instead of overlapping", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  playTaskSound("bubble-pop");
+  playTaskSound("wood-tap");
+  assert.deepEqual(audio.playedSources().slice(-2), [
+    TASK_SOUND_ASSETS["bubble-pop"],
+    TASK_SOUND_ASSETS["wood-tap"],
+  ]);
+  assert.ok(audio.pauses() >= 1);
+});
+
+test("master Sound Off immediately stops an active task sound", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  playTaskSound("soft-click");
+  const pausesBeforeOff = audio.pauses();
+  setCelebrationAudioEnabled(false);
+  assert.ok(audio.pauses() > pausesBeforeOff);
+  assert.equal(playTaskSound("wood-tap"), false);
+});
+
+test("sound off stops active audio and blocks every playback path", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  playCelebrationSound("final", "applause");
+  setCelebrationAudioEnabled(false);
+  assert.equal(celebrationAudioEnabledForTests(), false);
+  assert.ok(audio.pauses() >= 1);
+  assert.equal(playTaskSound("bubble-pop"), false);
+  assert.equal(playCelebrationSound("final", "hurrah"), false);
+});
+
+test("sound off cancels queued Web Audio before it can start", async () => {
+  installDom();
+  const audio = installAudio({ rejectHtml: true, deferResume: true });
+  setCelebrationAudioEnabled(true);
+  playCelebrationSound("final", "current");
+  await Promise.resolve();
+  setCelebrationAudioEnabled(false);
+  audio.resolveResumes();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(audio.oscillatorStarts(), 0);
+});
+
+test("audio failure never throws or blocks final visual feedback", async () => {
+  installDom();
+  installAudio({ rejectHtml: true });
+  setCelebrationAudioEnabled(true);
+  assert.doesNotThrow(() => playCelebrationSound("final", "hurrah"));
+  const name = showCelebration({
+    kind: "final",
+    playSound: true,
+    finalSound: "hurrah",
+    rewardText: "REWARD: MUSIC!",
+  });
+  await Promise.resolve();
+  assert.equal(typeof name, "string");
+  assert.equal(
+    collectText(document.querySelector(".celebration-layer")).includes(
+      "REWARD: MUSIC!"
+    ),
+    true
+  );
 });
 
 test("final celebration prominently reveals the chosen reward", () => {

@@ -9,6 +9,8 @@ export const REWARD_KEY = "cuedone.reward";
 export const COMPLETION_STYLE_KEY = "cuedone.completionStyle";
 export const COMPLETION_SOUND_KEY = "cuedone.completionSound";
 export const FINAL_CELEBRATION_KEY = "cuedone.finalCelebration";
+export const FINAL_SOUND_KEY = "cuedone.finalSound";
+export const TASK_SOUND_KEY = "cuedone.taskSound";
 const MOTIVATOR_MAX_LENGTH = 120;
 const FINAL_CELEBRATION_VALUES = [
   "random",
@@ -16,6 +18,20 @@ const FINAL_CELEBRATION_VALUES = [
   "stars",
   "cars",
   "butterflies",
+];
+const FINAL_SOUND_VALUES = [
+  "current",
+  "yay",
+  "applause",
+  "trumpet-fanfare",
+  "hurrah",
+];
+const TASK_SOUND_VALUES = [
+  "none",
+  "bubble-pop",
+  "soft-click",
+  "wood-tap",
+  "random",
 ];
 
 export function normalizePreferredView(value) {
@@ -48,6 +64,14 @@ export function normalizeCompletionSound(value) {
 
 export function normalizeFinalCelebration(value) {
   return FINAL_CELEBRATION_VALUES.includes(value) ? value : "random";
+}
+
+export function normalizeFinalSound(value) {
+  return FINAL_SOUND_VALUES.includes(value) ? value : "current";
+}
+
+export function normalizeTaskSound(value) {
+  return TASK_SOUND_VALUES.includes(value) ? value : "bubble-pop";
 }
 
 export function taskEntryVisibility(isOpen) {
@@ -178,6 +202,30 @@ export function saveFinalCelebration(value) {
   });
 }
 
+export function loadFinalSound() {
+  return getLocal(FINAL_SOUND_KEY).then((data) =>
+    normalizeFinalSound(data[FINAL_SOUND_KEY])
+  );
+}
+
+export function saveFinalSound(value) {
+  return setLocal({
+    [FINAL_SOUND_KEY]: normalizeFinalSound(value),
+  });
+}
+
+export function loadTaskSound() {
+  return getLocal(TASK_SOUND_KEY).then((data) =>
+    normalizeTaskSound(data[TASK_SOUND_KEY])
+  );
+}
+
+export function saveTaskSound(value) {
+  return setLocal({
+    [TASK_SOUND_KEY]: normalizeTaskSound(value),
+  });
+}
+
 export function onTaskEntryOpenChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName !== "local" || !changes[TASK_ENTRY_OPEN_KEY]) {
@@ -241,5 +289,25 @@ export function onFinalCelebrationChanged(callback) {
     }
 
     callback(normalizeFinalCelebration(changes[FINAL_CELEBRATION_KEY].newValue));
+  });
+}
+
+export function onFinalSoundChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[FINAL_SOUND_KEY]) {
+      return;
+    }
+
+    callback(normalizeFinalSound(changes[FINAL_SOUND_KEY].newValue));
+  });
+}
+
+export function onTaskSoundChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[TASK_SOUND_KEY]) {
+      return;
+    }
+
+    callback(normalizeTaskSound(changes[TASK_SOUND_KEY].newValue));
   });
 }

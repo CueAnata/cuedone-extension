@@ -49,6 +49,24 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(taskListJs, /data-completion-style="celebrate"/);
   assert.match(taskListJs, /data-completion-sound="off"/);
   assert.match(taskListJs, /data-completion-sound="on"/);
+  assert.match(taskListJs, /class="client-settings-toggle"/);
+  assert.match(taskListJs, /aria-expanded="false"/);
+  assert.match(taskListJs, /aria-controls="client-settings-panel"/);
+  assert.match(taskListJs, /id="client-settings-panel" class="client-settings-panel" hidden/);
+  assert.match(taskListJs, /id="final-sound"/);
+  assert.match(taskListJs, /option value="current">Current tone/);
+  assert.match(taskListJs, /option value="yay">Yay!/);
+  assert.match(taskListJs, /option value="applause">Applause/);
+  assert.match(taskListJs, /option value="trumpet-fanfare">Trumpet fanfare/);
+  assert.match(taskListJs, /option value="hurrah">Hurrah!/);
+  assert.match(taskListJs, /id="task-sound"/);
+  assert.match(taskListJs, /option value="none">None/);
+  assert.match(taskListJs, /option value="bubble-pop">Bubble Pop/);
+  assert.match(taskListJs, /option value="soft-click">Soft Click/);
+  assert.match(taskListJs, /option value="wood-tap">Wood Tap/);
+  assert.match(taskListJs, /option value="random">Random/);
+  assert.match(taskListJs, /class="final-sound-preview sound-preview-button"/);
+  assert.match(taskListJs, /class="task-sound-preview sound-preview-button"/);
   assert.match(taskListJs, /saveCompletionStyle/);
   assert.match(taskListJs, /saveCompletionSound/);
   assert.match(taskListJs, /from "\.\/celebrations\.js"/);
@@ -63,7 +81,8 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(taskListJs, /planFromCheckboxCompletion/);
   assert.match(taskListJs, /captureCompletionSnapshot/);
   assert.match(taskListJs, /checkbox\.checked/);
-  assert.match(taskListJs, /playCelebrationSound\(plan\.kind\)/);
+  assert.match(taskListJs, /playCelebrationSound\("final"/);
+  assert.match(taskListJs, /playTaskSound\(document\.body\.dataset\.taskSound\)/);
   assert.match(taskListJs, /id="final-celebration"/);
   assert.match(taskListJs, /option value="balloons"/);
   assert.match(taskListJs, /option value="butterflies"/);
@@ -72,7 +91,19 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   const changeStart = taskListJs.indexOf('list.addEventListener("change"');
   const clickStart = taskListJs.indexOf('list.addEventListener("click"');
   const completeHandler = taskListJs.slice(changeStart, clickStart);
-  assert.match(completeHandler, /playCelebrationSound\(plan\.kind\)/);
+  assert.match(completeHandler, /if \(plan\.kind === "final"\)/);
+  assert.match(completeHandler, /playCelebrationSound\("final"/);
+  assert.match(completeHandler, /else \{\s*playTaskSound/);
+  assert.equal(
+    completeHandler.match(/playCelebrationSound/g)?.length,
+    1,
+    "completion handler must request audio only once"
+  );
+  assert.equal(
+    completeHandler.match(/playTaskSound/g)?.length,
+    1,
+    "completion handler must request one task sound only on the non-final branch"
+  );
   assert.match(completeHandler, /takeCompletionSnapshot\(id\)/);
   assert.match(completeHandler, /completed: checkbox\.checked/);
   assert.match(completeHandler, /maybeCelebrate\(plan\)/);
@@ -94,6 +125,98 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
     taskListJs.slice(taskListJs.indexOf("onTasksChanged((nextTasks)")),
     /maybeCelebrate/
   );
+  assert.match(taskListJs, /onFinalSoundChanged/);
+  assert.match(taskListJs, /saveFinalSound/);
+  assert.match(taskListJs, /onTaskSoundChanged/);
+  assert.match(taskListJs, /saveTaskSound/);
+  assert.match(taskListJs, /setCelebrationAudioEnabled/);
+  const previewStart = taskListJs.indexOf(
+    'finalSoundPreviewButton.addEventListener("click"'
+  );
+  const previewHandler = taskListJs.slice(
+    previewStart,
+    taskListJs.indexOf('list.addEventListener("pointerdown"')
+  );
+  assert.match(previewHandler, /dataset\.completionSound !== "on"/);
+  assert.match(previewHandler, /playCelebrationSound\("final"/);
+  assert.match(previewHandler, /taskSoundPreviewButton\.addEventListener/);
+  assert.match(previewHandler, /playTaskSound\(document\.body\.dataset\.taskSound\)/);
+
+  const initialization = taskListJs.slice(
+    taskListJs.lastIndexOf("\n  applyEntryMode(true);")
+  );
+  assert.doesNotMatch(initialization, /playCelebrationSound/);
+  assert.doesNotMatch(initialization, /playTaskSound/);
+  assert.doesNotMatch(initialization, /maybeCelebrate/);
+});
+
+test("Client Settings is a collapsed, accessible presentation-only panel", () => {
+  const panelStart = taskListJs.indexOf(
+    'id="client-settings-panel" class="client-settings-panel" hidden'
+  );
+  const panelEnd = taskListJs.indexOf("</section>", panelStart);
+  const panelMarkup = taskListJs.slice(panelStart, panelEnd);
+  const soundStart = taskListJs.indexOf('id="completion-sound-label"');
+
+  assert.ok(soundStart > -1 && soundStart < panelStart);
+  assert.match(panelMarkup, /data-completion-style="simple"/);
+  assert.match(panelMarkup, /data-completion-style="celebrate"/);
+  assert.match(panelMarkup, /id="task-sound"/);
+  assert.match(panelMarkup, /class="task-sound-preview sound-preview-button"/);
+  assert.match(panelMarkup, /id="final-sound"/);
+  assert.match(panelMarkup, /class="final-sound-preview sound-preview-button"/);
+  assert.match(panelMarkup, /id="final-celebration"/);
+
+  const setterStart = taskListJs.indexOf("function setSettingsPanelOpen");
+  const setterEnd = taskListJs.indexOf("function applyCompletionStyle", setterStart);
+  const setter = taskListJs.slice(setterStart, setterEnd);
+  assert.match(setter, /settingsPanel\.hidden = !expanded/);
+  assert.match(setter, /setAttribute\("aria-expanded", String\(expanded\)\)/);
+  assert.doesNotMatch(setter, /save|play|task|Celebrate/);
+
+  const toggleStart = taskListJs.indexOf(
+    'settingsToggle.addEventListener("click"'
+  );
+  const toggleEnd = taskListJs.indexOf(
+    "onPresentationModeChanged",
+    toggleStart
+  );
+  const toggleHandler = taskListJs.slice(toggleStart, toggleEnd);
+  assert.match(toggleHandler, /setSettingsPanelOpen/);
+  assert.match(toggleHandler, /aria-expanded/);
+  assert.doesNotMatch(toggleHandler, /save|play|task|Celebrate/);
+
+  assert.ok(
+    taskListJs.indexOf('class="client-motivator"') > panelEnd,
+    "reward controls must remain outside Settings"
+  );
+});
+
+test("Final and task sound controls adapt at narrow Client widths without changing Personal task rules", () => {
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /\.client-final-sound-controls,\s*\.client-task-sound-controls\s*\{[\s\S]*?display:\s*flex/
+  );
+  assert.match(
+    css,
+    /\.final-sound-select,\s*\.task-sound-select\s*\{[\s\S]*?flex:\s*1/
+  );
+  const compact = css.match(/@media \(max-width: 420px\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(compact);
+  assert.match(
+    compact,
+    /\.client-final-sound-controls,\s*\.client-task-sound-controls[\s\S]*?flex-wrap:\s*wrap/
+  );
+  assert.match(
+    compact,
+    /\.final-sound-select,\s*\.task-sound-select[\s\S]*?flex-basis:\s*100%/
+  );
+  assert.match(
+    css,
+    /\.popup-view\[data-presentation="client"\] \.task-item\s*\{[\s\S]*?grid-template-columns:\s*var\(--control\) minmax\(0, 1fr\)/
+  );
+  assert.doesNotMatch(css, /body\[data-presentation="personal"\]/);
 });
 
 test("Reset List appears only when every task is complete and confirms before unchecking", () => {

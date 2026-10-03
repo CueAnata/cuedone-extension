@@ -26,19 +26,30 @@ import {
   COMPLETION_STYLE_KEY,
   COMPLETION_SOUND_KEY,
   FINAL_CELEBRATION_KEY,
+  FINAL_SOUND_KEY,
+  TASK_SOUND_KEY,
   loadCompletionStyle,
   loadCompletionSound,
   loadFinalCelebration,
+  loadFinalSound,
+  loadTaskSound,
+  onFinalSoundChanged,
+  onTaskSoundChanged,
   normalizeCompletionStyle,
   normalizeCompletionSound,
   normalizeFinalCelebration,
+  normalizeFinalSound,
+  normalizeTaskSound,
   saveCompletionStyle,
   saveCompletionSound,
   saveFinalCelebration,
+  saveFinalSound,
+  saveTaskSound,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
   const store = { ...initial };
+  const listeners = [];
 
   globalThis.chrome = {
     storage: {
@@ -47,12 +58,26 @@ function mockChromeStorage(initial = {}) {
           return { [key]: store[key] };
         },
         async set(values) {
+          const changes = Object.fromEntries(
+            Object.entries(values).map(([key, newValue]) => [
+              key,
+              { oldValue: store[key], newValue },
+            ])
+          );
           Object.assign(store, values);
+          listeners.forEach((listener) => listener(changes, "local"));
         },
       },
       onChanged: {
-        addListener() {},
-        removeListener() {},
+        addListener(listener) {
+          listeners.push(listener);
+        },
+        removeListener(listener) {
+          const index = listeners.indexOf(listener);
+          if (index !== -1) {
+            listeners.splice(index, 1);
+          }
+        },
       },
     },
   };
@@ -233,6 +258,57 @@ test("final celebration preference persists locally", async () => {
   assert.equal(await loadFinalCelebration(), "balloons");
 });
 
+test("final sound defaults to the existing tone and persists valid choices", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizeFinalSound(undefined), "current");
+  assert.equal(normalizeFinalSound("yay"), "yay");
+  assert.equal(normalizeFinalSound("applause"), "applause");
+  assert.equal(normalizeFinalSound("trumpet-fanfare"), "trumpet-fanfare");
+  assert.equal(normalizeFinalSound("hurrah"), "hurrah");
+  assert.equal(normalizeFinalSound("confetti"), "current");
+  assert.equal(await loadFinalSound(), "current");
+  await saveFinalSound("hurrah");
+  assert.equal(store[FINAL_SOUND_KEY], "hurrah");
+  assert.equal(await loadFinalSound(), "hurrah");
+});
+
+test("final sound changes synchronize through shared local storage", async () => {
+  mockChromeStorage();
+  const observed = [];
+  const unsubscribe = onFinalSoundChanged((value) => observed.push(value));
+  await saveFinalSound("trumpet-fanfare");
+  await saveFinalSound("not-a-choice");
+  unsubscribe();
+  await saveFinalSound("yay");
+  assert.deepEqual(observed, ["trumpet-fanfare", "current"]);
+});
+
+test("task sound defaults to Bubble Pop and persists every valid choice", async () => {
+  const store = mockChromeStorage();
+  assert.equal(normalizeTaskSound(undefined), "bubble-pop");
+  assert.equal(normalizeTaskSound("none"), "none");
+  assert.equal(normalizeTaskSound("bubble-pop"), "bubble-pop");
+  assert.equal(normalizeTaskSound("soft-click"), "soft-click");
+  assert.equal(normalizeTaskSound("wood-tap"), "wood-tap");
+  assert.equal(normalizeTaskSound("random"), "random");
+  assert.equal(normalizeTaskSound("current"), "bubble-pop");
+  assert.equal(await loadTaskSound(), "bubble-pop");
+  await saveTaskSound("wood-tap");
+  assert.equal(store[TASK_SOUND_KEY], "wood-tap");
+  assert.equal(await loadTaskSound(), "wood-tap");
+});
+
+test("task sound changes synchronize through shared local storage", async () => {
+  mockChromeStorage();
+  const observed = [];
+  const unsubscribe = onTaskSoundChanged((value) => observed.push(value));
+  await saveTaskSound("random");
+  await saveTaskSound("not-a-choice");
+  unsubscribe();
+  await saveTaskSound("soft-click");
+  assert.deepEqual(observed, ["random", "bubble-pop"]);
+});
+
 test("saving Client presentation or motivator does not alter tasks", async () => {
   mockChromeStorage();
   const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
@@ -247,6 +323,8 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveCompletionStyle("celebrate");
   await saveCompletionSound("on");
   await saveFinalCelebration("butterflies");
+  await saveFinalSound("applause");
+  await saveTaskSound("soft-click");
   assert.deepEqual(await loadTasks(), tasks);
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
 });

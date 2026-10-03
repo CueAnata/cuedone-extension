@@ -30,7 +30,7 @@ Phase 2 is approved and frozen: keep the current identity and popup/side panel v
 
 Phase 3A Client View presentation is approved and frozen: Personal/Client switch, Client focus/progress, and Simple/Celebrate as a saved completion-style control.
 
-Phase 3B Client View celebrations and sound are approved: brief randomized Client + Celebrate micro-feedback, a larger final-task celebration with a 1–2s Client-only trail (Random / Balloons / Stars / Cars / Butterflies), a persisted Sound Off/On control that is independent of Celebrate, and a Client Reward selector with a presentation card. Do not expand the micro pool or trail options, add a mascot library, or begin a later phase unless the user explicitly asks.
+Phase 3B Client View celebrations and sound are approved: brief randomized Client + Celebrate micro-feedback, a larger final-task celebration with a 1–2s Client-only trail (Random / Balloons / Stars / Cars / Butterflies), a persisted Sound Off/On control that is independent of Celebrate, and a Client Reward selector with a presentation card. The final-task audio checkpoint adds a persisted Final sound choice: Current tone, Yay!, Applause, Trumpet fanfare, or Hurrah!, plus Preview. Final sounds and final-cue timing are approved and frozen. The individual-task audio checkpoint adds a persisted Task sound choice: None, Bubble Pop (default), Soft Click, Wood Tap, or Random, plus Preview. Random selects one of the three audible task cues per non-final completion. The one Sound Off/On control gates every audio path; Off must stop active audio and cancel queued playback. Both Preview controls respect Off. Simple mode remains visually and audibly simple. Client + Celebrate plays at most one short Task sound for a non-final completion; a final completion plays only the selected Final sound at the existing cue. Task sound None never suppresses the Final sound. Personal never plays Client audio. Bundled audio provenance is recorded in `assets/audio/README.md`. Do not expand the micro pool, sound choices, or trail options, add a mascot library, or begin a later phase unless the user explicitly asks.
 
 The responsive Client layout checkpoint is implemented: compact Top and narrow Side task cards give task text a full row and move reorder/delete controls to a second row. Personal styling is unchanged.
 
@@ -38,9 +38,7 @@ The responsive Client layout checkpoint is implemented: compact Top and narrow S
 
 The CueDone Development Blueprint is planning context. Recording a roadmap item in this file or `PROJECT_CONTEXT.md` does not authorize implementing it. Work on one explicitly requested, bounded phase at a time.
 
-The next proposed phase is **final-task sound choices**: current tone, Yay!, applause, trumpet fanfare, and Hurrah!, using original or properly licensed bundled assets. The single persisted Sound Off/On control must govern all current and future CueDone audio. Visual behavior must remain complete when sound is off. This phase is documented but must not be implemented until the user explicitly authorizes it.
-
-Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, and Connected Client View. They remain unimplemented and unauthorized by the blueprint alone.
+The final-task and individual-task audio checkpoints are implemented. Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, and Connected Client View. They remain unimplemented and unauthorized by roadmap documentation alone.
 
 ## Roadmap decision gates
 
