@@ -647,6 +647,48 @@ body[data-presentation="client"] .task-item.is-complete .task-text {
   font-weight: 400;
 }
 
+.popup-view[data-presentation="client"] .task-item {
+  grid-template-columns: var(--control) minmax(0, 1fr);
+}
+
+.popup-view[data-presentation="client"] .task-label {
+  grid-row: 1;
+  grid-column: 1 / -1;
+}
+
+.popup-view[data-presentation="client"] .drag-handle {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.popup-view[data-presentation="client"] .task-actions {
+  grid-row: 2;
+  grid-column: 2;
+  justify-self: end;
+}
+
+@media (max-width: 420px) {
+  .sidepanel-view[data-presentation="client"] .task-item {
+    grid-template-columns: var(--control) minmax(0, 1fr);
+  }
+
+  .sidepanel-view[data-presentation="client"] .task-label {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+
+  .sidepanel-view[data-presentation="client"] .drag-handle {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .sidepanel-view[data-presentation="client"] .task-actions {
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
 .final-trail-layer {
   position: absolute;
   inset: 0;
