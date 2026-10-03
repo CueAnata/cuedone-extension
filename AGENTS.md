@@ -32,6 +32,23 @@ Phase 3A Client View presentation is approved and frozen: Personal/Client switch
 
 Phase 3B Client View celebrations and sound are approved: brief randomized Client + Celebrate micro-feedback, a larger final-task celebration with a 1–2s Client-only trail (Random / Balloons / Stars / Cars / Butterflies), a persisted Sound Off/On control that is independent of Celebrate, and a Client Reward selector with a presentation card. Do not expand the micro pool or trail options, add a mascot library, or begin a later phase unless the user explicitly asks.
 
+The responsive Client layout checkpoint is implemented: compact Top and narrow Side task cards give task text a full row and move reorder/delete controls to a second row. Personal styling is unchanged.
+
+## Roadmap is not implementation authority
+
+The CueDone Development Blueprint is planning context. Recording a roadmap item in this file or `PROJECT_CONTEXT.md` does not authorize implementing it. Work on one explicitly requested, bounded phase at a time.
+
+The next proposed phase is **final-task sound choices**: current tone, Yay!, applause, trumpet fanfare, and Hurrah!, using original or properly licensed bundled assets. The single persisted Sound Off/On control must govern all current and future CueDone audio. Visual behavior must remain complete when sound is off. This phase is documented but must not be implemented until the user explicitly authorizes it.
+
+Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, and Connected Client View. They remain unimplemented and unauthorized by the blueprint alone.
+
+## Roadmap decision gates
+
+- **Public/Private content:** The current app has one task list shared across presentation modes. Before any Public/Private work, decide between separate lists and explicit per-task visibility, including migration and switching behavior. Do not treat visual mode changes as privacy controls.
+- **Connected Client View:** Before any host/student networking, decide who may complete tasks, the student interface, connection and access model, session expiry, reconnect and concurrent-edit behavior, animation ownership, and data retention. A session code is only a possibility. Do not infer approval for accounts, cloud sync, or an external backend.
+- **Alternate layouts:** Define behavior for lists longer than the visible First/Then or First/Then/Next/Last slots. Never silently discard or hide required tasks.
+- **Visual progress and lifecycle:** Define add/remove/uncheck/reset/carryover behavior, prevent empty-list finales, and decide how future theme finales coexist with existing final celebrations.
+
 ## Chromium platform boundary
 
 - Keep Chrome/Edge-specific APIs in `src/platform/browser.js` only.
@@ -51,6 +68,7 @@ Phase 3B Client View celebrations and sound are approved: brief randomized Clien
 - The toolbar icon restores the last-used view when the browser allows it. Older Chromium keeps the popup fallback. Choosing Top in the header closes Side so it is not left open. Side View otherwise stays open until the user closes it.
 - Avoid unnecessary dependencies and build tooling.
 - Test changes before declaring them complete.
+- Use isolated test data for behavior verification. Never overwrite the user's saved tasks.
 
 ## Reporting
 
