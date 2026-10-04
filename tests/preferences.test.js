@@ -60,6 +60,20 @@ import {
   savePersonalCompletionSound,
   savePersonalFinalSound,
   savePersonalTaskSound,
+  PERSONAL_AFFIRMATION_KEY,
+  PERSONAL_COMPLETE_MESSAGE_KEY,
+  PERSONAL_PAUSE_MESSAGE_KEY,
+  PERSONAL_ENDING_KEY,
+  loadPersonalAffirmation,
+  loadPersonalCompleteMessage,
+  loadPersonalEnding,
+  loadPersonalPauseMessage,
+  onPersonalAffirmationChanged,
+  onPersonalEndingChanged,
+  savePersonalAffirmation,
+  savePersonalCompleteMessage,
+  savePersonalEnding,
+  savePersonalPauseMessage,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
@@ -359,6 +373,65 @@ test("Personal audio preferences persist separately from Client audio", async ()
   assert.equal(await loadFinalSound(), "hurrah");
 });
 
+test("Personal affirmation and ending preferences persist separately from Client", async () => {
+  const store = mockChromeStorage();
+  assert.deepEqual(await loadPersonalAffirmation(), {
+    enabled: false,
+    choice: "one-step",
+    customText: "",
+    resolvedId: null,
+  });
+  assert.equal((await loadPersonalCompleteMessage()).choice, "none");
+  assert.equal((await loadPersonalPauseMessage()).choice, "none");
+  assert.deepEqual(await loadPersonalEnding(), { kind: "none", text: "" });
+  await saveCompletionSound("on");
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "random",
+    customText: "",
+    resolvedId: "one-step",
+  });
+  await savePersonalCompleteMessage({ choice: "you-did-it", customText: "" });
+  await savePersonalPauseMessage({ choice: "custom", customText: "  Pause here  " });
+  await savePersonalEnding({ kind: "pause", text: "Done for now." });
+  assert.equal(store[COMPLETION_SOUND_KEY], "on");
+  assert.deepEqual(store[PERSONAL_AFFIRMATION_KEY], {
+    enabled: true,
+    choice: "random",
+    customText: "",
+    resolvedId: "one-step",
+  });
+  assert.equal(store[PERSONAL_COMPLETE_MESSAGE_KEY].choice, "you-did-it");
+  assert.equal(store[PERSONAL_PAUSE_MESSAGE_KEY].customText, "Pause here");
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], {
+    kind: "pause",
+    text: "Done for now.",
+  });
+  assert.equal(await loadCompletionSound(), "on");
+});
+
+test("Personal ending state synchronizes through shared local storage", async () => {
+  mockChromeStorage();
+  const endings = [];
+  const affirmations = [];
+  const stopEnding = onPersonalEndingChanged((value) => endings.push(value));
+  const stopAffirmation = onPersonalAffirmationChanged((value) =>
+    affirmations.push(value)
+  );
+  await savePersonalEnding({ kind: "complete", text: "You did it!" });
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "next-step",
+    customText: "",
+    resolvedId: null,
+  });
+  stopEnding();
+  stopAffirmation();
+  await savePersonalEnding({ kind: "none", text: "" });
+  assert.deepEqual(endings, [{ kind: "complete", text: "You did it!" }]);
+  assert.equal(affirmations[0].enabled, true);
+});
+
 test("Personal audio preference changes synchronize through shared local storage", async () => {
   mockChromeStorage();
   const sounds = [];
@@ -401,6 +474,15 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await savePersonalCompletionSound("on");
   await savePersonalTaskSound("none");
   await savePersonalFinalSound("yay");
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "custom",
+    customText: "Keep going",
+    resolvedId: null,
+  });
+  await savePersonalCompleteMessage({ choice: "all-done", customText: "" });
+  await savePersonalPauseMessage({ choice: "every-step", customText: "" });
+  await savePersonalEnding({ kind: "complete", text: "You did it!" });
   assert.deepEqual(await loadTasks(), tasks);
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
   const { loadPublicTasks } = await import("../src/shared/task-store.js");

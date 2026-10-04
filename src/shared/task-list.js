@@ -48,8 +48,12 @@ import {
   loadCompletionStyle,
   loadFinalCelebration,
   loadFinalSound,
+  loadPersonalAffirmation,
+  loadPersonalCompleteMessage,
   loadPersonalCompletionSound,
+  loadPersonalEnding,
   loadPersonalFinalSound,
+  loadPersonalPauseMessage,
   loadPersonalPresentation,
   loadPersonalTaskSound,
   loadPresentationMode,
@@ -60,8 +64,12 @@ import {
   onCompletionStyleChanged,
   onFinalCelebrationChanged,
   onFinalSoundChanged,
+  onPersonalAffirmationChanged,
+  onPersonalCompleteMessageChanged,
   onPersonalCompletionSoundChanged,
+  onPersonalEndingChanged,
   onPersonalFinalSoundChanged,
+  onPersonalPauseMessageChanged,
   onPersonalPresentationChanged,
   onPersonalTaskSoundChanged,
   onPresentationModeChanged,
@@ -72,8 +80,12 @@ import {
   saveCompletionStyle,
   saveFinalCelebration,
   saveFinalSound,
+  savePersonalAffirmation,
+  savePersonalCompleteMessage,
   savePersonalCompletionSound,
+  savePersonalEnding,
   savePersonalFinalSound,
+  savePersonalPauseMessage,
   savePersonalPresentation,
   savePersonalTaskSound,
   saveReward,
@@ -95,6 +107,29 @@ import {
   visibleTasksForActiveList,
 } from "./personal-lists.js";
 import { planPersonalPrivateAudio } from "./personal-audio.js";
+import {
+  AFFIRMATION_PRESETS,
+  COMPLETE_MESSAGE_PRESETS,
+  PAUSE_MESSAGE_PRESETS,
+  PERSONAL_MESSAGE_MAX_LENGTH,
+  affirmationShowsCustom,
+  chooseAffirmation,
+  clearEndingState,
+  createEndingState,
+  disableAffirmation,
+  enableAffirmation,
+  endingShowsCustom,
+  endingVisible,
+  finishForNowVisible,
+  formatAffirmationText,
+  isCompletedList,
+  normalizeAffirmation,
+  normalizeCompleteMessage,
+  normalizeEndingState,
+  normalizePauseMessage,
+  personalPrivateFeaturesAllowed,
+  refreshRandomAffirmation,
+} from "./personal-messages.js";
 import { loadList, onListChanged, saveList } from "./task-store.js";
 
 export async function mountTaskList(root) {
@@ -114,6 +149,10 @@ export async function mountTaskList(root) {
   let personalSound = "off";
   let personalTaskSound = "bubble-pop";
   let personalFinalSound = "current";
+  let personalAffirmation = normalizeAffirmation();
+  let personalCompleteMessage = normalizeCompleteMessage();
+  let personalPauseMessage = normalizePauseMessage();
+  let personalEnding = clearEndingState();
   let tasksKind = "private";
 
   root.innerHTML = `
@@ -241,8 +280,95 @@ export async function mountTaskList(root) {
             </div>
           </div>
         </div>
+        <div class="personal-message-settings" hidden>
+          <div class="personal-pref-row">
+            <p class="personal-pref-label" id="personal-affirmation-label">
+              Affirmations
+            </p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="personal-affirmation-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-affirmation="off"
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-affirmation="on"
+              >
+                On
+              </button>
+            </div>
+          </div>
+          <div class="personal-pref-row personal-affirmation-choice-row">
+            <label class="personal-pref-label" for="personal-affirmation-choice">
+              Affirmation
+            </label>
+            <select
+              id="personal-affirmation-choice"
+              class="personal-affirmation-select"
+            ></select>
+          </div>
+          <input
+            id="personal-affirmation-custom"
+            class="personal-message-custom"
+            type="text"
+            maxlength="${PERSONAL_MESSAGE_MAX_LENGTH}"
+            placeholder="Type a custom affirmation"
+            autocomplete="off"
+            hidden
+          />
+          <div class="personal-pref-row personal-complete-message-row">
+            <label class="personal-pref-label" for="personal-complete-message">
+              All-tasks-completed message
+            </label>
+            <select
+              id="personal-complete-message"
+              class="personal-complete-message-select"
+            ></select>
+          </div>
+          <input
+            id="personal-complete-message-custom"
+            class="personal-message-custom"
+            type="text"
+            maxlength="${PERSONAL_MESSAGE_MAX_LENGTH}"
+            placeholder="Type a custom completed message"
+            autocomplete="off"
+            hidden
+          />
+          <div class="personal-pref-row personal-pause-message-row">
+            <label class="personal-pref-label" for="personal-pause-message">
+              Stopping with unfinished tasks
+            </label>
+            <select
+              id="personal-pause-message"
+              class="personal-pause-message-select"
+            ></select>
+          </div>
+          <input
+            id="personal-pause-message-custom"
+            class="personal-message-custom"
+            type="text"
+            maxlength="${PERSONAL_MESSAGE_MAX_LENGTH}"
+            placeholder="Type a custom pause message"
+            autocomplete="off"
+            hidden
+          />
+        </div>
       </div>
       <p class="personal-list-error" role="alert" hidden></p>
+    </section>
+    <p class="personal-affirmation" hidden></p>
+    <section class="personal-ending" hidden>
+      <span class="personal-ending-icon" aria-hidden="true"></span>
+      <p class="personal-ending-text"></p>
+      <button class="continue-list-button" type="button">Continue list</button>
     </section>
     <section class="client-progress" hidden>
       <p class="progress-label">0 of 0 complete</p>
@@ -392,6 +518,9 @@ export async function mountTaskList(root) {
       <p class="client-reward-value" hidden></p>
     </section>
     <section class="list-lifecycle">
+      <button class="finish-for-now-button" type="button" hidden>
+        Finish for now
+      </button>
       <button
         class="new-list-toggle"
         type="button"
@@ -474,7 +603,65 @@ export async function mountTaskList(root) {
   const personalFinalSoundPreviewButton = root.querySelector(
     ".personal-final-sound-preview"
   );
+  const personalMessageSettings = root.querySelector(
+    ".personal-message-settings"
+  );
+  const personalAffirmationButtons = root.querySelectorAll(
+    "[data-personal-affirmation]"
+  );
+  const personalAffirmationSelect = root.querySelector(
+    ".personal-affirmation-select"
+  );
+  const personalAffirmationCustom = root.querySelector(
+    "#personal-affirmation-custom"
+  );
+  const personalCompleteMessageSelect = root.querySelector(
+    ".personal-complete-message-select"
+  );
+  const personalCompleteMessageCustom = root.querySelector(
+    "#personal-complete-message-custom"
+  );
+  const personalPauseMessageSelect = root.querySelector(
+    ".personal-pause-message-select"
+  );
+  const personalPauseMessageCustom = root.querySelector(
+    "#personal-pause-message-custom"
+  );
+  const personalAffirmationDisplay = root.querySelector(".personal-affirmation");
+  const personalEndingSection = root.querySelector(".personal-ending");
+  const personalEndingIcon = root.querySelector(".personal-ending-icon");
+  const personalEndingText = root.querySelector(".personal-ending-text");
+  const continueListButton = root.querySelector(".continue-list-button");
+  const finishForNowButton = root.querySelector(".finish-for-now-button");
   const personalListError = root.querySelector(".personal-list-error");
+
+  function fillMessageOptions(select, presets, { includeNone = false } = {}) {
+    const options = [];
+    if (includeNone) {
+      options.push({ id: "none", text: "None" });
+    }
+    options.push(
+      ...presets.map((item) => ({ id: item.id, text: item.text })),
+      { id: "custom", text: "Custom" },
+      { id: "random", text: "Random" }
+    );
+    select.replaceChildren(
+      ...options.map((item) => {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.text;
+        return option;
+      })
+    );
+  }
+
+  fillMessageOptions(personalAffirmationSelect, AFFIRMATION_PRESETS);
+  fillMessageOptions(personalCompleteMessageSelect, COMPLETE_MESSAGE_PRESETS, {
+    includeNone: true,
+  });
+  fillMessageOptions(personalPauseMessageSelect, PAUSE_MESSAGE_PRESETS, {
+    includeNone: true,
+  });
   const progressSection = root.querySelector(".client-progress");
   const progressLabel = root.querySelector(".progress-label");
   const progressTrack = root.querySelector(".progress-track");
@@ -616,12 +803,137 @@ export async function mountTaskList(root) {
   function updatePersonalChrome() {
     const personal = !isClientMode();
     const kind = currentListKind();
+    const privateFeatures = personalPrivateFeaturesAllowed(
+      document.body.dataset.presentation,
+      personalPresentation
+    );
     personalSettings.hidden = !personal;
-    personalAudioSettings.hidden = !personal || kind !== "private";
+    personalAudioSettings.hidden = !privateFeatures;
+    personalMessageSettings.hidden = !privateFeatures;
     personalListLabel.textContent = formatActiveListLabel(kind);
     list.setAttribute("aria-label", taskListAriaLabel(kind));
     paintPersonalPresentation(personalPresentation);
+    paintPersonalMessages();
     syncActiveAudioGate();
+  }
+
+  function persistPersonalSetting(save, value, restore) {
+    return save(value).catch(() => {
+      restore();
+      showListError(
+        "CueDone could not save that setting. Your current setting is unchanged."
+      );
+    });
+  }
+
+  function applyPersonalAffirmation(value, { skipCustomValue = false } = {}) {
+    personalAffirmation = normalizeAffirmation(value);
+    document.body.dataset.personalAffirmation = personalAffirmation.enabled
+      ? "on"
+      : "off";
+    for (const button of personalAffirmationButtons) {
+      const isCurrent =
+        button.dataset.personalAffirmation ===
+        (personalAffirmation.enabled ? "on" : "off");
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+    personalAffirmationSelect.value = personalAffirmation.choice;
+    personalAffirmationSelect.hidden = !personalAffirmation.enabled;
+    personalAffirmationSelect.closest(
+      ".personal-affirmation-choice-row"
+    ).hidden = !personalAffirmation.enabled;
+    if (!skipCustomValue) {
+      personalAffirmationCustom.value = personalAffirmation.customText;
+    }
+    personalAffirmationCustom.hidden =
+      !personalAffirmation.enabled || !affirmationShowsCustom(personalAffirmation);
+  }
+
+  function applyPersonalCompleteMessage(value, { skipCustomValue = false } = {}) {
+    personalCompleteMessage = normalizeCompleteMessage(value);
+    personalCompleteMessageSelect.value = personalCompleteMessage.choice;
+    if (!skipCustomValue) {
+      personalCompleteMessageCustom.value = personalCompleteMessage.customText;
+    }
+    personalCompleteMessageCustom.hidden = !endingShowsCustom(
+      personalCompleteMessage
+    );
+  }
+
+  function applyPersonalPauseMessage(value, { skipCustomValue = false } = {}) {
+    personalPauseMessage = normalizePauseMessage(value);
+    personalPauseMessageSelect.value = personalPauseMessage.choice;
+    if (!skipCustomValue) {
+      personalPauseMessageCustom.value = personalPauseMessage.customText;
+    }
+    personalPauseMessageCustom.hidden = !endingShowsCustom(personalPauseMessage);
+  }
+
+  function applyPersonalEnding(value) {
+    personalEnding = normalizeEndingState(value);
+  }
+
+  function paintPersonalMessages() {
+    const allowed = personalPrivateFeaturesAllowed(
+      document.body.dataset.presentation,
+      personalPresentation
+    );
+    const affirmationText = allowed ? formatAffirmationText(personalAffirmation) : "";
+    const showEnding = endingVisible(
+      personalEnding,
+      document.body.dataset.presentation,
+      personalPresentation
+    );
+    personalAffirmationDisplay.hidden = !affirmationText || showEnding;
+    personalAffirmationDisplay.textContent = affirmationText;
+    personalEndingSection.hidden = !showEnding;
+    personalEndingSection.classList.toggle(
+      "is-complete",
+      showEnding && personalEnding.kind === "complete"
+    );
+    personalEndingSection.classList.toggle(
+      "is-pause",
+      showEnding && personalEnding.kind === "pause"
+    );
+    personalEndingIcon.textContent = !showEnding
+      ? ""
+      : personalEnding.kind === "complete"
+        ? "✦"
+        : "☾";
+    personalEndingText.textContent = showEnding ? personalEnding.text : "";
+    finishForNowButton.hidden = !finishForNowVisible({
+      tasks: visibleTasks(),
+      presentationMode: document.body.dataset.presentation,
+      personalPresentation,
+      ending: personalEnding,
+    });
+  }
+
+  async function persistEnding(nextEnding) {
+    const previous = personalEnding;
+    applyPersonalEnding(nextEnding);
+    paintPersonalMessages();
+    try {
+      await savePersonalEnding(nextEnding);
+      showListError("");
+      return true;
+    } catch {
+      applyPersonalEnding(previous);
+      paintPersonalMessages();
+      showListError(
+        "CueDone could not save that change. Your current message is unchanged."
+      );
+      return false;
+    }
+  }
+
+  async function clearStaleEnding() {
+    if (personalEnding.kind === "none") {
+      return true;
+    }
+
+    return persistEnding(clearEndingState());
   }
 
   function prepareListSwitch() {
@@ -941,6 +1253,7 @@ export async function mountTaskList(root) {
     try {
       await saveList(kind, tasks);
       showListError("");
+      await clearStaleEnding();
     } catch {
       tasks = previous;
       tasksKind = previousKind;
@@ -1147,6 +1460,15 @@ export async function mountTaskList(root) {
     tasks = nextTasks;
     tasksKind = kind;
     restoreFocus = null;
+    if (
+      personalAffirmation.enabled &&
+      personalAffirmation.choice === "random"
+    ) {
+      const nextAffirmation = refreshRandomAffirmation(personalAffirmation);
+      applyPersonalAffirmation(nextAffirmation);
+      savePersonalAffirmation(nextAffirmation).catch(() => {});
+    }
+    await clearStaleEnding();
     render();
     applyEntryMode(true);
     saveTaskEntryOpen(true).catch(() => {});
@@ -1217,6 +1539,20 @@ export async function mountTaskList(root) {
       await saveList(kind, tasks);
       showListError("");
       playPersonalPrivateAudio(personalAudio);
+      if (
+        personalPrivateFeaturesAllowed(
+          document.body.dataset.presentation,
+          personalPresentation
+        ) &&
+        checkbox.checked &&
+        isCompletedList(tasks)
+      ) {
+        await persistEnding(
+          createEndingState("complete", personalCompleteMessage)
+        );
+      } else {
+        await clearStaleEnding();
+      }
     } catch {
       tasks = previous;
       tasksKind = previousKind;
@@ -1413,6 +1749,24 @@ export async function mountTaskList(root) {
     applyPersonalTaskSound(value);
   });
 
+  onPersonalAffirmationChanged((value) => {
+    applyPersonalAffirmation(value);
+    paintPersonalMessages();
+  });
+
+  onPersonalCompleteMessageChanged((value) => {
+    applyPersonalCompleteMessage(value);
+  });
+
+  onPersonalPauseMessageChanged((value) => {
+    applyPersonalPauseMessage(value);
+  });
+
+  onPersonalEndingChanged((value) => {
+    applyPersonalEnding(value);
+    paintPersonalMessages();
+  });
+
   for (const button of completionStyleButtons) {
     button.addEventListener("click", () => {
       const action = nextCompletionStyleAction(button.dataset.completionStyle);
@@ -1551,6 +1905,138 @@ export async function mountTaskList(root) {
     playTaskSound(personalTaskSound);
   });
 
+  for (const button of personalAffirmationButtons) {
+    button.addEventListener("click", () => {
+      if (!personalPrivateFeaturesAllowed(
+        document.body.dataset.presentation,
+        personalPresentation
+      )) {
+        return;
+      }
+
+      const requested = button.dataset.personalAffirmation;
+      const previous = personalAffirmation;
+      const next =
+        requested === "on"
+          ? enableAffirmation(personalAffirmation)
+          : disableAffirmation(personalAffirmation);
+      if (
+        next.enabled === previous.enabled &&
+        next.resolvedId === previous.resolvedId
+      ) {
+        applyPersonalAffirmation(previous);
+        return;
+      }
+
+      applyPersonalAffirmation(next);
+      paintPersonalMessages();
+      persistPersonalSetting(savePersonalAffirmation, next, () => {
+        applyPersonalAffirmation(previous);
+        paintPersonalMessages();
+      });
+    });
+  }
+
+  personalAffirmationSelect.addEventListener("change", () => {
+    const previous = personalAffirmation;
+    const next = chooseAffirmation(
+      personalAffirmation,
+      personalAffirmationSelect.value
+    );
+    applyPersonalAffirmation(next);
+    paintPersonalMessages();
+    persistPersonalSetting(savePersonalAffirmation, next, () => {
+      applyPersonalAffirmation(previous);
+      paintPersonalMessages();
+    });
+  });
+
+  personalAffirmationCustom.addEventListener("change", () => {
+    const previous = personalAffirmation;
+    const next = normalizeAffirmation({
+      ...personalAffirmation,
+      customText: personalAffirmationCustom.value,
+    });
+    applyPersonalAffirmation(next);
+    paintPersonalMessages();
+    persistPersonalSetting(savePersonalAffirmation, next, () => {
+      applyPersonalAffirmation(previous);
+      paintPersonalMessages();
+    });
+  });
+
+  personalCompleteMessageSelect.addEventListener("change", () => {
+    const previous = personalCompleteMessage;
+    const next = normalizeCompleteMessage({
+      ...personalCompleteMessage,
+      choice: personalCompleteMessageSelect.value,
+    });
+    applyPersonalCompleteMessage(next);
+    persistPersonalSetting(savePersonalCompleteMessage, next, () => {
+      applyPersonalCompleteMessage(previous);
+    });
+  });
+
+  personalCompleteMessageCustom.addEventListener("change", () => {
+    const previous = personalCompleteMessage;
+    const next = normalizeCompleteMessage({
+      ...personalCompleteMessage,
+      customText: personalCompleteMessageCustom.value,
+    });
+    applyPersonalCompleteMessage(next);
+    persistPersonalSetting(savePersonalCompleteMessage, next, () => {
+      applyPersonalCompleteMessage(previous);
+    });
+  });
+
+  personalPauseMessageSelect.addEventListener("change", () => {
+    const previous = personalPauseMessage;
+    const next = normalizePauseMessage({
+      ...personalPauseMessage,
+      choice: personalPauseMessageSelect.value,
+    });
+    applyPersonalPauseMessage(next);
+    persistPersonalSetting(savePersonalPauseMessage, next, () => {
+      applyPersonalPauseMessage(previous);
+    });
+  });
+
+  personalPauseMessageCustom.addEventListener("change", () => {
+    const previous = personalPauseMessage;
+    const next = normalizePauseMessage({
+      ...personalPauseMessage,
+      customText: personalPauseMessageCustom.value,
+    });
+    applyPersonalPauseMessage(next);
+    persistPersonalSetting(savePersonalPauseMessage, next, () => {
+      applyPersonalPauseMessage(previous);
+    });
+  });
+
+  finishForNowButton.addEventListener("click", async () => {
+    if (
+      !finishForNowVisible({
+        tasks: visibleTasks(),
+        presentationMode: document.body.dataset.presentation,
+        personalPresentation,
+        ending: personalEnding,
+      })
+    ) {
+      return;
+    }
+
+    const next = createEndingState("pause", personalPauseMessage);
+    if (next.kind === "none") {
+      return;
+    }
+
+    await persistEnding(next);
+  });
+
+  continueListButton.addEventListener("click", async () => {
+    await persistEnding(clearEndingState());
+  });
+
   list.addEventListener("pointerdown", (event) => {
     const item = event.target.closest(".task-item");
     if (
@@ -1634,6 +2120,10 @@ export async function mountTaskList(root) {
   applyPersonalSound(await loadPersonalCompletionSound());
   applyPersonalTaskSound(await loadPersonalTaskSound());
   applyPersonalFinalSound(await loadPersonalFinalSound());
+  applyPersonalAffirmation(await loadPersonalAffirmation());
+  applyPersonalCompleteMessage(await loadPersonalCompleteMessage());
+  applyPersonalPauseMessage(await loadPersonalPauseMessage());
+  applyPersonalEnding(await loadPersonalEnding());
   applyFinalCelebration(await loadFinalCelebration());
   applyActiveAudioForView();
   const initialKind = currentListKind();

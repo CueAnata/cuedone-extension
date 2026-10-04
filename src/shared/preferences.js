@@ -1,5 +1,11 @@
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
 import { normalizePersonalPresentation } from "./personal-lists.js";
+import {
+  normalizeAffirmation,
+  normalizeCompleteMessage,
+  normalizeEndingState,
+  normalizePauseMessage,
+} from "./personal-messages.js";
 import { normalizeReward } from "./reward.js";
 
 export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
@@ -16,6 +22,10 @@ export const TASK_SOUND_KEY = "cuedone.taskSound";
 export const PERSONAL_COMPLETION_SOUND_KEY = "cuedone.personalCompletionSound";
 export const PERSONAL_FINAL_SOUND_KEY = "cuedone.personalFinalSound";
 export const PERSONAL_TASK_SOUND_KEY = "cuedone.personalTaskSound";
+export const PERSONAL_AFFIRMATION_KEY = "cuedone.personalAffirmation";
+export const PERSONAL_COMPLETE_MESSAGE_KEY = "cuedone.personalCompleteMessage";
+export const PERSONAL_PAUSE_MESSAGE_KEY = "cuedone.personalPauseMessage";
+export const PERSONAL_ENDING_KEY = "cuedone.personalEnding";
 const MOTIVATOR_MAX_LENGTH = 120;
 const FINAL_CELEBRATION_VALUES = [
   "random",
@@ -281,6 +291,54 @@ export function savePersonalTaskSound(value) {
   });
 }
 
+export function loadPersonalAffirmation() {
+  return getLocal(PERSONAL_AFFIRMATION_KEY).then((data) =>
+    normalizeAffirmation(data[PERSONAL_AFFIRMATION_KEY])
+  );
+}
+
+export function savePersonalAffirmation(value) {
+  return setLocal({
+    [PERSONAL_AFFIRMATION_KEY]: normalizeAffirmation(value),
+  });
+}
+
+export function loadPersonalCompleteMessage() {
+  return getLocal(PERSONAL_COMPLETE_MESSAGE_KEY).then((data) =>
+    normalizeCompleteMessage(data[PERSONAL_COMPLETE_MESSAGE_KEY])
+  );
+}
+
+export function savePersonalCompleteMessage(value) {
+  return setLocal({
+    [PERSONAL_COMPLETE_MESSAGE_KEY]: normalizeCompleteMessage(value),
+  });
+}
+
+export function loadPersonalPauseMessage() {
+  return getLocal(PERSONAL_PAUSE_MESSAGE_KEY).then((data) =>
+    normalizePauseMessage(data[PERSONAL_PAUSE_MESSAGE_KEY])
+  );
+}
+
+export function savePersonalPauseMessage(value) {
+  return setLocal({
+    [PERSONAL_PAUSE_MESSAGE_KEY]: normalizePauseMessage(value),
+  });
+}
+
+export function loadPersonalEnding() {
+  return getLocal(PERSONAL_ENDING_KEY).then((data) =>
+    normalizeEndingState(data[PERSONAL_ENDING_KEY])
+  );
+}
+
+export function savePersonalEnding(value) {
+  return setLocal({
+    [PERSONAL_ENDING_KEY]: normalizeEndingState(value),
+  });
+}
+
 export function onTaskEntryOpenChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName !== "local" || !changes[TASK_ENTRY_OPEN_KEY]) {
@@ -408,5 +466,47 @@ export function onPersonalTaskSoundChanged(callback) {
     }
 
     callback(normalizeTaskSound(changes[PERSONAL_TASK_SOUND_KEY].newValue));
+  });
+}
+
+export function onPersonalAffirmationChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_AFFIRMATION_KEY]) {
+      return;
+    }
+
+    callback(normalizeAffirmation(changes[PERSONAL_AFFIRMATION_KEY].newValue));
+  });
+}
+
+export function onPersonalCompleteMessageChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_COMPLETE_MESSAGE_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizeCompleteMessage(changes[PERSONAL_COMPLETE_MESSAGE_KEY].newValue)
+    );
+  });
+}
+
+export function onPersonalPauseMessageChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_PAUSE_MESSAGE_KEY]) {
+      return;
+    }
+
+    callback(normalizePauseMessage(changes[PERSONAL_PAUSE_MESSAGE_KEY].newValue));
+  });
+}
+
+export function onPersonalEndingChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_ENDING_KEY]) {
+      return;
+    }
+
+    callback(normalizeEndingState(changes[PERSONAL_ENDING_KEY].newValue));
   });
 }

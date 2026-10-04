@@ -398,6 +398,69 @@ test("Personal Private audio is isolated, saved after completion, and silent in 
   );
 });
 
+test("Personal Private affirmations and session endings stay isolated and silent", () => {
+  assert.match(taskListJs, /class="personal-message-settings" hidden/);
+  assert.match(taskListJs, /data-personal-affirmation="off"/);
+  assert.match(taskListJs, /Finish for now/);
+  assert.match(taskListJs, /Continue list/);
+  assert.match(taskListJs, /All-tasks-completed message/);
+  assert.match(taskListJs, /Stopping with unfinished tasks/);
+  assert.match(taskListJs, /savePersonalAffirmation/);
+  assert.match(taskListJs, /savePersonalCompleteMessage/);
+  assert.match(taskListJs, /savePersonalPauseMessage/);
+  assert.match(taskListJs, /savePersonalEnding/);
+  assert.match(taskListJs, /refreshRandomAffirmation/);
+  assert.match(taskListJs, /createEndingState\("complete"/);
+  assert.match(taskListJs, /createEndingState\("pause"/);
+  assert.match(taskListJs, /clearStaleEnding/);
+  assert.match(taskListJs, /textContent = affirmationText/);
+  assert.match(taskListJs, /personalEndingText\.textContent/);
+
+  const completeHandler = taskListJs.slice(
+    taskListJs.indexOf('list.addEventListener("change"'),
+    taskListJs.indexOf('list.addEventListener("click"')
+  );
+  assert.ok(
+    completeHandler.indexOf("await saveList(kind, tasks)") <
+      completeHandler.indexOf('createEndingState("complete"')
+  );
+  assert.match(completeHandler, /playPersonalPrivateAudio\(personalAudio\)/);
+
+  const finishHandler = taskListJs.slice(
+    taskListJs.indexOf('finishForNowButton.addEventListener("click"'),
+    taskListJs.indexOf('continueListButton.addEventListener("click"')
+  );
+  assert.doesNotMatch(finishHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+  assert.doesNotMatch(finishHandler, /saveList|resetCompletedTasks|setCarryoverOpen/);
+
+  const continueHandler = taskListJs.slice(
+    taskListJs.indexOf('continueListButton.addEventListener("click"'),
+    taskListJs.indexOf('list.addEventListener("pointerdown"')
+  );
+  assert.match(continueHandler, /clearEndingState/);
+  assert.doesNotMatch(continueHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const persistFn = taskListJs.slice(
+    taskListJs.indexOf("async function persist(nextTasks)"),
+    taskListJs.indexOf("function render()")
+  );
+  assert.match(persistFn, /await clearStaleEnding\(\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(css, /\.personal-affirmation \{/);
+  assert.match(css, /\.personal-ending \{/);
+  assert.match(css, /\.personal-ending-icon/);
+  assert.match(css, /\.personal-ending\.is-complete/);
+  assert.match(css, /\.personal-ending\.is-pause/);
+  assert.match(taskListJs, /personal-ending-icon/);
+  assert.match(taskListJs, /is-complete/);
+  assert.match(taskListJs, /is-pause/);
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\]\s*\n\s*\.personal-message-settings:not\(\[hidden\]\)/
+  );
+});
+
 test("Reset List appears only when every task is complete and confirms before unchecking", () => {
   assert.match(taskListJs, /Reset List/);
   assert.match(taskListJs, /Start this list again\?/);
