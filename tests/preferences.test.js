@@ -12,14 +12,17 @@ import {
   shouldAssignToolbarPopup,
   shouldRestoreSideFromPopup,
   taskEntryVisibility,
+  PERSONAL_PRESENTATION_KEY,
   PRESENTATION_MODE_KEY,
   END_MOTIVATOR_KEY,
   REWARD_KEY,
+  loadPersonalPresentation,
   loadPresentationMode,
   loadEndMotivator,
   loadReward,
   normalizePresentationMode,
   normalizeEndMotivator,
+  savePersonalPresentation,
   savePresentationMode,
   saveEndMotivator,
   saveReward,
@@ -182,6 +185,16 @@ test("presentation mode defaults to Personal and persists Client separately from
   assert.equal(await loadPresentationMode(), "client");
 });
 
+test("Personal presentation defaults to Private and persists Public separately", async () => {
+  const store = mockChromeStorage();
+  assert.equal(await loadPersonalPresentation(), "private");
+  await savePersonalPresentation("public");
+  assert.equal(store[PERSONAL_PRESENTATION_KEY], "public");
+  assert.equal(await loadPersonalPresentation(), "public");
+  await savePersonalPresentation("not-a-list");
+  assert.equal(await loadPersonalPresentation(), "private");
+});
+
 test("end motivator is optional, trimmed, and persisted locally", async () => {
   const store = mockChromeStorage();
   assert.equal(normalizeEndMotivator(undefined), "");
@@ -325,8 +338,11 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveFinalCelebration("butterflies");
   await saveFinalSound("applause");
   await saveTaskSound("soft-click");
+  await savePersonalPresentation("public");
   assert.deepEqual(await loadTasks(), tasks);
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
+  const { loadPublicTasks } = await import("../src/shared/task-store.js");
+  assert.deepEqual(await loadPublicTasks(), []);
 });
 
 test("Client presentation CSS is scoped and does not restyle Personal View", async () => {

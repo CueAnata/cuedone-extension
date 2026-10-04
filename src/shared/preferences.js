@@ -1,9 +1,11 @@
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
+import { normalizePersonalPresentation } from "./personal-lists.js";
 import { normalizeReward } from "./reward.js";
 
 export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
 export const TASK_ENTRY_OPEN_KEY = "cuedone.taskEntryOpen";
 export const PRESENTATION_MODE_KEY = "cuedone.presentationMode";
+export const PERSONAL_PRESENTATION_KEY = "cuedone.personalPresentation";
 export const END_MOTIVATOR_KEY = "cuedone.endMotivator";
 export const REWARD_KEY = "cuedone.reward";
 export const COMPLETION_STYLE_KEY = "cuedone.completionStyle";
@@ -45,6 +47,8 @@ export function normalizeTaskEntryOpen(value) {
 export function normalizePresentationMode(value) {
   return value === "client" ? "client" : "personal";
 }
+
+export { normalizePersonalPresentation };
 
 export function normalizeEndMotivator(value) {
   if (typeof value !== "string") {
@@ -136,6 +140,18 @@ export function loadPresentationMode() {
 export function savePresentationMode(mode) {
   return setLocal({
     [PRESENTATION_MODE_KEY]: normalizePresentationMode(mode),
+  });
+}
+
+export function loadPersonalPresentation() {
+  return getLocal(PERSONAL_PRESENTATION_KEY).then((data) =>
+    normalizePersonalPresentation(data[PERSONAL_PRESENTATION_KEY])
+  );
+}
+
+export function savePersonalPresentation(value) {
+  return setLocal({
+    [PERSONAL_PRESENTATION_KEY]: normalizePersonalPresentation(value),
   });
 }
 
@@ -243,6 +259,18 @@ export function onPresentationModeChanged(callback) {
     }
 
     callback(normalizePresentationMode(changes[PRESENTATION_MODE_KEY].newValue));
+  });
+}
+
+export function onPersonalPresentationChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_PRESENTATION_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizePersonalPresentation(changes[PERSONAL_PRESENTATION_KEY].newValue)
+    );
   });
 }
 

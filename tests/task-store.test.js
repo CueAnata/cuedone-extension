@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTask } from "../src/shared/tasks.js";
 import {
+  PUBLIC_TASKS_STORAGE_KEY,
   TASKS_STORAGE_KEY,
+  loadList,
+  loadPublicTasks,
   loadTasks,
+  onListChanged,
   onTasksChanged,
+  saveList,
+  savePublicTasks,
   saveTasks,
 } from "../src/shared/task-store.js";
 
@@ -69,4 +75,85 @@ test("onTasksChanged notifies listeners of local task updates", async () => {
 
   assert.equal(received.length, 1);
   assert.deepEqual(received[0], tasks);
+});
+
+test("existing saved tasks stay on the Private list and Public starts empty", async () => {
+  const privateTasks = [createTask("Keep private", 1, "keep-1")];
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: privateTasks,
+  });
+
+  assert.deepEqual(await loadTasks(), privateTasks);
+  assert.deepEqual(await loadPublicTasks(), []);
+  assert.deepEqual(await loadList("public"), []);
+  assert.equal(store[PUBLIC_TASKS_STORAGE_KEY], undefined);
+});
+
+test("Public and Private lists persist separately without copying tasks", async () => {
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: [createTask("Private note", 1, "priv-1")],
+  });
+  const publicTasks = [createTask("Meeting agenda", 2, "pub-1")];
+
+  await savePublicTasks(publicTasks);
+
+  assert.deepEqual(await loadList("private"), [
+    createTask("Private note", 1, "priv-1"),
+  ]);
+  assert.deepEqual(await loadList("public"), publicTasks);
+  assert.deepEqual(store[TASKS_STORAGE_KEY], [
+    createTask("Private note", 1, "priv-1"),
+  ]);
+  assert.notDeepEqual(store[PUBLIC_TASKS_STORAGE_KEY], store[TASKS_STORAGE_KEY]);
+});
+
+test("invalid Public storage does not fall back to Private tasks", async () => {
+  mockChromeStorage({
+    [TASKS_STORAGE_KEY]: [createTask("Secret", 1, "secret")],
+    [PUBLIC_TASKS_STORAGE_KEY]: [{ broken: true }],
+  });
+
+  assert.deepEqual(await loadPublicTasks(), []);
+  assert.equal((await loadPublicTasks()).some((task) => task.text === "Secret"), false);
+});
+
+test("a failed Public save leaves Private storage unchanged", async () => {
+  const privateTasks = [createTask("Stay", 1, "stay")];
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: privateTasks,
+  });
+  const originalSet = globalThis.chrome.storage.local.set;
+  globalThis.chrome.storage.local.set = async (values) => {
+    if (PUBLIC_TASKS_STORAGE_KEY in values) {
+      throw new Error("quota");
+    }
+    return originalSet(values);
+  };
+
+  await assert.rejects(
+    () => savePublicTasks([createTask("Nope", 2, "nope")]),
+    /quota/
+  );
+  assert.deepEqual(store[TASKS_STORAGE_KEY], privateTasks);
+  assert.equal(store[PUBLIC_TASKS_STORAGE_KEY], undefined);
+});
+
+test("onListChanged reports each list and ignores the other", async () => {
+  mockChromeStorage();
+  const received = [];
+  const unsubscribe = onListChanged((kind, tasks) =>
+    received.push({ kind, tasks })
+  );
+
+  const privateTasks = [createTask("Private sync", 1, "priv-sync")];
+  const publicTasks = [createTask("Public sync", 2, "pub-sync")];
+  await saveList("private", privateTasks);
+  await saveList("public", publicTasks);
+  unsubscribe();
+  await saveList("private", []);
+
+  assert.deepEqual(received, [
+    { kind: "private", tasks: privateTasks },
+    { kind: "public", tasks: publicTasks },
+  ]);
 });

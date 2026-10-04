@@ -47,6 +47,7 @@ import {
   loadCompletionStyle,
   loadFinalCelebration,
   loadFinalSound,
+  loadPersonalPresentation,
   loadPresentationMode,
   loadReward,
   loadTaskEntryOpen,
@@ -55,6 +56,7 @@ import {
   onCompletionStyleChanged,
   onFinalCelebrationChanged,
   onFinalSoundChanged,
+  onPersonalPresentationChanged,
   onPresentationModeChanged,
   onRewardChanged,
   onTaskEntryOpenChanged,
@@ -63,6 +65,7 @@ import {
   saveCompletionStyle,
   saveFinalCelebration,
   saveFinalSound,
+  savePersonalPresentation,
   saveReward,
   saveTaskEntryOpen,
   saveTaskSound,
@@ -71,7 +74,16 @@ import {
   normalizeTaskSound,
 } from "./preferences.js";
 import { applyPresentationMode } from "./mode-switch.js";
-import { loadTasks, onTasksChanged, saveTasks } from "./task-store.js";
+import {
+  activeListKind,
+  applyPersonalPresentation,
+  emptyStateCopy,
+  formatActiveListLabel,
+  nextPersonalPresentationAction,
+  taskListAriaLabel,
+  visibleTasksForActiveList,
+} from "./personal-lists.js";
+import { loadList, onListChanged, saveList } from "./task-store.js";
 
 export async function mountTaskList(root) {
   let tasks = [];
@@ -85,6 +97,9 @@ export async function mountTaskList(root) {
   let carryoverReview = null;
   let newListSaveInProgress = false;
   let pendingSynchronizedTasks = null;
+  let pendingSynchronizedKind = null;
+  let personalPresentation = "private";
+  let tasksKind = "private";
 
   root.innerHTML = `
     <form class="task-form">
@@ -101,6 +116,52 @@ export async function mountTaskList(root) {
       <button class="done-button" type="button">Done</button>
     </form>
     <button class="add-task-toggle" type="button" hidden>+ Add task</button>
+    <section class="personal-settings" hidden>
+      <div class="personal-settings-head">
+        <p class="personal-list-label" id="personal-list-label">Using Private list</p>
+        <button
+          class="personal-settings-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="personal-settings-panel"
+        >
+          <span class="personal-settings-gear" aria-hidden="true">&#9881;</span>
+          <span>Settings</span>
+        </button>
+      </div>
+      <div id="personal-settings-panel" class="personal-settings-panel" hidden>
+        <div class="personal-pref-row">
+          <p class="personal-pref-label" id="personal-presentation-label">
+            Personal presentation
+          </p>
+          <div
+            class="mode-switch"
+            role="group"
+            aria-labelledby="personal-presentation-label"
+          >
+            <button
+              type="button"
+              class="view-switch-button"
+              data-personal-presentation="private"
+            >
+              Private
+            </button>
+            <button
+              type="button"
+              class="view-switch-button"
+              data-personal-presentation="public"
+            >
+              Public
+            </button>
+          </div>
+        </div>
+        <p class="personal-settings-note">
+          Private and Public are separate lists. This is a presentation choice,
+          not a lock or account.
+        </p>
+      </div>
+      <p class="personal-list-error" role="alert" hidden></p>
+    </section>
     <section class="client-progress" hidden>
       <p class="progress-label">0 of 0 complete</p>
       <div
@@ -308,6 +369,14 @@ export async function mountTaskList(root) {
   const createNewListButton = root.querySelector(".create-new-list-button");
   const cancelNewListButton = root.querySelector(".cancel-new-list-button");
   const emptyState = root.querySelector(".empty-state");
+  const personalSettings = root.querySelector(".personal-settings");
+  const personalListLabel = root.querySelector(".personal-list-label");
+  const personalSettingsToggle = root.querySelector(".personal-settings-toggle");
+  const personalSettingsPanel = root.querySelector(".personal-settings-panel");
+  const personalPresentationButtons = root.querySelectorAll(
+    "[data-personal-presentation]"
+  );
+  const personalListError = root.querySelector(".personal-list-error");
   const progressSection = root.querySelector(".client-progress");
   const progressLabel = root.querySelector(".progress-label");
   const progressTrack = root.querySelector(".progress-track");
@@ -352,6 +421,104 @@ export async function mountTaskList(root) {
     return document.body.dataset.presentation === "client";
   }
 
+  function currentListKind() {
+    return activeListKind(
+      document.body.dataset.presentation,
+      personalPresentation
+    );
+  }
+
+  function visibleTasks() {
+    return visibleTasksForActiveList(currentListKind(), tasksKind, tasks);
+  }
+
+  function showListError(message) {
+    personalListError.textContent = message;
+    personalListError.hidden = !message;
+  }
+
+  function setPersonalSettingsPanelOpen(isOpen) {
+    const expanded = isOpen === true;
+    personalSettingsPanel.hidden = !expanded;
+    personalSettingsToggle.setAttribute("aria-expanded", String(expanded));
+    personalSettingsToggle.classList.toggle("is-open", expanded);
+  }
+
+  function paintPersonalPresentation(value) {
+    const current = value === "public" ? "public" : "private";
+    for (const button of personalPresentationButtons) {
+      const isCurrent = button.dataset.personalPresentation === current;
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+  }
+
+  function updatePersonalChrome() {
+    const personal = !isClientMode();
+    const kind = currentListKind();
+    personalSettings.hidden = !personal;
+    personalListLabel.textContent = formatActiveListLabel(kind);
+    list.setAttribute("aria-label", taskListAriaLabel(kind));
+    paintPersonalPresentation(personalPresentation);
+  }
+
+  function prepareListSwitch() {
+    setCarryoverOpen(false);
+    input.value = "";
+    restoreFocus = null;
+    resetConfirming = false;
+    clearPreviousCompletionState();
+  }
+
+  async function showActiveList(kind, { resetCarryover = true } = {}) {
+    if (resetCarryover) {
+      prepareListSwitch();
+    }
+
+    if (kind === "public") {
+      tasks = [];
+      tasksKind = "public";
+      render();
+    }
+
+    try {
+      const loaded = await loadList(kind);
+      tasks = loaded;
+      tasksKind = kind;
+      showListError("");
+      render();
+      return true;
+    } catch {
+      if (kind === "public") {
+        tasks = [];
+        tasksKind = "public";
+      }
+      showListError(
+        "CueDone could not load that list. The other list was not shown."
+      );
+      render();
+      return false;
+    }
+  }
+
+  async function requestPersonalPresentation(next) {
+    const requested = nextPersonalPresentationAction(next);
+    if (!requested || requested === personalPresentation) {
+      paintPersonalPresentation(personalPresentation);
+      return;
+    }
+
+    showListError("");
+    try {
+      await savePersonalPresentation(requested);
+    } catch {
+      paintPersonalPresentation(personalPresentation);
+      showListError(
+        "CueDone could not switch lists. Your current list is unchanged."
+      );
+    }
+  }
+
   function setSettingsPanelOpen(isOpen) {
     const expanded = isOpen === true;
     settingsPanel.hidden = !expanded;
@@ -366,8 +533,9 @@ export async function mountTaskList(root) {
   }
 
   function renderCarryoverReview({ reset = false, message = "" } = {}) {
+    const reviewTasks = visibleTasks();
     carryoverReview = refreshCarryoverReview(
-      tasks,
+      reviewTasks,
       reset ? null : carryoverReview
     );
     const selected = new Set(carryoverReview.selectedIds);
@@ -391,7 +559,7 @@ export async function mountTaskList(root) {
     const noUnfinished = carryoverReview.unfinished.length === 0;
     carryoverList.hidden = noUnfinished;
     carryoverEmpty.hidden = !noUnfinished;
-    carryoverEmpty.textContent = tasks.length
+    carryoverEmpty.textContent = reviewTasks.length
       ? "All tasks are complete. The new list will start empty."
       : "There are no tasks to carry over. The new list will start empty.";
     newListStatus.textContent = message;
@@ -418,6 +586,7 @@ export async function mountTaskList(root) {
   function applySynchronizedTasks(nextTasks, message = "") {
     completionSnapshot = null;
     tasks = nextTasks;
+    tasksKind = currentListKind();
     render();
     if (carryoverOpen) {
       renderCarryoverReview({ message });
@@ -568,7 +737,7 @@ export async function mountTaskList(root) {
 
   function updateClientChrome() {
     const client = isClientMode();
-    const progress = taskProgress(tasks);
+    const progress = taskProgress(visibleTasks());
     const label = formatProgressLabel(progress);
 
     progressSection.hidden = !client;
@@ -582,13 +751,14 @@ export async function mountTaskList(root) {
   }
 
   function updateResetAction() {
+    const shown = visibleTasks();
     const canReset = resetListVisible({
-      tasks,
+      tasks: shown,
       presentation: document.body.dataset.presentation,
       style: document.body.dataset.completionStyle,
       finalCelebrationActive,
     });
-    if (!canResetList(tasks)) {
+    if (!canResetList(shown)) {
       resetConfirming = false;
       finalCelebrationActive = false;
     }
@@ -599,17 +769,33 @@ export async function mountTaskList(root) {
   }
 
   async function persist(nextTasks) {
+    const previous = tasks;
+    const previousKind = tasksKind;
+    const kind = currentListKind();
     tasks = nextTasks;
+    tasksKind = kind;
     render();
-    await saveTasks(tasks);
+    try {
+      await saveList(kind, tasks);
+      showListError("");
+    } catch {
+      tasks = previous;
+      tasksKind = previousKind;
+      render();
+      showListError(
+        "CueDone could not save that change. Your current list is unchanged."
+      );
+    }
   }
 
   function render() {
-    emptyState.hidden = tasks.length > 0;
+    const shown = visibleTasks();
+    emptyState.textContent = emptyStateCopy(currentListKind());
+    emptyState.hidden = shown.length > 0;
     list.replaceChildren();
-    const currentId = nextUnfinishedTask(tasks)?.id;
+    const currentId = nextUnfinishedTask(shown)?.id;
 
-    tasks.forEach((task, index) => {
+    shown.forEach((task, index) => {
       const item = document.createElement("li");
       const checkboxId = `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
       item.className = `task-item${task.completed ? " is-complete" : ""}${
@@ -630,7 +816,7 @@ export async function mountTaskList(root) {
         </label>
         <div class="task-actions">
           <button class="icon-button move-up" type="button" aria-label="Move task up" ${index === 0 ? "disabled" : ""}>↑</button>
-          <button class="icon-button move-down" type="button" aria-label="Move task down" ${index === tasks.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="icon-button move-down" type="button" aria-label="Move task down" ${index === shown.length - 1 ? "disabled" : ""}>↓</button>
           <button class="icon-button delete-button" type="button" aria-label="Delete task">×</button>
         </div>
       `;
@@ -639,6 +825,7 @@ export async function mountTaskList(root) {
       list.append(item);
     });
 
+    updatePersonalChrome();
     updateClientChrome();
     updateResetAction();
 
@@ -654,8 +841,9 @@ export async function mountTaskList(root) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const next = addTask(tasks, input.value);
-    if (next === tasks) {
+    const shown = visibleTasks();
+    const next = addTask(shown, input.value);
+    if (next === shown) {
       return;
     }
 
@@ -666,7 +854,7 @@ export async function mountTaskList(root) {
   });
 
   resetButton.addEventListener("click", () => {
-    if (!canResetList(tasks)) {
+    if (!canResetList(visibleTasks())) {
       return;
     }
 
@@ -682,8 +870,9 @@ export async function mountTaskList(root) {
   });
 
   resetConfirmButton.addEventListener("click", async () => {
-    const next = resetCompletedTasks(tasks);
-    if (next === tasks) {
+    const shown = visibleTasks();
+    const next = resetCompletedTasks(shown);
+    if (next === shown) {
       return;
     }
 
@@ -739,19 +928,22 @@ export async function mountTaskList(root) {
     newListSaveInProgress = true;
     pendingSynchronizedTasks = null;
 
+    const kind = currentListKind();
     const result = await saveNewListFromReview({
-      reviewedTasks: snapshotTasks(tasks),
+      reviewedTasks: snapshotTasks(visibleTasks()),
       selectedIds: carryoverReview.selectedIds,
-      loadTasks,
-      saveTasks,
+      loadTasks: () => loadList(kind),
+      saveTasks: (next) => saveList(kind, next),
     });
 
     newListSaveInProgress = false;
     setNewListBusy(false);
 
     if (result.status === "stale") {
-      const synchronized = pendingSynchronizedTasks;
+      const synchronized =
+        pendingSynchronizedKind === kind ? pendingSynchronizedTasks : null;
       pendingSynchronizedTasks = null;
+      pendingSynchronizedKind = null;
       applySynchronizedTasks(
         synchronized && !taskListsMatch(synchronized, result.tasks)
           ? synchronized
@@ -762,9 +954,10 @@ export async function mountTaskList(root) {
     }
 
     if (result.status === "failure") {
-      if (pendingSynchronizedTasks) {
+      if (pendingSynchronizedTasks && pendingSynchronizedKind === kind) {
         const synchronized = pendingSynchronizedTasks;
         pendingSynchronizedTasks = null;
+        pendingSynchronizedKind = null;
         applySynchronizedTasks(
           synchronized,
           "Tasks changed in another view. Review the refreshed list before trying again."
@@ -778,8 +971,10 @@ export async function mountTaskList(root) {
       return;
     }
 
-    const synchronized = pendingSynchronizedTasks;
+    const synchronized =
+      pendingSynchronizedKind === kind ? pendingSynchronizedTasks : null;
     pendingSynchronizedTasks = null;
+    pendingSynchronizedKind = null;
     const nextTasks =
       synchronized && !taskListsMatch(synchronized, result.tasks)
         ? synchronized
@@ -787,6 +982,7 @@ export async function mountTaskList(root) {
     clearPreviousCompletionState();
     setCarryoverOpen(false);
     tasks = nextTasks;
+    tasksKind = kind;
     restoreFocus = null;
     render();
     applyEntryMode(true);
@@ -819,9 +1015,12 @@ export async function mountTaskList(root) {
 
     restoreFocus = { id, selector: ".task-checkbox" };
     const snapshot = takeCompletionSnapshot(id);
+    const kind = currentListKind();
+    const previous = tasks;
+    const previousKind = tasksKind;
     const { nextTasks, plan } = planFromCheckboxCompletion({
       snapshot,
-      liveTasks: tasks,
+      liveTasks: visibleTasks(),
       id,
       completed: checkbox.checked,
       presentation: document.body.dataset.presentation,
@@ -839,9 +1038,21 @@ export async function mountTaskList(root) {
       }
     }
     tasks = nextTasks;
+    tasksKind = kind;
     render();
     maybeCelebrate(plan);
-    await saveTasks(tasks);
+    try {
+      await saveList(kind, tasks);
+      showListError("");
+    } catch {
+      tasks = previous;
+      tasksKind = previousKind;
+      clearPreviousCompletionState();
+      render();
+      showListError(
+        "CueDone could not save that change. Your current list is unchanged."
+      );
+    }
   });
 
   list.addEventListener("click", async (event) => {
@@ -850,27 +1061,28 @@ export async function mountTaskList(root) {
       return;
     }
 
-    const fromIndex = tasks.findIndex((task) => task.id === item.dataset.id);
+    const shown = visibleTasks();
+    const fromIndex = shown.findIndex((task) => task.id === item.dataset.id);
     if (fromIndex === -1) {
       return;
     }
 
     if (event.target.closest(".delete-button")) {
       restoreFocus = null;
-      await persist(deleteTask(tasks, item.dataset.id));
+      await persist(deleteTask(shown, item.dataset.id));
       (entryOpen ? input : addToggle).focus();
       return;
     }
 
     if (event.target.closest(".move-up")) {
       restoreFocus = { id: item.dataset.id, selector: ".move-up" };
-      await persist(reorderTasks(tasks, fromIndex, fromIndex - 1));
+      await persist(reorderTasks(shown, fromIndex, fromIndex - 1));
       return;
     }
 
     if (event.target.closest(".move-down")) {
       restoreFocus = { id: item.dataset.id, selector: ".move-down" };
-      await persist(reorderTasks(tasks, fromIndex, fromIndex + 1));
+      await persist(reorderTasks(shown, fromIndex, fromIndex + 1));
     }
   });
 
@@ -905,20 +1117,26 @@ export async function mountTaskList(root) {
       return;
     }
 
-    const fromIndex = tasks.findIndex((task) => task.id === draggedId);
-    const toIndex = tasks.findIndex((task) => task.id === target.dataset.id);
+    const shown = visibleTasks();
+    const fromIndex = shown.findIndex((task) => task.id === draggedId);
+    const toIndex = shown.findIndex((task) => task.id === target.dataset.id);
     draggedId = null;
 
     if (fromIndex === -1 || toIndex === -1) {
       return;
     }
 
-    await persist(reorderTasks(tasks, fromIndex, toIndex));
+    await persist(reorderTasks(shown, fromIndex, toIndex));
   });
 
-  onTasksChanged((nextTasks) => {
+  onListChanged((kind, nextTasks) => {
+    if (kind !== currentListKind()) {
+      return;
+    }
+
     if (newListSaveInProgress) {
       pendingSynchronizedTasks = nextTasks;
+      pendingSynchronizedKind = kind;
       return;
     }
 
@@ -938,9 +1156,41 @@ export async function mountTaskList(root) {
     );
   });
 
+  personalSettingsToggle.addEventListener("click", () => {
+    setPersonalSettingsPanelOpen(
+      personalSettingsToggle.getAttribute("aria-expanded") !== "true"
+    );
+  });
+
+  for (const button of personalPresentationButtons) {
+    button.addEventListener("click", () => {
+      void requestPersonalPresentation(button.dataset.personalPresentation);
+    });
+  }
+
   onPresentationModeChanged(() => {
+    const kind = currentListKind();
+    if (kind !== tasksKind) {
+      void showActiveList(kind);
+      return;
+    }
+
+    updatePersonalChrome();
     updateClientChrome();
     updateResetAction();
+  });
+
+  onPersonalPresentationChanged((next) => {
+    if (next === personalPresentation && currentListKind() === tasksKind) {
+      paintPersonalPresentation(next);
+      updatePersonalChrome();
+      return;
+    }
+
+    personalPresentation = next;
+    applyPersonalPresentation(next);
+    paintPersonalPresentation(next);
+    void showActiveList(currentListKind());
   });
 
   onRewardChanged((reward) => {
@@ -1118,13 +1368,25 @@ export async function mountTaskList(root) {
   });
 
   applyEntryMode(true);
+  personalPresentation = await loadPersonalPresentation();
+  applyPersonalPresentation(personalPresentation);
   applyPresentationMode(await loadPresentationMode());
   applyCompletionStyle(await loadCompletionStyle());
   applyCompletionSound(await loadCompletionSound());
   applyFinalSound(await loadFinalSound());
   applyTaskSound(await loadTaskSound());
   applyFinalCelebration(await loadFinalCelebration());
-  tasks = await loadTasks();
+  const initialKind = currentListKind();
+  try {
+    tasks = await loadList(initialKind);
+    tasksKind = initialKind;
+  } catch {
+    tasks = [];
+    tasksKind = initialKind;
+    showListError(
+      "CueDone could not load that list. The other list was not shown."
+    );
+  }
   applyEntryMode(await loadTaskEntryOpen());
   const savedReward = await loadReward();
   rewardEditing = initialRewardEditing(savedReward);

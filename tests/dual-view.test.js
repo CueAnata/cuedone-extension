@@ -32,7 +32,7 @@ test("shared task entry supports setup and work mode in both views", () => {
   assert.match(taskListJs, /saveTaskEntryOpen\(true\)/);
 });
 
-test("Personal and Client share the same task list presentation switch", () => {
+test("Personal and Client share a presentation switch and the existing Private list", () => {
   for (const html of [popupHtml, sideHtml]) {
     assert.match(html, /data-mode="personal"/);
     assert.match(html, /data-mode="client"/);
@@ -42,6 +42,10 @@ test("Personal and Client share the same task list presentation switch", () => {
   assert.match(sideJs, /startPresentationMode/);
   assert.match(taskListJs, /from "\.\/task-store\.js"/);
   assert.equal(taskListJs.includes("cuedone.tasks"), false);
+  assert.equal(taskListJs.includes("cuedone.publicTasks"), false);
+  assert.match(taskListJs, /loadList/);
+  assert.match(taskListJs, /saveList/);
+  assert.match(taskListJs, /activeListKind/);
 });
 
 test("Client View includes Simple, Celebrate, and an independent Sound control", () => {
@@ -107,7 +111,7 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(completeHandler, /takeCompletionSnapshot\(id\)/);
   assert.match(completeHandler, /completed: checkbox\.checked/);
   assert.match(completeHandler, /maybeCelebrate\(plan\)/);
-  assert.match(completeHandler, /await saveTasks\(tasks\)/);
+  assert.match(completeHandler, /await saveList\(kind, tasks\)/);
   assert.doesNotMatch(completeHandler, /toggleTask/);
   assert.ok(
     completeHandler.indexOf("playCelebrationSound") <
@@ -119,10 +123,10 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   );
   assert.ok(
     completeHandler.indexOf("maybeCelebrate(plan)") <
-      completeHandler.indexOf("await saveTasks(tasks)")
+      completeHandler.indexOf("await saveList(kind, tasks)")
   );
   assert.doesNotMatch(
-    taskListJs.slice(taskListJs.indexOf("onTasksChanged((nextTasks)")),
+    taskListJs.slice(taskListJs.indexOf("onListChanged((kind, nextTasks)")),
     /maybeCelebrate/
   );
   assert.match(taskListJs, /onFinalSoundChanged/);
@@ -238,9 +242,10 @@ test("Start a New List is shared, explicit, synchronized, and separate from Rese
   assert.match(cancelHandler, /setCarryoverOpen\(false\)/);
   assert.doesNotMatch(cancelHandler, /save|tasks\s*=|clearCelebration|render\(/);
 
-  const syncStart = taskListJs.indexOf("onTasksChanged((nextTasks)");
+  const syncStart = taskListJs.indexOf("onListChanged((kind, nextTasks)");
   const syncEnd = taskListJs.indexOf("onTaskEntryOpenChanged", syncStart);
   const syncHandler = taskListJs.slice(syncStart, syncEnd);
+  assert.match(syncHandler, /kind !== currentListKind/);
   assert.match(syncHandler, /pendingSynchronizedTasks/);
   assert.match(syncHandler, /applySynchronizedTasks/);
   assert.match(syncHandler, /Carryover choices were refreshed/);
@@ -275,7 +280,60 @@ test("Final and task sound controls adapt at narrow Client widths without changi
     css,
     /\.popup-view\[data-presentation="client"\] \.task-item\s*\{[\s\S]*?grid-template-columns:\s*var\(--control\) minmax\(0, 1fr\)/
   );
-  assert.doesNotMatch(css, /body\[data-presentation="personal"\]/);
+  assert.doesNotMatch(
+    css,
+    /body\[data-presentation="personal"\](?!\[data-personal-presentation="public"\]) \.task-item/
+  );
+});
+
+test("Personal Settings is a collapsed Private/Public selector that isolates lists", () => {
+  assert.match(taskListJs, /class="personal-settings-toggle"/);
+  assert.match(taskListJs, /aria-controls="personal-settings-panel"/);
+  assert.match(taskListJs, /id="personal-settings-panel" class="personal-settings-panel" hidden/);
+  assert.match(taskListJs, /data-personal-presentation="private"/);
+  assert.match(taskListJs, /data-personal-presentation="public"/);
+  assert.match(taskListJs, /Using Private list/);
+  assert.match(taskListJs, /formatActiveListLabel/);
+  assert.match(taskListJs, /not a lock or account/);
+  assert.match(taskListJs, /savePersonalPresentation/);
+  assert.match(taskListJs, /visibleTasksForActiveList/);
+  assert.match(taskListJs, /prepareListSwitch/);
+  assert.match(taskListJs, /showActiveList/);
+
+  const switchStart = taskListJs.indexOf("async function requestPersonalPresentation");
+  const switchEnd = taskListJs.indexOf("function setSettingsPanelOpen", switchStart);
+  const switchFn = taskListJs.slice(switchStart, switchEnd);
+  assert.match(switchFn, /await savePersonalPresentation\(requested\)/);
+  assert.match(switchFn, /Your current list is unchanged/);
+  assert.doesNotMatch(switchFn, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const prepareStart = taskListJs.indexOf("function prepareListSwitch");
+  const prepare = taskListJs.slice(
+    prepareStart,
+    taskListJs.indexOf("async function showActiveList", prepareStart)
+  );
+  assert.match(prepare, /setCarryoverOpen\(false\)/);
+  assert.match(prepare, /input\.value = ""/);
+  assert.match(prepare, /clearPreviousCompletionState/);
+  assert.doesNotMatch(prepare, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-text/
+  );
+  assert.match(
+    css,
+    /\.popup-view\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-item/
+  );
+  const compact = css.match(
+    /@media \(max-width: 420px\) \{\s*\n\s*\.sidepanel-view\[data-presentation="personal"\]\[data-personal-presentation="public"\][\s\S]*?\n\}/
+  )?.[0];
+  assert.ok(compact);
+  assert.match(
+    compact,
+    /\.sidepanel-view\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-label/
+  );
 });
 
 test("Reset List appears only when every task is complete and confirms before unchecking", () => {
@@ -310,7 +368,7 @@ test("Reset List appears only when every task is complete and confirms before un
     confirmStart,
     taskListJs.indexOf("doneButton.addEventListener")
   );
-  assert.match(confirmHandler, /resetCompletedTasks\(tasks\)/);
+  assert.match(confirmHandler, /resetCompletedTasks\(shown\)/);
   assert.match(confirmHandler, /await persist\(next\)/);
   assert.doesNotMatch(confirmHandler, /deleteTask/);
   assert.doesNotMatch(confirmHandler, /saveReward/);

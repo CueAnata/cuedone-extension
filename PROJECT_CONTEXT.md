@@ -24,7 +24,7 @@ CueDone is intentionally simpler than a project-management app. It helps a perso
 
 ## Display architecture
 
-CueDone has two equal working views of the **same local task list**. Neither view exists only to launch the other. Both support add, complete, reorder, and delete.
+CueDone has two equal working views of the **active local task list**. Neither view exists only to launch the other. Both support add, complete, reorder, and delete on that active list.
 
 A compact **Top / Side** control in the header switches views. CueDone stores the last selected view in local extension storage and restores it when the toolbar icon is used, if the browser can do so.
 
@@ -56,13 +56,15 @@ When Side is the saved view, the toolbar icon opens Side directly when the brows
 
 Choosing Top in the header closes Side so it is not left open. Side otherwise stays open until the user collapses or closes it.
 
-Both views must use the same task data. Changes in one view are reflected in the other.
+Both views must use the same active-list data. Changes in one view are reflected in the other.
 
 ### Personal and Client presentation
 
-Personal and Client are presentation modes for the **same task list**, not separate lists. Default is Personal.
+Personal and Client are presentation modes. Default is Personal.
 
-**Personal:** The approved Phase 2 Top/Side task workflow. Do not add progress or motivator chrome unless it stays out of this mode.
+**Personal Private and Client** share the existing local list (`cuedone.tasks`). **Personal Public** uses a separate local list (`cuedone.publicTasks`) that starts empty. Existing saved tasks stay on the Private/Client list and are never copied into Public automatically.
+
+**Personal:** The approved Phase 2 Top/Side task workflow, plus a collapsed **Settings** panel that chooses **Private** or **Public**. Keep official branding and existing Private styling unchanged. Public is a cleaner, more readable agenda presentation for meetings and short workflows, using the same CueDone visual language. Clearly show which list is active. Switching lists cancels an open carryover review and any pending task-entry draft, and must not play sounds, animations, or rewards. Public/Private are presentation choices, not authentication or access controls. Private task text must never appear in Public, including during loading, switching, reopening, or storage synchronization. Do not add progress or motivator chrome to Personal unless it stays out of this mode.
 
 **Client:** A clearer screen-share presentation for teletherapy, classroom, tutoring, and other supported-learning situations. It uses larger task text, stronger focus on the next unfinished task, quieter completed tasks, a simple progress count, and a locally saved end reward shown as a card. It is not a token economy.
 
@@ -80,9 +82,11 @@ Client View also has a **Reward** selector: None, Your Choice, Game Time, Music,
 
 ## Implemented feature boundary
 
-**Foundation:** Create → check off → reorder → delete tasks, persisted locally, shared by popup and side panel. When every task is complete, **Reset List** can uncheck the whole list after a brief confirmation. In Client + Celebrate, Reset List appears after the final celebration finishes and the reward is shown. It does not delete tasks, change order, or clear the selected reward or other preferences. Per-task Delete stays separate. Do not show Reset List before the list is fully complete.
+**Foundation:** Create → check off → reorder → delete tasks, persisted locally, shared by popup and side panel for the active list. When every task on the active list is complete, **Reset List** can uncheck that list after a brief confirmation. In Client + Celebrate, Reset List appears after the final celebration finishes and the reward is shown. It does not delete tasks, change order, or clear the selected reward or other preferences. Per-task Delete stays separate. Do not show Reset List before the active list is fully complete.
 
-**Start a New List (implemented):** Personal and Client use the same shared action. It opens an inline review of current unfinished tasks in their existing order, selected by default. Users may deselect tasks, then **Create New List** replaces the current list with only the selected unfinished tasks, all unchecked and in order. Completed and deselected tasks are removed; if everything was complete or nothing is selected, the new list is empty. Cancel changes nothing. CueDone rechecks current local task storage before saving so a review cannot overwrite newer task changes from another view, and a failed save leaves the current list visible and unchanged. After a successful save, task entry opens and prior completion audio/animation/reward-reveal state is cleared without replay. Presentation mode, Top/Side preference, sound choices, final celebration, and reward remain unchanged. The new list stays as created until the user edits it. This does not add automatic daily rollover, history, archives, sublists, or templates, and **Reset List** remains a separate action.
+**Start a New List (implemented):** The action applies only to the active list. It opens an inline review of that list’s unfinished tasks in their existing order, selected by default. Users may deselect tasks, then **Create New List** replaces the active list with only the selected unfinished tasks, all unchecked and in order. Completed and deselected tasks are removed; if everything was complete or nothing is selected, the new list is empty. Cancel changes nothing. CueDone rechecks current local storage for that same list before saving so a review cannot overwrite newer task changes from another view, and a failed save leaves the current list visible and unchanged. After a successful save, task entry opens and prior completion audio/animation/reward-reveal state is cleared without replay. Presentation mode, Personal Public/Private choice, Top/Side preference, sound choices, final celebration, and reward remain unchanged. The new list stays as created until the user edits it. This does not add automatic daily rollover, history, archives, sublists, or templates, and **Reset List** remains a separate action.
+
+**Personal Public/Private lists (implemented):** Personal Settings, collapsed by default, contains a Private/Public presentation selector. Top and Side synchronize the selected Personal presentation and its list. Client always uses the existing Private/Client list and retains its approved settings and behavior. A failed preference or list save must not silently lose tasks or show a switch as successful.
 
 **Phase 2 (approved):** CueDone identity and equal Top/Side working views, last-used view restore, and setup/work-mode task entry.
 
@@ -103,7 +107,7 @@ The CueDone Development Blueprint records the following delivery order. It is pl
 3. **List lifecycle (in progress):** Start a New List carryover and fresh completion-state clearing are implemented, with Reset List preserved as a separate action. Finished for Today / Session encouragement and any other lifecycle additions remain planned and require separate approval.
 4. **Task layouts:** Add an optional one-active-task presentation, First / Then, and First / Then / Next / Last after defining how longer lists remain accessible without silently hiding required steps.
 5. **Visual progress:** Build one progress engine that scales by completed tasks divided by total tasks. Candidate themes are plant, animal puzzle, gumball jar, dynamite, animal transformation, builder, battery, constellation, and Random. Initial delivery is planned to start with plant, animal puzzle, and gumball jar.
-6. **Personal expansion:** Evolve Personal into Public and Private experiences after resolving their data boundary. Public is a clean, shareable presentation for meeting agendas, conference calls, and short project workflows. Private is the personal experience for optional progress themes, affirmations, timed random breaks, animations, and audio.
+6. **Personal expansion (lists complete):** Separate Public and Private lists are implemented. Optional Private themes, affirmations, timed random breaks, animations, and audio remain planned and require separate approval. Sharing remains unauthorized.
 7. **Connected Client View:** Consider a laptop/desktop-only professional workflow for teachers, therapists, and similar hosts working with a student or client on another laptop or desktop. Define host/client permissions, session behavior, connection, and retention before implementation. This is not the Meta VR or smart-glasses experience.
 8. **Platform expansion and handoff:** Distribute the full desktop CueDone experience, including Personal and Client features, for Microsoft Edge on Windows from the same Chromium extension codebase used by Chrome. Plan Meta VR as a Personal productivity surface only, without Client View or Connected Client View, with explicit bidirectional session handoff among Chrome, Edge, and Meta devices. One device should own the active session at a time instead of continuously co-editing it. A later Meta smart-glasses experience may reuse the same handoff contract if the hardware and platform support the required interaction and video capabilities.
 
@@ -113,7 +117,7 @@ Picture-plus-text tasks and theme previews are candidate enhancements, not requi
 
 These decisions are deliberately open and must be resolved before their affected roadmap phase is authorized:
 
-- **Personal Public/Private boundary:** Public and Private are planned experiences within Personal mode, not replacements for Client View. Public should present a clean agenda or short workflow suitable for screen sharing during a conference call or meeting. Private may include the optional playful and motivational enhancements. The current extension has one task list shared by Personal and Client presentation modes, and visual presentation alone is not privacy. Decide whether Public and Private use separate lists or explicit per-task visibility, then define migration, switching, and sharing behavior. Private content must never appear in Public through a default, transition, restore, or handoff mistake.
+- **Personal Public/Private later enhancements:** Separate lists are implemented. Public remains a clean agenda presentation; Private remains the existing shared Personal/Client list. Visual presentation is not privacy or authentication. Sharing, accounts, themes, affirmations, timers, and handoff remain unauthorized. Private content must never appear in Public through a default, transition, restore, or later handoff mistake.
 - **Connected host/student behavior:** This feature is limited to laptop/desktop use for teachers, therapists, and similar professional hosts and their student/client display. Decide whether a student or client can complete tasks or only the host can; define the interface, connection method, session expiry and access, disconnect/reconnect behavior, concurrent edits, animation ownership, and data retention. A session code is only one possibility. The roadmap does not authorize accounts, cloud sync, or an external backend.
 - **Meta VR product form:** Meta VR is limited to Personal productivity; Client View and Connected Client View remain desktop-only. Decide whether Meta support is a browser experience, installed VR application, or another supported delivery model. Define VR interaction, accessibility, comfort, background/suspension behavior, and which Personal concepts carry over. Do not assume the Chromium extension UI or APIs can be reused unchanged.
 - **Cross-device handoff:** The planned direction is explicit transfer of session ownership, not continuous mirrored control: start on Chrome or Edge, continue in Meta VR for a bounded work period, then return the updated session to desktop. Define exactly what transfers (for example, the current list, active task, completion state, presentation mode, or preferences), confirmation and recovery behavior, and how conflicts, offline use, reconnect, expiry, security, privacy, and retention work. Handoff may require pairing, identity, sync, or a backend; none is authorized by this roadmap entry alone.
@@ -147,7 +151,7 @@ Those remain outside the implemented product. Some appear in the planning roadma
 
 - Chromium extension (Chrome and Edge), Manifest V3
 - Toolbar popup and Chromium side panel
-- Shared local task data via the platform storage adapter (extension `local` storage)
+- Shared local task data via the platform storage adapter (extension `local` storage): Personal Private and Client use `cuedone.tasks`; Personal Public uses `cuedone.publicTasks`
 - Chrome/Edge-specific APIs live only in `src/platform/browser.js`
 - Shared task model and UI must not call `chrome.*` or other browser APIs directly
 - One app for Chromium browsers; do not fork popup, side panel, or task logic per browser
