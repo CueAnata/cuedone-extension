@@ -13,6 +13,9 @@ export const COMPLETION_SOUND_KEY = "cuedone.completionSound";
 export const FINAL_CELEBRATION_KEY = "cuedone.finalCelebration";
 export const FINAL_SOUND_KEY = "cuedone.finalSound";
 export const TASK_SOUND_KEY = "cuedone.taskSound";
+export const PERSONAL_COMPLETION_SOUND_KEY = "cuedone.personalCompletionSound";
+export const PERSONAL_FINAL_SOUND_KEY = "cuedone.personalFinalSound";
+export const PERSONAL_TASK_SOUND_KEY = "cuedone.personalTaskSound";
 const MOTIVATOR_MAX_LENGTH = 120;
 const FINAL_CELEBRATION_VALUES = [
   "random",
@@ -242,6 +245,42 @@ export function saveTaskSound(value) {
   });
 }
 
+export function loadPersonalCompletionSound() {
+  return getLocal(PERSONAL_COMPLETION_SOUND_KEY).then((data) =>
+    normalizeCompletionSound(data[PERSONAL_COMPLETION_SOUND_KEY])
+  );
+}
+
+export function savePersonalCompletionSound(value) {
+  return setLocal({
+    [PERSONAL_COMPLETION_SOUND_KEY]: normalizeCompletionSound(value),
+  });
+}
+
+export function loadPersonalFinalSound() {
+  return getLocal(PERSONAL_FINAL_SOUND_KEY).then((data) =>
+    normalizeFinalSound(data[PERSONAL_FINAL_SOUND_KEY])
+  );
+}
+
+export function savePersonalFinalSound(value) {
+  return setLocal({
+    [PERSONAL_FINAL_SOUND_KEY]: normalizeFinalSound(value),
+  });
+}
+
+export function loadPersonalTaskSound() {
+  return getLocal(PERSONAL_TASK_SOUND_KEY).then((data) =>
+    normalizeTaskSound(data[PERSONAL_TASK_SOUND_KEY])
+  );
+}
+
+export function savePersonalTaskSound(value) {
+  return setLocal({
+    [PERSONAL_TASK_SOUND_KEY]: normalizeTaskSound(value),
+  });
+}
+
 export function onTaskEntryOpenChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName !== "local" || !changes[TASK_ENTRY_OPEN_KEY]) {
@@ -337,5 +376,37 @@ export function onTaskSoundChanged(callback) {
     }
 
     callback(normalizeTaskSound(changes[TASK_SOUND_KEY].newValue));
+  });
+}
+
+export function onPersonalCompletionSoundChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_COMPLETION_SOUND_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizeCompletionSound(changes[PERSONAL_COMPLETION_SOUND_KEY].newValue)
+    );
+  });
+}
+
+export function onPersonalFinalSoundChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_FINAL_SOUND_KEY]) {
+      return;
+    }
+
+    callback(normalizeFinalSound(changes[PERSONAL_FINAL_SOUND_KEY].newValue));
+  });
+}
+
+export function onPersonalTaskSoundChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_TASK_SOUND_KEY]) {
+      return;
+    }
+
+    callback(normalizeTaskSound(changes[PERSONAL_TASK_SOUND_KEY].newValue));
   });
 }

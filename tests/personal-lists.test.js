@@ -7,6 +7,7 @@ import {
   formatActiveListLabel,
   nextPersonalPresentationAction,
   normalizePersonalPresentation,
+  personalAudioAllowed,
   visibleTasksForActiveList,
 } from "../src/shared/personal-lists.js";
 
@@ -50,6 +51,13 @@ test("Public never receives Private task text during a list mismatch", () => {
     ),
     false
   );
+});
+
+test("Personal audio is allowed only in Personal Private", () => {
+  assert.equal(personalAudioAllowed("personal", "private"), true);
+  assert.equal(personalAudioAllowed("personal", "public"), false);
+  assert.equal(personalAudioAllowed("client", "private"), false);
+  assert.equal(personalAudioAllowed("client", "public"), false);
 });
 
 test("active-list labels distinguish Public from Private", () => {

@@ -47,3 +47,10 @@ export function taskListAriaLabel(kind) {
 export function applyPersonalPresentation(value, root = document.body) {
   root.dataset.personalPresentation = normalizePersonalPresentation(value);
 }
+
+export function personalAudioAllowed(presentationMode, personalPresentation) {
+  return (
+    presentationMode === "personal" &&
+    normalizePersonalPresentation(personalPresentation) === "private"
+  );
+}

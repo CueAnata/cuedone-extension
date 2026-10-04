@@ -35,6 +35,7 @@ import {
   setCelebrationAudioEnabled,
   showCelebration,
   showFinalTrail,
+  stopCelebrationAudio,
   unlockCelebrationAudio,
 } from "./celebrations.js";
 import {
@@ -47,7 +48,10 @@ import {
   loadCompletionStyle,
   loadFinalCelebration,
   loadFinalSound,
+  loadPersonalCompletionSound,
+  loadPersonalFinalSound,
   loadPersonalPresentation,
+  loadPersonalTaskSound,
   loadPresentationMode,
   loadReward,
   loadTaskEntryOpen,
@@ -56,7 +60,10 @@ import {
   onCompletionStyleChanged,
   onFinalCelebrationChanged,
   onFinalSoundChanged,
+  onPersonalCompletionSoundChanged,
+  onPersonalFinalSoundChanged,
   onPersonalPresentationChanged,
+  onPersonalTaskSoundChanged,
   onPresentationModeChanged,
   onRewardChanged,
   onTaskEntryOpenChanged,
@@ -65,7 +72,10 @@ import {
   saveCompletionStyle,
   saveFinalCelebration,
   saveFinalSound,
+  savePersonalCompletionSound,
+  savePersonalFinalSound,
   savePersonalPresentation,
+  savePersonalTaskSound,
   saveReward,
   saveTaskEntryOpen,
   saveTaskSound,
@@ -80,9 +90,11 @@ import {
   emptyStateCopy,
   formatActiveListLabel,
   nextPersonalPresentationAction,
+  personalAudioAllowed,
   taskListAriaLabel,
   visibleTasksForActiveList,
 } from "./personal-lists.js";
+import { planPersonalPrivateAudio } from "./personal-audio.js";
 import { loadList, onListChanged, saveList } from "./task-store.js";
 
 export async function mountTaskList(root) {
@@ -99,6 +111,9 @@ export async function mountTaskList(root) {
   let pendingSynchronizedTasks = null;
   let pendingSynchronizedKind = null;
   let personalPresentation = "private";
+  let personalSound = "off";
+  let personalTaskSound = "bubble-pop";
+  let personalFinalSound = "current";
   let tasksKind = "private";
 
   root.innerHTML = `
@@ -159,6 +174,73 @@ export async function mountTaskList(root) {
           Private and Public are separate lists. This is a presentation choice,
           not a lock or account.
         </p>
+        <div class="personal-audio-settings" hidden>
+          <div class="personal-pref-row">
+            <p class="personal-pref-label" id="personal-completion-sound-label">
+              Sound
+            </p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="personal-completion-sound-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-completion-sound="off"
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-completion-sound="on"
+              >
+                On
+              </button>
+            </div>
+          </div>
+          <div class="personal-pref-row personal-task-sound-row">
+            <label class="personal-pref-label" for="personal-task-sound">
+              Task sound
+            </label>
+            <div class="personal-task-sound-controls">
+              <select id="personal-task-sound" class="personal-task-sound-select">
+                <option value="none">None</option>
+                <option value="bubble-pop">Bubble Pop</option>
+                <option value="soft-click">Soft Click</option>
+                <option value="wood-tap">Wood Tap</option>
+                <option value="random">Random</option>
+              </select>
+              <button
+                class="personal-task-sound-preview sound-preview-button"
+                type="button"
+              >
+                Preview
+              </button>
+            </div>
+          </div>
+          <div class="personal-pref-row personal-final-sound-row">
+            <label class="personal-pref-label" for="personal-final-sound">
+              Final sound
+            </label>
+            <div class="personal-final-sound-controls">
+              <select id="personal-final-sound" class="personal-final-sound-select">
+                <option value="current">Current tone</option>
+                <option value="yay">Yay!</option>
+                <option value="applause">Applause</option>
+                <option value="trumpet-fanfare">Trumpet fanfare</option>
+                <option value="hurrah">Hurrah!</option>
+              </select>
+              <button
+                class="personal-final-sound-preview sound-preview-button"
+                type="button"
+              >
+                Preview
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="personal-list-error" role="alert" hidden></p>
     </section>
@@ -376,6 +458,22 @@ export async function mountTaskList(root) {
   const personalPresentationButtons = root.querySelectorAll(
     "[data-personal-presentation]"
   );
+  const personalAudioSettings = root.querySelector(".personal-audio-settings");
+  const personalSoundButtons = root.querySelectorAll(
+    "[data-personal-completion-sound]"
+  );
+  const personalTaskSoundSelect = root.querySelector(
+    ".personal-task-sound-select"
+  );
+  const personalTaskSoundPreviewButton = root.querySelector(
+    ".personal-task-sound-preview"
+  );
+  const personalFinalSoundSelect = root.querySelector(
+    ".personal-final-sound-select"
+  );
+  const personalFinalSoundPreviewButton = root.querySelector(
+    ".personal-final-sound-preview"
+  );
   const personalListError = root.querySelector(".personal-list-error");
   const progressSection = root.querySelector(".client-progress");
   const progressLabel = root.querySelector(".progress-label");
@@ -453,13 +551,77 @@ export async function mountTaskList(root) {
     }
   }
 
+  function canPlayPersonalAudio() {
+    return personalAudioAllowed(
+      document.body.dataset.presentation,
+      personalPresentation
+    );
+  }
+
+  function syncActiveAudioGate() {
+    const personalOn = canPlayPersonalAudio() && personalSound === "on";
+    const clientOn =
+      isClientMode() && document.body.dataset.completionSound === "on";
+    setCelebrationAudioEnabled(personalOn || clientOn);
+    personalTaskSoundPreviewButton.disabled = !personalOn;
+    personalFinalSoundPreviewButton.disabled = !personalOn;
+    taskSoundPreviewButton.disabled = !clientOn;
+    finalSoundPreviewButton.disabled = !clientOn;
+  }
+
+  function applyActiveAudioForView() {
+    stopCelebrationAudio();
+    syncActiveAudioGate();
+  }
+
+  function applyPersonalSound(value) {
+    personalSound = value === "on" ? "on" : "off";
+    document.body.dataset.personalCompletionSound = personalSound;
+    for (const button of personalSoundButtons) {
+      const isCurrent = button.dataset.personalCompletionSound === personalSound;
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+    syncActiveAudioGate();
+  }
+
+  function applyPersonalTaskSound(value) {
+    personalTaskSound = normalizeTaskSound(value);
+    document.body.dataset.personalTaskSound = personalTaskSound;
+    personalTaskSoundSelect.value = personalTaskSound;
+  }
+
+  function applyPersonalFinalSound(value) {
+    personalFinalSound = normalizeFinalSound(value);
+    document.body.dataset.personalFinalSound = personalFinalSound;
+    personalFinalSoundSelect.value = personalFinalSound;
+  }
+
+  function playPersonalPrivateAudio(plan) {
+    if (!plan?.playSound || !canPlayPersonalAudio() || personalSound !== "on") {
+      return;
+    }
+
+    try {
+      if (plan.kind === "final") {
+        playCelebrationSound("final", personalFinalSound);
+      } else {
+        playTaskSound(personalTaskSound);
+      }
+    } catch {
+      // Audio is optional.
+    }
+  }
+
   function updatePersonalChrome() {
     const personal = !isClientMode();
     const kind = currentListKind();
     personalSettings.hidden = !personal;
+    personalAudioSettings.hidden = !personal || kind !== "private";
     personalListLabel.textContent = formatActiveListLabel(kind);
     list.setAttribute("aria-label", taskListAriaLabel(kind));
     paintPersonalPresentation(personalPresentation);
+    syncActiveAudioGate();
   }
 
   function prepareListSwitch() {
@@ -614,14 +776,15 @@ export async function mountTaskList(root) {
   function applyCompletionSound(value) {
     const current = value === "on" ? "on" : "off";
     document.body.dataset.completionSound = current;
-    setCelebrationAudioEnabled(current === "on");
-    finalSoundPreviewButton.disabled = current !== "on";
-    taskSoundPreviewButton.disabled = current !== "on";
+    const clientPreviewOn = isClientMode() && current === "on";
+    finalSoundPreviewButton.disabled = !clientPreviewOn;
+    taskSoundPreviewButton.disabled = !clientPreviewOn;
     for (const button of completionSoundButtons) {
       const isCurrent = button.dataset.completionSound === current;
       button.classList.toggle("is-current", isCurrent);
       button.setAttribute("aria-pressed", String(isCurrent));
     }
+    syncActiveAudioGate();
   }
 
   function applyFinalSound(value) {
@@ -1037,6 +1200,15 @@ export async function mountTaskList(root) {
         playTaskSound(document.body.dataset.taskSound);
       }
     }
+    const personalAudio = planPersonalPrivateAudio({
+      snapshot,
+      liveTasks: visibleTasks(),
+      id,
+      completed: checkbox.checked,
+      presentationMode: document.body.dataset.presentation,
+      personalPresentation,
+      sound: personalSound,
+    });
     tasks = nextTasks;
     tasksKind = kind;
     render();
@@ -1044,6 +1216,7 @@ export async function mountTaskList(root) {
     try {
       await saveList(kind, tasks);
       showListError("");
+      playPersonalPrivateAudio(personalAudio);
     } catch {
       tasks = previous;
       tasksKind = previousKind;
@@ -1169,6 +1342,7 @@ export async function mountTaskList(root) {
   }
 
   onPresentationModeChanged(() => {
+    applyActiveAudioForView();
     const kind = currentListKind();
     if (kind !== tasksKind) {
       void showActiveList(kind);
@@ -1190,6 +1364,7 @@ export async function mountTaskList(root) {
     personalPresentation = next;
     applyPersonalPresentation(next);
     paintPersonalPresentation(next);
+    applyActiveAudioForView();
     void showActiveList(currentListKind());
   });
 
@@ -1224,6 +1399,18 @@ export async function mountTaskList(root) {
 
   onTaskSoundChanged((value) => {
     applyTaskSound(value);
+  });
+
+  onPersonalCompletionSoundChanged((value) => {
+    applyPersonalSound(value);
+  });
+
+  onPersonalFinalSoundChanged((value) => {
+    applyPersonalFinalSound(value);
+  });
+
+  onPersonalTaskSoundChanged((value) => {
+    applyPersonalTaskSound(value);
   });
 
   for (const button of completionStyleButtons) {
@@ -1299,6 +1486,71 @@ export async function mountTaskList(root) {
     playTaskSound(document.body.dataset.taskSound);
   });
 
+  for (const button of personalSoundButtons) {
+    button.addEventListener("click", () => {
+      const action = nextSoundAction(button.dataset.personalCompletionSound);
+      if (!action || !canPlayPersonalAudio()) {
+        return;
+      }
+
+      const previous = personalSound;
+      applyPersonalSound(action);
+      if (action === "on") {
+        unlockCelebrationAudio();
+      }
+      savePersonalCompletionSound(action).catch(() => {
+        applyPersonalSound(previous);
+        showListError(
+          "CueDone could not save that sound setting. Your current setting is unchanged."
+        );
+      });
+    });
+  }
+
+  personalTaskSoundSelect.addEventListener("change", () => {
+    if (!canPlayPersonalAudio()) {
+      applyPersonalTaskSound(personalTaskSound);
+      return;
+    }
+
+    const previous = personalTaskSound;
+    const sound = normalizeTaskSound(personalTaskSoundSelect.value);
+    applyPersonalTaskSound(sound);
+    savePersonalTaskSound(sound).catch(() => {
+      applyPersonalTaskSound(previous);
+    });
+  });
+
+  personalFinalSoundSelect.addEventListener("change", () => {
+    if (!canPlayPersonalAudio()) {
+      applyPersonalFinalSound(personalFinalSound);
+      return;
+    }
+
+    const previous = personalFinalSound;
+    const sound = normalizeFinalSound(personalFinalSoundSelect.value);
+    applyPersonalFinalSound(sound);
+    savePersonalFinalSound(sound).catch(() => {
+      applyPersonalFinalSound(previous);
+    });
+  });
+
+  personalFinalSoundPreviewButton.addEventListener("click", () => {
+    if (!canPlayPersonalAudio() || personalSound !== "on") {
+      return;
+    }
+
+    playCelebrationSound("final", personalFinalSound);
+  });
+
+  personalTaskSoundPreviewButton.addEventListener("click", () => {
+    if (!canPlayPersonalAudio() || personalSound !== "on") {
+      return;
+    }
+
+    playTaskSound(personalTaskSound);
+  });
+
   list.addEventListener("pointerdown", (event) => {
     const item = event.target.closest(".task-item");
     if (
@@ -1313,6 +1565,10 @@ export async function mountTaskList(root) {
       document.body.dataset.completionStyle === "celebrate" &&
       document.body.dataset.completionSound === "on"
     ) {
+      unlockCelebrationAudio();
+    }
+
+    if (canPlayPersonalAudio() && personalSound === "on") {
       unlockCelebrationAudio();
     }
   });
@@ -1375,7 +1631,11 @@ export async function mountTaskList(root) {
   applyCompletionSound(await loadCompletionSound());
   applyFinalSound(await loadFinalSound());
   applyTaskSound(await loadTaskSound());
+  applyPersonalSound(await loadPersonalCompletionSound());
+  applyPersonalTaskSound(await loadPersonalTaskSound());
+  applyPersonalFinalSound(await loadPersonalFinalSound());
   applyFinalCelebration(await loadFinalCelebration());
+  applyActiveAudioForView();
   const initialKind = currentListKind();
   try {
     tasks = await loadList(initialKind);

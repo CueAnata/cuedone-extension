@@ -48,6 +48,18 @@ import {
   saveFinalCelebration,
   saveFinalSound,
   saveTaskSound,
+  PERSONAL_COMPLETION_SOUND_KEY,
+  PERSONAL_FINAL_SOUND_KEY,
+  PERSONAL_TASK_SOUND_KEY,
+  loadPersonalCompletionSound,
+  loadPersonalFinalSound,
+  loadPersonalTaskSound,
+  onPersonalCompletionSoundChanged,
+  onPersonalFinalSoundChanged,
+  onPersonalTaskSoundChanged,
+  savePersonalCompletionSound,
+  savePersonalFinalSound,
+  savePersonalTaskSound,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
@@ -322,6 +334,53 @@ test("task sound changes synchronize through shared local storage", async () => 
   assert.deepEqual(observed, ["random", "bubble-pop"]);
 });
 
+test("Personal audio preferences persist separately from Client audio", async () => {
+  const store = mockChromeStorage();
+  assert.equal(await loadPersonalCompletionSound(), "off");
+  assert.equal(await loadPersonalTaskSound(), "bubble-pop");
+  assert.equal(await loadPersonalFinalSound(), "current");
+  await saveCompletionSound("on");
+  await saveTaskSound("wood-tap");
+  await saveFinalSound("hurrah");
+  assert.equal(await loadPersonalCompletionSound(), "off");
+  assert.equal(await loadPersonalTaskSound(), "bubble-pop");
+  assert.equal(await loadPersonalFinalSound(), "current");
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("soft-click");
+  await savePersonalFinalSound("applause");
+  assert.equal(store[PERSONAL_COMPLETION_SOUND_KEY], "on");
+  assert.equal(store[PERSONAL_TASK_SOUND_KEY], "soft-click");
+  assert.equal(store[PERSONAL_FINAL_SOUND_KEY], "applause");
+  assert.equal(store[COMPLETION_SOUND_KEY], "on");
+  assert.equal(store[TASK_SOUND_KEY], "wood-tap");
+  assert.equal(store[FINAL_SOUND_KEY], "hurrah");
+  assert.equal(await loadCompletionSound(), "on");
+  assert.equal(await loadTaskSound(), "wood-tap");
+  assert.equal(await loadFinalSound(), "hurrah");
+});
+
+test("Personal audio preference changes synchronize through shared local storage", async () => {
+  mockChromeStorage();
+  const sounds = [];
+  const tasks = [];
+  const finals = [];
+  const stopSound = onPersonalCompletionSoundChanged((value) => sounds.push(value));
+  const stopTask = onPersonalTaskSoundChanged((value) => tasks.push(value));
+  const stopFinal = onPersonalFinalSoundChanged((value) => finals.push(value));
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("random");
+  await savePersonalFinalSound("yay");
+  stopSound();
+  stopTask();
+  stopFinal();
+  await savePersonalCompletionSound("off");
+  await savePersonalTaskSound("none");
+  await savePersonalFinalSound("hurrah");
+  assert.deepEqual(sounds, ["on"]);
+  assert.deepEqual(tasks, ["random"]);
+  assert.deepEqual(finals, ["yay"]);
+});
+
 test("saving Client presentation or motivator does not alter tasks", async () => {
   mockChromeStorage();
   const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
@@ -339,6 +398,9 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveFinalSound("applause");
   await saveTaskSound("soft-click");
   await savePersonalPresentation("public");
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("none");
+  await savePersonalFinalSound("yay");
   assert.deepEqual(await loadTasks(), tasks);
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
   const { loadPublicTasks } = await import("../src/shared/task-store.js");

@@ -755,6 +755,39 @@ body[data-presentation="personal"] .personal-settings:not([hidden]) {
   display: none;
 }
 
+.personal-audio-settings {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .personal-audio-settings:not([hidden]) {
+  display: flex;
+}
+
+.personal-task-sound-controls,
+.personal-final-sound-controls {
+  display: flex;
+  min-width: 0;
+  max-width: 68%;
+  gap: 6px;
+}
+
+.personal-task-sound-select,
+.personal-final-sound-select {
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 650;
+  flex: 1;
+}
+
 .client-pref-row {
   display: flex;
   align-items: center;
@@ -826,19 +859,25 @@ body[data-presentation="personal"] .personal-settings:not([hidden]) {
 
 @media (max-width: 420px) {
   .client-final-sound-row,
-  .client-task-sound-row {
+  .client-task-sound-row,
+  .personal-final-sound-row,
+  .personal-task-sound-row {
     align-items: flex-start;
   }
 
   .client-final-sound-controls,
-  .client-task-sound-controls {
+  .client-task-sound-controls,
+  .personal-final-sound-controls,
+  .personal-task-sound-controls {
     max-width: 72%;
     flex-wrap: wrap;
     justify-content: flex-end;
   }
 
   .final-sound-select,
-  .task-sound-select {
+  .task-sound-select,
+  .personal-final-sound-select,
+  .personal-task-sound-select {
     flex-basis: 100%;
   }
 }

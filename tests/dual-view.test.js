@@ -336,6 +336,68 @@ test("Personal Settings is a collapsed Private/Public selector that isolates lis
   );
 });
 
+test("Personal Private audio is isolated, saved after completion, and silent in Public", () => {
+  assert.match(taskListJs, /class="personal-audio-settings" hidden/);
+  assert.match(taskListJs, /data-personal-completion-sound="off"/);
+  assert.match(taskListJs, /data-personal-completion-sound="on"/);
+  assert.match(taskListJs, /id="personal-task-sound"/);
+  assert.match(taskListJs, /id="personal-final-sound"/);
+  assert.match(taskListJs, /option value="bubble-pop">Bubble Pop/);
+  assert.match(taskListJs, /option value="current">Current tone/);
+  assert.match(taskListJs, /class="personal-task-sound-preview sound-preview-button"/);
+  assert.match(taskListJs, /class="personal-final-sound-preview sound-preview-button"/);
+  assert.match(taskListJs, /savePersonalCompletionSound/);
+  assert.match(taskListJs, /savePersonalTaskSound/);
+  assert.match(taskListJs, /savePersonalFinalSound/);
+  assert.match(taskListJs, /onPersonalCompletionSoundChanged/);
+  assert.match(taskListJs, /planPersonalPrivateAudio/);
+  assert.match(taskListJs, /playPersonalPrivateAudio/);
+  assert.match(taskListJs, /applyActiveAudioForView/);
+  assert.match(taskListJs, /stopCelebrationAudio/);
+
+  const completeHandler = taskListJs.slice(
+    taskListJs.indexOf('list.addEventListener("change"'),
+    taskListJs.indexOf('list.addEventListener("click"')
+  );
+  assert.ok(
+    completeHandler.indexOf("await saveList(kind, tasks)") <
+      completeHandler.indexOf("playPersonalPrivateAudio(personalAudio)")
+  );
+  assert.match(completeHandler, /playPersonalPrivateAudio\(personalAudio\)/);
+  const failStart = completeHandler.indexOf("} catch {");
+  assert.doesNotMatch(
+    completeHandler.slice(failStart),
+    /playPersonalPrivateAudio|playCelebrationSound|playTaskSound/
+  );
+
+  const personalPreview = taskListJs.slice(
+    taskListJs.indexOf(
+      'personalFinalSoundPreviewButton.addEventListener("click"'
+    ),
+    taskListJs.indexOf('list.addEventListener("pointerdown"')
+  );
+  assert.match(personalPreview, /canPlayPersonalAudio\(\)/);
+  assert.match(personalPreview, /personalSound !== "on"/);
+  assert.doesNotMatch(personalPreview, /dataset\.completionSound/);
+
+  const switchFn = taskListJs.slice(
+    taskListJs.indexOf("onPresentationModeChanged(() => {"),
+    taskListJs.indexOf("onRewardChanged((reward) => {")
+  );
+  assert.match(switchFn, /applyActiveAudioForView\(\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\]\s*\n\s*\.personal-audio-settings:not\(\[hidden\]\)/
+  );
+  assert.match(css, /\.personal-task-sound-row/);
+  assert.match(
+    css,
+    /@media \(max-width: 420px\) \{[\s\S]*?\.personal-final-sound-select/
+  );
+});
+
 test("Reset List appears only when every task is complete and confirms before unchecking", () => {
   assert.match(taskListJs, /Reset List/);
   assert.match(taskListJs, /Start this list again\?/);
