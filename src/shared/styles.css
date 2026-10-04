@@ -178,6 +178,10 @@ input {
 .add-button:focus-visible,
 .done-button:focus-visible,
 .add-task-toggle:focus-visible,
+.new-list-toggle:focus-visible,
+.create-new-list-button:focus-visible,
+.cancel-new-list-button:focus-visible,
+.carryover-checkbox:focus-visible,
 .reset-list-button:focus-visible,
 .reset-confirm-button:focus-visible,
 .reset-cancel-button:focus-visible,
@@ -366,6 +370,150 @@ input {
 .delete-button:hover:not(:disabled) {
   background: #f6e8e5;
   color: var(--danger);
+}
+
+.list-lifecycle {
+  margin: 14px 2px 0;
+}
+
+.new-list-toggle {
+  min-height: 28px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.new-list-toggle:hover,
+.new-list-toggle.is-open {
+  color: var(--accent-hover);
+}
+
+.new-list-toggle:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.new-list-review {
+  margin-top: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.new-list-review[hidden],
+.carryover-list[hidden],
+.carryover-empty[hidden],
+.new-list-error[hidden] {
+  display: none !important;
+}
+
+.new-list-heading {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.3;
+}
+
+.new-list-copy,
+.carryover-empty,
+.new-list-status,
+.new-list-error {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.new-list-copy,
+.carryover-empty,
+.new-list-status {
+  color: var(--muted);
+}
+
+.new-list-error {
+  color: var(--danger);
+  font-weight: 650;
+}
+
+.carryover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.carryover-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.carryover-checkbox {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+
+.carryover-task-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.new-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.create-new-list-button,
+.cancel-new-list-button {
+  min-height: 30px;
+  padding: 4px 11px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.create-new-list-button {
+  border: 0;
+  background: var(--accent);
+  color: #fffdf8;
+}
+
+.create-new-list-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.cancel-new-list-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.cancel-new-list-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.create-new-list-button:disabled,
+.cancel-new-list-button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .list-reset {

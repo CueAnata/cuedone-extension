@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   celebrationAudioEnabledForTests,
+  clearCelebrationFeedback,
   FINAL_SOUND_ASSETS,
   playCelebrationSound,
   playTaskSound,
@@ -396,6 +397,31 @@ test("audio failure never throws or blocks final visual feedback", async () => {
     ),
     true
   );
+});
+
+test("clearing completion feedback stops audio and removes active visuals", () => {
+  installDom();
+  const audio = installAudio();
+  setCelebrationAudioEnabled(true);
+  playTaskSound("bubble-pop");
+  const container = createNode();
+  document.body.append(container);
+  showFinalTrail({ trail: "stars", container });
+  showCelebration({ kind: "final", rewardText: "REWARD: MUSIC!" });
+
+  const celebration = document.querySelector(".celebration-layer");
+  const trail = container.querySelector(".final-trail-layer");
+  assert.equal(celebration.classList.contains("is-visible"), true);
+  assert.equal(trail.classList.contains("is-visible"), true);
+
+  clearCelebrationFeedback(container);
+
+  assert.equal(celebration.classList.contains("is-visible"), false);
+  assert.equal(trail.classList.contains("is-visible"), false);
+  assert.equal(celebration.childNodes.length, 0);
+  assert.equal(trail.childNodes.length, 0);
+  assert.ok(audio.pauses() >= 1);
+  assert.equal(celebrationAudioEnabledForTests(), true);
 });
 
 test("final celebration prominently reveals the chosen reward", () => {

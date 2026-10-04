@@ -29,6 +29,7 @@ import {
   rewardShowsCustomInput,
 } from "./reward.js";
 import {
+  clearCelebrationFeedback,
   playCelebrationSound,
   playTaskSound,
   setCelebrationAudioEnabled,
@@ -36,6 +37,11 @@ import {
   showFinalTrail,
   unlockCelebrationAudio,
 } from "./celebrations.js";
+import {
+  refreshCarryoverReview,
+  saveNewListFromReview,
+  taskListsMatch,
+} from "./list-lifecycle.js";
 import {
   loadCompletionSound,
   loadCompletionStyle,
@@ -75,6 +81,10 @@ export async function mountTaskList(root) {
   let completionSnapshot = null;
   let finalCelebrationActive = false;
   let lastTrailPick = null;
+  let carryoverOpen = false;
+  let carryoverReview = null;
+  let newListSaveInProgress = false;
+  let pendingSynchronizedTasks = null;
 
   root.innerHTML = `
     <form class="task-form">
@@ -238,6 +248,35 @@ export async function mountTaskList(root) {
       </div>
       <p class="client-reward-value" hidden></p>
     </section>
+    <section class="list-lifecycle">
+      <button
+        class="new-list-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="new-list-review"
+      >
+        Start a New List
+      </button>
+      <div id="new-list-review" class="new-list-review" hidden>
+        <h2 class="new-list-heading" id="new-list-heading">Start a New List</h2>
+        <p class="new-list-copy">
+          Choose unfinished tasks to carry over. Completed tasks and unfinished
+          tasks you deselect will be removed.
+        </p>
+        <div
+          class="carryover-list"
+          role="group"
+          aria-labelledby="new-list-heading"
+        ></div>
+        <p class="carryover-empty" hidden></p>
+        <p class="new-list-status" aria-live="polite"></p>
+        <p class="new-list-error" role="alert" hidden></p>
+        <div class="new-list-actions">
+          <button class="create-new-list-button" type="button">Create New List</button>
+          <button class="cancel-new-list-button" type="button">Cancel</button>
+        </div>
+      </div>
+    </section>
     <div class="list-reset" hidden>
       <button type="button" class="reset-list-button">Reset List</button>
       <div class="reset-confirm" hidden>
@@ -260,6 +299,14 @@ export async function mountTaskList(root) {
   const resetConfirm = root.querySelector(".reset-confirm");
   const resetConfirmButton = root.querySelector(".reset-confirm-button");
   const resetCancelButton = root.querySelector(".reset-cancel-button");
+  const newListToggle = root.querySelector(".new-list-toggle");
+  const newListReview = root.querySelector(".new-list-review");
+  const carryoverList = root.querySelector(".carryover-list");
+  const carryoverEmpty = root.querySelector(".carryover-empty");
+  const newListStatus = root.querySelector(".new-list-status");
+  const newListError = root.querySelector(".new-list-error");
+  const createNewListButton = root.querySelector(".create-new-list-button");
+  const cancelNewListButton = root.querySelector(".cancel-new-list-button");
   const emptyState = root.querySelector(".empty-state");
   const progressSection = root.querySelector(".client-progress");
   const progressLabel = root.querySelector(".progress-label");
@@ -310,6 +357,79 @@ export async function mountTaskList(root) {
     settingsPanel.hidden = !expanded;
     settingsToggle.setAttribute("aria-expanded", String(expanded));
     settingsToggle.classList.toggle("is-open", expanded);
+  }
+
+  function setNewListBusy(busy) {
+    createNewListButton.disabled = busy;
+    cancelNewListButton.disabled = busy;
+    newListToggle.disabled = busy;
+  }
+
+  function renderCarryoverReview({ reset = false, message = "" } = {}) {
+    carryoverReview = refreshCarryoverReview(
+      tasks,
+      reset ? null : carryoverReview
+    );
+    const selected = new Set(carryoverReview.selectedIds);
+    carryoverList.replaceChildren();
+
+    for (const task of carryoverReview.unfinished) {
+      const label = document.createElement("label");
+      label.className = "carryover-task";
+      const checkbox = document.createElement("input");
+      checkbox.className = "carryover-checkbox";
+      checkbox.type = "checkbox";
+      checkbox.value = task.id;
+      checkbox.checked = selected.has(task.id);
+      const text = document.createElement("span");
+      text.className = "carryover-task-text";
+      text.textContent = task.text;
+      label.append(checkbox, text);
+      carryoverList.append(label);
+    }
+
+    const noUnfinished = carryoverReview.unfinished.length === 0;
+    carryoverList.hidden = noUnfinished;
+    carryoverEmpty.hidden = !noUnfinished;
+    carryoverEmpty.textContent = tasks.length
+      ? "All tasks are complete. The new list will start empty."
+      : "There are no tasks to carry over. The new list will start empty.";
+    newListStatus.textContent = message;
+  }
+
+  function setCarryoverOpen(isOpen, { reset = false } = {}) {
+    carryoverOpen = isOpen === true;
+    newListReview.hidden = !carryoverOpen;
+    newListToggle.setAttribute("aria-expanded", String(carryoverOpen));
+    newListToggle.classList.toggle("is-open", carryoverOpen);
+    if (!carryoverOpen) {
+      carryoverReview = null;
+      newListStatus.textContent = "";
+      newListError.hidden = true;
+      newListError.textContent = "";
+      return;
+    }
+
+    newListError.hidden = true;
+    newListError.textContent = "";
+    renderCarryoverReview({ reset });
+  }
+
+  function applySynchronizedTasks(nextTasks, message = "") {
+    completionSnapshot = null;
+    tasks = nextTasks;
+    render();
+    if (carryoverOpen) {
+      renderCarryoverReview({ message });
+    }
+  }
+
+  function clearPreviousCompletionState() {
+    completionSnapshot = null;
+    finalCelebrationActive = false;
+    lastTrailPick = null;
+    resetConfirming = false;
+    clearCelebrationFeedback(root);
   }
 
   function applyCompletionStyle(style) {
@@ -572,6 +692,108 @@ export async function mountTaskList(root) {
     await persist(next);
   });
 
+  newListToggle.addEventListener("click", () => {
+    const opening = newListToggle.getAttribute("aria-expanded") !== "true";
+    setCarryoverOpen(opening, { reset: opening });
+    if (opening) {
+      const firstChoice = carryoverList.querySelector(".carryover-checkbox");
+      (firstChoice || createNewListButton).focus();
+    }
+  });
+
+  carryoverList.addEventListener("change", (event) => {
+    const checkbox = event.target.closest(".carryover-checkbox");
+    if (!checkbox || !carryoverReview) {
+      return;
+    }
+
+    const selected = new Set(carryoverReview.selectedIds);
+    if (checkbox.checked) {
+      selected.add(checkbox.value);
+    } else {
+      selected.delete(checkbox.value);
+    }
+    carryoverReview = {
+      ...carryoverReview,
+      selectedIds: carryoverReview.knownIds.filter((id) => selected.has(id)),
+    };
+    newListStatus.textContent = selected.size
+      ? ""
+      : "No tasks selected. The new list will start empty.";
+  });
+
+  cancelNewListButton.addEventListener("click", () => {
+    setCarryoverOpen(false);
+    newListToggle.focus();
+  });
+
+  createNewListButton.addEventListener("click", async () => {
+    if (newListSaveInProgress || !carryoverReview) {
+      return;
+    }
+
+    newListError.hidden = true;
+    newListError.textContent = "";
+    newListStatus.textContent = "Saving new list…";
+    setNewListBusy(true);
+    newListSaveInProgress = true;
+    pendingSynchronizedTasks = null;
+
+    const result = await saveNewListFromReview({
+      reviewedTasks: snapshotTasks(tasks),
+      selectedIds: carryoverReview.selectedIds,
+      loadTasks,
+      saveTasks,
+    });
+
+    newListSaveInProgress = false;
+    setNewListBusy(false);
+
+    if (result.status === "stale") {
+      const synchronized = pendingSynchronizedTasks;
+      pendingSynchronizedTasks = null;
+      applySynchronizedTasks(
+        synchronized && !taskListsMatch(synchronized, result.tasks)
+          ? synchronized
+          : result.tasks,
+        "Tasks changed in another view. Review the refreshed list before creating."
+      );
+      return;
+    }
+
+    if (result.status === "failure") {
+      if (pendingSynchronizedTasks) {
+        const synchronized = pendingSynchronizedTasks;
+        pendingSynchronizedTasks = null;
+        applySynchronizedTasks(
+          synchronized,
+          "Tasks changed in another view. Review the refreshed list before trying again."
+        );
+      } else {
+        newListStatus.textContent = "";
+      }
+      newListError.textContent =
+        "CueDone could not save the new list. Your current list is unchanged. Try again.";
+      newListError.hidden = false;
+      return;
+    }
+
+    const synchronized = pendingSynchronizedTasks;
+    pendingSynchronizedTasks = null;
+    const nextTasks =
+      synchronized && !taskListsMatch(synchronized, result.tasks)
+        ? synchronized
+        : result.tasks;
+    clearPreviousCompletionState();
+    setCarryoverOpen(false);
+    tasks = nextTasks;
+    restoreFocus = null;
+    render();
+    applyEntryMode(true);
+    saveTaskEntryOpen(true).catch(() => {});
+    input.focus();
+  });
+
   doneButton.addEventListener("click", async () => {
     applyEntryMode(false);
     await saveTaskEntryOpen(false);
@@ -695,9 +917,15 @@ export async function mountTaskList(root) {
   });
 
   onTasksChanged((nextTasks) => {
-    completionSnapshot = null;
-    tasks = nextTasks;
-    render();
+    if (newListSaveInProgress) {
+      pendingSynchronizedTasks = nextTasks;
+      return;
+    }
+
+    applySynchronizedTasks(
+      nextTasks,
+      carryoverOpen ? "Tasks changed. Carryover choices were refreshed." : ""
+    );
   });
 
   onTaskEntryOpenChanged((isOpen) => {

@@ -299,6 +299,27 @@ export function stopCelebrationAudio() {
   stopActivePlayback({ suspendContext: true });
 }
 
+export function clearCelebrationFeedback(container) {
+  globalThis.clearTimeout(hideTimer);
+  globalThis.clearTimeout(trailTimer);
+  hideTimer = 0;
+  trailTimer = 0;
+  stopCelebrationAudio();
+
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const celebration = document.querySelector(".celebration-layer");
+  celebration?.classList.remove("is-visible");
+  celebration?.replaceChildren();
+
+  const root = container || document.querySelector(".app-main") || document.body;
+  const trail = root?.querySelector?.(".final-trail-layer");
+  trail?.classList.remove("is-visible");
+  trail?.replaceChildren();
+}
+
 export function setCelebrationAudioEnabled(enabled) {
   audioEnabled = enabled === true;
   if (!audioEnabled) {

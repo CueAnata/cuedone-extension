@@ -168,7 +168,7 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.match(panelMarkup, /id="final-celebration"/);
 
   const setterStart = taskListJs.indexOf("function setSettingsPanelOpen");
-  const setterEnd = taskListJs.indexOf("function applyCompletionStyle", setterStart);
+  const setterEnd = taskListJs.indexOf("function setNewListBusy", setterStart);
   const setter = taskListJs.slice(setterStart, setterEnd);
   assert.match(setter, /settingsPanel\.hidden = !expanded/);
   assert.match(setter, /setAttribute\("aria-expanded", String\(expanded\)\)/);
@@ -189,6 +189,65 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.ok(
     taskListJs.indexOf('class="client-motivator"') > panelEnd,
     "reward controls must remain outside Settings"
+  );
+});
+
+test("Start a New List is shared, explicit, synchronized, and separate from Reset List", () => {
+  assert.match(taskListJs, /Start a New List/);
+  assert.match(taskListJs, /Choose unfinished tasks to carry over/);
+  assert.match(taskListJs, /Completed tasks and unfinished\s+tasks you deselect will be removed/);
+  assert.match(taskListJs, /class="create-new-list-button"/);
+  assert.match(taskListJs, /class="cancel-new-list-button"/);
+  assert.match(taskListJs, /aria-controls="new-list-review"/);
+  assert.match(taskListJs, /refreshCarryoverReview/);
+  assert.match(taskListJs, /saveNewListFromReview/);
+  assert.match(taskListJs, /clearCelebrationFeedback/);
+  assert.match(taskListJs, /saveTaskEntryOpen\(true\)/);
+
+  const createStart = taskListJs.indexOf(
+    'createNewListButton.addEventListener("click"'
+  );
+  const createEnd = taskListJs.indexOf(
+    'doneButton.addEventListener("click"',
+    createStart
+  );
+  const createHandler = taskListJs.slice(createStart, createEnd);
+  assert.match(createHandler, /await saveNewListFromReview/);
+  assert.ok(
+    createHandler.indexOf("await saveNewListFromReview") <
+      createHandler.indexOf("tasks = nextTasks")
+  );
+  assert.match(createHandler, /result\.status === "stale"/);
+  assert.match(createHandler, /result\.status === "failure"/);
+  assert.match(createHandler, /Your current list is unchanged/);
+  assert.match(createHandler, /clearPreviousCompletionState\(\)/);
+  assert.doesNotMatch(createHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+  assert.doesNotMatch(
+    createHandler,
+    /saveReward|saveCompletionStyle|saveCompletionSound|saveFinalSound|saveTaskSound|saveFinalCelebration/
+  );
+
+  const cancelStart = taskListJs.indexOf(
+    'cancelNewListButton.addEventListener("click"'
+  );
+  const cancelEnd = taskListJs.indexOf(
+    'createNewListButton.addEventListener("click"',
+    cancelStart
+  );
+  const cancelHandler = taskListJs.slice(cancelStart, cancelEnd);
+  assert.match(cancelHandler, /setCarryoverOpen\(false\)/);
+  assert.doesNotMatch(cancelHandler, /save|tasks\s*=|clearCelebration|render\(/);
+
+  const syncStart = taskListJs.indexOf("onTasksChanged((nextTasks)");
+  const syncEnd = taskListJs.indexOf("onTaskEntryOpenChanged", syncStart);
+  const syncHandler = taskListJs.slice(syncStart, syncEnd);
+  assert.match(syncHandler, /pendingSynchronizedTasks/);
+  assert.match(syncHandler, /applySynchronizedTasks/);
+  assert.match(syncHandler, /Carryover choices were refreshed/);
+
+  assert.ok(
+    taskListJs.indexOf('class="list-lifecycle"') <
+      taskListJs.indexOf('class="list-reset"')
   );
 });
 

@@ -34,11 +34,13 @@ Phase 3B Client View celebrations and sound are approved: brief randomized Clien
 
 The responsive Client layout checkpoint is implemented: compact Top and narrow Side task cards give task text a full row and move reorder/delete controls to a second row. Personal styling is unchanged.
 
+The Start a New List carryover checkpoint is implemented in the shared Personal/Client task list. It reviews current unfinished tasks in order, selects them by default, lets the user deselect carryover tasks, and replaces the list only after local storage succeeds. Completed and deselected tasks are removed; a fully completed list starts empty. Creation clears completion feedback without replaying it and opens task entry. Reset List remains the separate action that unchecks the same completed list. There is no automatic rollover, archive, sublist, or template behavior.
+
 ## Roadmap is not implementation authority
 
 The CueDone Development Blueprint is planning context. Recording a roadmap item in this file or `PROJECT_CONTEXT.md` does not authorize implementing it. Work on one explicitly requested, bounded phase at a time.
 
-The final-task and individual-task audio checkpoints are implemented. Later planned phases are list lifecycle, alternate task layouts, visual progress themes, Personal Public/Private expansion, Connected Client View, Edge distribution on Windows, Meta VR, and cross-device handoff. They remain unimplemented and unauthorized by roadmap documentation alone.
+The audio checkpoints and Start a New List carryover are implemented. Remaining list-lifecycle work, including any session-ending behavior, and later phases such as alternate task layouts, visual progress themes, Personal Public/Private expansion, Connected Client View, Edge distribution on Windows, Meta VR, and cross-device handoff remain unimplemented and unauthorized by roadmap documentation alone.
 
 ## Roadmap decision gates
 
