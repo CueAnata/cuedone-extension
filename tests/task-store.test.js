@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  loadPersonalEnding,
+  PERSONAL_ENDING_KEY,
+  savePersonalEnding,
+} from "../src/shared/preferences.js";
+import {
+  bindEndingToTasks,
+  clearEndingState,
+  createEndingState,
+  endingVisible,
+} from "../src/shared/personal-messages.js";
 import { createTask } from "../src/shared/tasks.js";
 import {
   PUBLIC_TASKS_STORAGE_KEY,
@@ -148,7 +159,7 @@ test("onListChanged reports each list and ignores the other", async () => {
   const privateTasks = [createTask("Private sync", 1, "priv-sync")];
   const publicTasks = [createTask("Public sync", 2, "pub-sync")];
   await saveList("private", privateTasks);
-  await saveList("public", publicTasks);
+  await saveList("public", publicTasks, { clearEnding: true });
   unsubscribe();
   await saveList("private", []);
 
@@ -156,4 +167,105 @@ test("onListChanged reports each list and ignores the other", async () => {
     { kind: "private", tasks: privateTasks },
     { kind: "public", tasks: publicTasks },
   ]);
+});
+
+test("unfinished pause, task checks, and order restore until Continue list", async () => {
+  const tasks = [
+    { ...createTask("Finished", 1, "done"), completed: true },
+    createTask("Still waiting", 2, "waiting"),
+  ];
+  const store = mockChromeStorage({ [TASKS_STORAGE_KEY]: tasks });
+  await savePersonalEnding(createEndingState("pause"));
+
+  const reopenedTasks = await loadTasks();
+  const reopenedEnding = await loadPersonalEnding();
+  assert.deepEqual(reopenedTasks, tasks);
+  assert.equal(reopenedEnding.text, "Good progress today.");
+  assert.equal(
+    endingVisible(reopenedEnding, "personal", "private", reopenedTasks),
+    true
+  );
+
+  await savePersonalEnding(clearEndingState());
+  assert.deepEqual(await loadTasks(), tasks);
+  assert.deepEqual(await loadPersonalEnding(), clearEndingState());
+  assert.deepEqual(store[TASKS_STORAGE_KEY], tasks);
+});
+
+test("ordinary Private edits retain a deliberate unfinished pause", async () => {
+  const original = [createTask("Original", 1, "original")];
+  const pause = createEndingState("pause");
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: original,
+    [PERSONAL_ENDING_KEY]: pause,
+  });
+  const changed = [
+    { ...original[0], completed: true },
+    createTask("Added while paused", 2, "added"),
+  ];
+
+  await saveList("private", changed);
+  assert.deepEqual(store[TASKS_STORAGE_KEY], changed);
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], pause);
+});
+
+test("Reset List and Start a New List clear a deliberate pause", async () => {
+  const completed = [
+    { ...createTask("One", 1, "one"), completed: true },
+    { ...createTask("Two", 2, "two"), completed: true },
+  ];
+  const pause = createEndingState("pause");
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: completed,
+    [PERSONAL_ENDING_KEY]: pause,
+  });
+  const reset = completed.map((task) => ({ ...task, completed: false }));
+
+  await saveList("private", reset, { clearEnding: true });
+  assert.deepEqual(store[TASKS_STORAGE_KEY], reset);
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], clearEndingState());
+
+  await savePersonalEnding(pause);
+  const newList = [createTask("Carried", 3, "carried")];
+  await saveList("private", newList, { clearEnding: true });
+  assert.deepEqual(store[TASKS_STORAGE_KEY], newList);
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], clearEndingState());
+});
+
+test("completed ending remains separate from unfinished pause behavior", async () => {
+  const completed = [
+    { ...createTask("Done", 1, "done"), completed: true },
+  ];
+  mockChromeStorage({ [TASKS_STORAGE_KEY]: completed });
+  const ending = bindEndingToTasks(
+    createEndingState("complete", {
+      choice: "all-done",
+      customText: "",
+    }),
+    completed
+  );
+  await savePersonalEnding(ending);
+
+  assert.deepEqual(await loadTasks(), completed);
+  assert.deepEqual(await loadPersonalEnding(), ending);
+  assert.equal(
+    endingVisible(ending, "personal", "private", completed),
+    true
+  );
+});
+
+test("Public list changes never expose or clear the Private pause", async () => {
+  const privateTasks = [createTask("Private task", 1, "private")];
+  const pause = createEndingState("pause");
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: privateTasks,
+    [PERSONAL_ENDING_KEY]: pause,
+  });
+  const publicTasks = [createTask("Public agenda", 2, "public")];
+
+  await saveList("public", publicTasks);
+  assert.deepEqual(store[TASKS_STORAGE_KEY], privateTasks);
+  assert.deepEqual(store[PUBLIC_TASKS_STORAGE_KEY], publicTasks);
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], pause);
+  assert.equal(endingVisible(pause, "personal", "public", publicTasks), false);
 });

@@ -441,10 +441,11 @@ test("Personal Private affirmations and session endings stay isolated and silent
   assert.doesNotMatch(continueHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
 
   const persistFn = taskListJs.slice(
-    taskListJs.indexOf("async function persist(nextTasks)"),
+    taskListJs.indexOf("async function persist(nextTasks, { clearEnding = false } = {})"),
     taskListJs.indexOf("function render()")
   );
-  assert.match(persistFn, /await clearStaleEnding\(\)/);
+  assert.match(persistFn, /saveList\(kind, tasks, \{ clearEnding \}\)/);
+  assert.match(persistFn, /clearStaleEnding\(kind, clearEnding\)/);
 
   const css = readFileSync("src/shared/styles.css", "utf8");
   assert.match(css, /\.personal-affirmation \{/);
@@ -494,7 +495,11 @@ test("Reset List appears only when every task is complete and confirms before un
     taskListJs.indexOf("doneButton.addEventListener")
   );
   assert.match(confirmHandler, /resetCompletedTasks\(shown\)/);
-  assert.match(confirmHandler, /await persist\(next\)/);
+  assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true \}\)/);
+  assert.match(
+    confirmHandler,
+    /saveTasks: \(next\) => saveList\(kind, next, \{ clearEnding: true \}\)/
+  );
   assert.doesNotMatch(confirmHandler, /deleteTask/);
   assert.doesNotMatch(confirmHandler, /saveReward/);
   assert.doesNotMatch(confirmHandler, /saveCompletionStyle/);

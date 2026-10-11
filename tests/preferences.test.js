@@ -382,7 +382,7 @@ test("Personal affirmation and ending preferences persist separately from Client
     resolvedId: null,
   });
   assert.equal((await loadPersonalCompleteMessage()).choice, "none");
-  assert.equal((await loadPersonalPauseMessage()).choice, "none");
+  assert.equal((await loadPersonalPauseMessage()).choice, "good-progress");
   assert.deepEqual(await loadPersonalEnding(), { kind: "none", text: "" });
   await saveCompletionSound("on");
   await savePersonalAffirmation({

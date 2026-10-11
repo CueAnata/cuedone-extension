@@ -1,6 +1,7 @@
 import { personalAudioAllowed } from "./personal-lists.js";
 
 export const PERSONAL_MESSAGE_MAX_LENGTH = 120;
+export const DEFAULT_UNFINISHED_ENDING_TEXT = "Good progress today.";
 
 export const AFFIRMATION_PRESETS = Object.freeze([
   { id: "one-step", text: "You’ve got this next step." },
@@ -25,6 +26,7 @@ export const COMPLETE_MESSAGE_PRESETS = Object.freeze([
 ]);
 
 export const PAUSE_MESSAGE_PRESETS = Object.freeze([
+  { id: "good-progress", text: DEFAULT_UNFINISHED_ENDING_TEXT },
   { id: "done-for-now", text: "Progress made. Permission to pause." },
   { id: "every-step", text: "Save your place. Catch your breath." },
   { id: "pick-up", text: "Your next step will be here." },
@@ -94,7 +96,7 @@ export function normalizeAffirmation(value) {
   };
 }
 
-export function normalizeEndingChoice(value, presets) {
+export function normalizeEndingChoice(value, presets, defaultChoice = "none") {
   const stored = value && typeof value === "object" ? value : {};
   const ids = presets.map((item) => item.id);
   let choice = stored.choice;
@@ -104,7 +106,7 @@ export function normalizeEndingChoice(value, presets) {
     choice !== "random" &&
     !ids.includes(choice)
   ) {
-    choice = "none";
+    choice = defaultChoice;
   }
 
   return {
@@ -118,7 +120,7 @@ export function normalizeCompleteMessage(value) {
 }
 
 export function normalizePauseMessage(value) {
-  return normalizeEndingChoice(value, PAUSE_MESSAGE_PRESETS);
+  return normalizeEndingChoice(value, PAUSE_MESSAGE_PRESETS, "good-progress");
 }
 
 export function normalizeEndingState(value) {
@@ -130,7 +132,11 @@ export function normalizeEndingState(value) {
     return { kind: "none", text: "" };
   }
 
-  return { kind, text };
+  const state = { kind, text };
+  if (typeof stored.taskSnapshot === "string") {
+    state.taskSnapshot = stored.taskSnapshot;
+  }
+  return state;
 }
 
 export function affirmationShowsCustom(affirmation) {
@@ -231,7 +237,9 @@ export function resolveEndingText(pref, presets, random = Math.random) {
 export function createEndingState(kind, pref, random = Math.random) {
   const presets =
     kind === "complete" ? COMPLETE_MESSAGE_PRESETS : PAUSE_MESSAGE_PRESETS;
-  const text = resolveEndingText(pref, presets, random);
+  const normalizedPref =
+    kind === "complete" ? normalizeCompleteMessage(pref) : normalizePauseMessage(pref);
+  const text = resolveEndingText(normalizedPref, presets, random);
   return normalizeEndingState({ kind, text });
 }
 
@@ -255,12 +263,44 @@ export function isCompletedList(tasks) {
   );
 }
 
-export function endingVisible(ending, presentationMode, personalPresentation) {
+// Completed-list endings belong to the exact completed list that produced
+// them. A deliberate pause stays active until Continue list, Reset List, or
+// Start a New List clears it, even if ordinary task edits happen meanwhile.
+export function bindEndingToTasks(ending, tasks) {
   const state = normalizeEndingState(ending);
+  if (state.kind !== "complete") {
+    return state;
+  }
+
+  return { ...state, taskSnapshot: JSON.stringify(tasks) };
+}
+
+export function endingMatchesTasks(ending, tasks) {
+  const state = normalizeEndingState(ending);
+  if (!Array.isArray(tasks)) {
+    return false;
+  }
+  if (state.kind === "pause") {
+    return true;
+  }
+  if (state.kind !== "complete" || !isCompletedList(tasks)) {
+    return false;
+  }
+
+  // Completed endings saved before snapshots were introduced keep their
+  // established restore behavior. Newly created endings are list-bound.
+  return !state.taskSnapshot || state.taskSnapshot === JSON.stringify(tasks);
+}
+
+export function endingVisible(
+  ending,
+  presentationMode,
+  personalPresentation,
+  tasks
+) {
   return (
     personalPrivateFeaturesAllowed(presentationMode, personalPresentation) &&
-    state.kind !== "none" &&
-    Boolean(state.text)
+    endingMatchesTasks(ending, tasks)
   );
 }
 
@@ -273,6 +313,6 @@ export function finishForNowVisible({
   return (
     personalPrivateFeaturesAllowed(presentationMode, personalPresentation) &&
     canFinishForNow(tasks) &&
-    normalizeEndingState(ending).kind === "none"
+    !endingMatchesTasks(ending, tasks)
   );
 }

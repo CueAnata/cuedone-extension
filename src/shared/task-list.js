@@ -113,6 +113,7 @@ import {
   PAUSE_MESSAGE_PRESETS,
   PERSONAL_MESSAGE_MAX_LENGTH,
   affirmationShowsCustom,
+  bindEndingToTasks,
   chooseAffirmation,
   clearEndingState,
   createEndingState,
@@ -883,7 +884,8 @@ export async function mountTaskList(root) {
     const showEnding = endingVisible(
       personalEnding,
       document.body.dataset.presentation,
-      personalPresentation
+      personalPresentation,
+      visibleTasks()
     );
     personalAffirmationDisplay.hidden = !affirmationText || showEnding;
     personalAffirmationDisplay.textContent = affirmationText;
@@ -910,7 +912,8 @@ export async function mountTaskList(root) {
     });
   }
 
-  async function persistEnding(nextEnding) {
+  async function persistEnding(nextEnding, endingTasks = visibleTasks()) {
+    nextEnding = bindEndingToTasks(nextEnding, endingTasks);
     const previous = personalEnding;
     applyPersonalEnding(nextEnding);
     paintPersonalMessages();
@@ -928,12 +931,16 @@ export async function mountTaskList(root) {
     }
   }
 
-  async function clearStaleEnding() {
-    if (personalEnding.kind === "none") {
-      return true;
+  function clearStaleEnding(kind, clearPause = false) {
+    // Private list writes clear stale completion feedback atomically. Public
+    // edits never touch the Private ending, and ordinary Private edits retain
+    // a deliberate pause until Continue list or an explicit lifecycle action.
+    if (kind !== "private" || (!clearPause && personalEnding.kind === "pause")) {
+      return;
     }
 
-    return persistEnding(clearEndingState());
+    applyPersonalEnding(clearEndingState());
+    paintPersonalMessages();
   }
 
   function prepareListSwitch() {
@@ -1243,7 +1250,7 @@ export async function mountTaskList(root) {
     resetConfirm.hidden = !canReset || !resetConfirming;
   }
 
-  async function persist(nextTasks) {
+  async function persist(nextTasks, { clearEnding = false } = {}) {
     const previous = tasks;
     const previousKind = tasksKind;
     const kind = currentListKind();
@@ -1251,9 +1258,9 @@ export async function mountTaskList(root) {
     tasksKind = kind;
     render();
     try {
-      await saveList(kind, tasks);
+      await saveList(kind, tasks, { clearEnding });
       showListError("");
-      await clearStaleEnding();
+      clearStaleEnding(kind, clearEnding);
     } catch {
       tasks = previous;
       tasksKind = previousKind;
@@ -1354,7 +1361,7 @@ export async function mountTaskList(root) {
 
     resetConfirming = false;
     restoreFocus = { id: next[0].id, selector: ".task-checkbox" };
-    await persist(next);
+    await persist(next, { clearEnding: true });
   });
 
   newListToggle.addEventListener("click", () => {
@@ -1409,7 +1416,7 @@ export async function mountTaskList(root) {
       reviewedTasks: snapshotTasks(visibleTasks()),
       selectedIds: carryoverReview.selectedIds,
       loadTasks: () => loadList(kind),
-      saveTasks: (next) => saveList(kind, next),
+      saveTasks: (next) => saveList(kind, next, { clearEnding: true }),
     });
 
     newListSaveInProgress = false;
@@ -1468,7 +1475,7 @@ export async function mountTaskList(root) {
       applyPersonalAffirmation(nextAffirmation);
       savePersonalAffirmation(nextAffirmation).catch(() => {});
     }
-    await clearStaleEnding();
+    clearStaleEnding(kind, true);
     render();
     applyEntryMode(true);
     saveTaskEntryOpen(true).catch(() => {});
@@ -1545,13 +1552,15 @@ export async function mountTaskList(root) {
           personalPresentation
         ) &&
         checkbox.checked &&
-        isCompletedList(tasks)
+        personalEnding.kind !== "pause" &&
+        isCompletedList(nextTasks)
       ) {
         await persistEnding(
-          createEndingState("complete", personalCompleteMessage)
+          createEndingState("complete", personalCompleteMessage),
+          nextTasks
         );
       } else {
-        await clearStaleEnding();
+        clearStaleEnding(kind);
       }
     } catch {
       tasks = previous;
