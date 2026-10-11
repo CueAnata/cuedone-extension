@@ -59,6 +59,7 @@ test("service worker module graph contains no await", () => {
   assert.deepEqual(files, [
     WORKER_ENTRY,
     "src/platform/browser.js",
+    "src/shared/personal-layout.js",
     "src/shared/personal-lists.js",
     "src/shared/personal-messages.js",
     "src/shared/preferences.js",

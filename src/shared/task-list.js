@@ -56,6 +56,7 @@ import {
   loadPersonalFinalSound,
   loadPersonalPauseMessage,
   loadPersonalPresentation,
+  loadPersonalTaskLayout,
   loadPersonalTaskSound,
   loadPresentationMode,
   loadReward,
@@ -72,6 +73,7 @@ import {
   onPersonalFinalSoundChanged,
   onPersonalPauseMessageChanged,
   onPersonalPresentationChanged,
+  onPersonalTaskLayoutChanged,
   onPersonalTaskSoundChanged,
   onPresentationModeChanged,
   onRewardChanged,
@@ -88,6 +90,7 @@ import {
   savePersonalFinalSound,
   savePersonalPauseMessage,
   savePersonalPresentation,
+  savePersonalTaskLayout,
   savePersonalTaskSound,
   saveReward,
   saveTaskEntryOpen,
@@ -108,6 +111,13 @@ import {
   visibleTasksForActiveList,
 } from "./personal-lists.js";
 import { planPersonalPrivateAudio } from "./personal-audio.js";
+import {
+  formatWaitingTaskCount,
+  nextPersonalTaskLayoutAction,
+  normalizePersonalTaskLayout,
+  personalOneActiveAllowed,
+  personalOneActiveState,
+} from "./personal-layout.js";
 import {
   AFFIRMATION_PRESETS,
   COMPLETE_MESSAGE_PRESETS,
@@ -155,6 +165,8 @@ export async function mountTaskList(root) {
   let pendingSynchronizedTasks = null;
   let pendingSynchronizedKind = null;
   let personalPresentation = "private";
+  let personalTaskLayout = "full-list";
+  let personalFullListOpen = false;
   let personalSound = "off";
   let personalTaskSound = "bubble-pop";
   let personalFinalSound = "current";
@@ -222,6 +234,37 @@ export async function mountTaskList(root) {
           Private and Public are separate lists. This is a presentation choice,
           not a lock or account.
         </p>
+        <div class="personal-task-layout-settings" hidden>
+          <div class="personal-pref-row personal-task-layout-row">
+            <p class="personal-pref-label" id="personal-task-layout-label">
+              Task layout
+            </p>
+            <div
+              class="mode-switch personal-task-layout-switch"
+              role="group"
+              aria-labelledby="personal-task-layout-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-task-layout="full-list"
+              >
+                Full list
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-task-layout="one-active"
+              >
+                One active task
+              </button>
+            </div>
+          </div>
+          <p class="personal-settings-note">
+            One active task keeps the next unfinished task in focus. Review the
+            full list whenever you need to organize or revisit tasks.
+          </p>
+        </div>
         <div class="personal-audio-settings" hidden>
           <div class="personal-pref-row">
             <p class="personal-pref-label" id="personal-completion-sound-label">
@@ -492,7 +535,33 @@ export async function mountTaskList(root) {
         </div>
       </div>
     </section>
-    <ul class="task-list" aria-label="Tasks"></ul>
+    <section class="personal-one-active" hidden>
+      <div class="personal-one-active-head">
+        <div>
+          <p class="personal-one-active-kicker">NOW</p>
+          <p class="personal-one-active-progress">0 of 0 complete</p>
+        </div>
+        <button
+          class="personal-full-list-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="task-list"
+        >
+          Review full list
+        </button>
+      </div>
+      <p class="personal-one-active-waiting">0 tasks waiting</p>
+      <div
+        class="personal-one-active-track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuenow="0"
+        aria-valuemax="0"
+      >
+        <div class="personal-one-active-fill"></div>
+      </div>
+    </section>
+    <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
     <p class="empty-state">No tasks yet. Add one to get started.</p>
     <section class="client-motivator" hidden>
       <div class="client-reward-head">
@@ -596,6 +665,12 @@ export async function mountTaskList(root) {
   const personalPresentationButtons = root.querySelectorAll(
     "[data-personal-presentation]"
   );
+  const personalTaskLayoutSettings = root.querySelector(
+    ".personal-task-layout-settings"
+  );
+  const personalTaskLayoutButtons = root.querySelectorAll(
+    "[data-personal-task-layout]"
+  );
   const personalAudioSettings = root.querySelector(".personal-audio-settings");
   const personalSoundButtons = root.querySelectorAll(
     "[data-personal-completion-sound]"
@@ -643,6 +718,25 @@ export async function mountTaskList(root) {
   const continueListButton = root.querySelector(".continue-list-button");
   const finishForNowButton = root.querySelector(".finish-for-now-button");
   const personalListError = root.querySelector(".personal-list-error");
+  const personalOneActive = root.querySelector(".personal-one-active");
+  const personalOneActiveKicker = root.querySelector(
+    ".personal-one-active-kicker"
+  );
+  const personalOneActiveProgress = root.querySelector(
+    ".personal-one-active-progress"
+  );
+  const personalOneActiveWaiting = root.querySelector(
+    ".personal-one-active-waiting"
+  );
+  const personalOneActiveTrack = root.querySelector(
+    ".personal-one-active-track"
+  );
+  const personalOneActiveFill = root.querySelector(
+    ".personal-one-active-fill"
+  );
+  const personalFullListToggle = root.querySelector(
+    ".personal-full-list-toggle"
+  );
 
   function fillMessageOptions(select, presets, { includeNone = false } = {}) {
     const options = [];
@@ -747,6 +841,36 @@ export async function mountTaskList(root) {
     }
   }
 
+  function oneActiveLayoutEnabled() {
+    return personalOneActiveAllowed(
+      document.body.dataset.presentation,
+      personalPresentation,
+      personalTaskLayout
+    );
+  }
+
+  function paintPersonalTaskLayout(value) {
+    const current = normalizePersonalTaskLayout(value);
+    for (const button of personalTaskLayoutButtons) {
+      const isCurrent = button.dataset.personalTaskLayout === current;
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+  }
+
+  function applyPersonalTaskLayout(value) {
+    personalTaskLayout = normalizePersonalTaskLayout(value);
+    document.body.dataset.personalTaskLayout = personalTaskLayout;
+    if (personalTaskLayout !== "one-active") {
+      personalFullListOpen = false;
+    }
+    paintPersonalTaskLayout(personalTaskLayout);
+  }
+
+  function closePersonalFullListReview() {
+    personalFullListOpen = false;
+  }
+
   function canPlayPersonalAudio() {
     return personalAudioAllowed(
       document.body.dataset.presentation,
@@ -817,11 +941,13 @@ export async function mountTaskList(root) {
       personalPresentation
     );
     personalSettings.hidden = !personal;
+    personalTaskLayoutSettings.hidden = !privateFeatures;
     personalAudioSettings.hidden = !privateFeatures;
     personalMessageSettings.hidden = !privateFeatures;
     personalListLabel.textContent = formatActiveListLabel(kind);
     list.setAttribute("aria-label", taskListAriaLabel(kind));
     paintPersonalPresentation(personalPresentation);
+    paintPersonalTaskLayout(personalTaskLayout);
     paintPersonalMessages();
     syncActiveAudioGate();
   }
@@ -954,6 +1080,7 @@ export async function mountTaskList(root) {
 
   function prepareListSwitch() {
     setCarryoverOpen(false);
+    closePersonalFullListReview();
     input.value = "";
     restoreFocus = null;
     resetConfirming = false;
@@ -1304,17 +1431,59 @@ export async function mountTaskList(root) {
 
   function render() {
     const shown = visibleTasks();
+    const oneActive = oneActiveLayoutEnabled();
+    const oneActiveState = personalOneActiveState(shown, {
+      reviewAll: personalFullListOpen,
+    });
+    const renderedTasks = oneActive ? oneActiveState.visibleTasks : shown;
     emptyState.textContent = emptyStateCopy(currentListKind());
     emptyState.hidden = shown.length > 0;
     list.replaceChildren();
     const currentId = nextUnfinishedTask(shown)?.id;
 
-    shown.forEach((task, index) => {
+    personalOneActive.hidden = !oneActive;
+    personalOneActiveKicker.textContent = oneActiveState.activeTask
+      ? "NOW"
+      : oneActiveState.progress.total
+        ? "COMPLETE"
+        : "READY";
+    personalOneActiveProgress.textContent = formatProgressLabel(
+      oneActiveState.progress
+    );
+    personalOneActiveWaiting.textContent = formatWaitingTaskCount(
+      oneActiveState.waiting
+    );
+    personalOneActiveTrack.setAttribute(
+      "aria-valuenow",
+      String(oneActiveState.progress.complete)
+    );
+    personalOneActiveTrack.setAttribute(
+      "aria-valuemax",
+      String(oneActiveState.progress.total)
+    );
+    personalOneActiveTrack.setAttribute(
+      "aria-label",
+      formatProgressLabel(oneActiveState.progress)
+    );
+    personalOneActiveFill.style.width = `${oneActiveState.progress.percent}%`;
+    personalFullListToggle.hidden = oneActiveState.progress.total === 0;
+    personalFullListToggle.textContent = personalFullListOpen
+      ? oneActiveState.activeTask
+        ? "Show current task"
+        : "Close full list"
+      : "Review full list";
+    personalFullListToggle.setAttribute(
+      "aria-expanded",
+      String(personalFullListOpen)
+    );
+
+    renderedTasks.forEach((task) => {
+      const index = shown.findIndex((item) => item.id === task.id);
       const item = document.createElement("li");
       const checkboxId = `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
       item.className = `task-item${task.completed ? " is-complete" : ""}${
         task.id === currentId ? " is-current-task" : ""
-      }`;
+      }${oneActive && !personalFullListOpen ? " is-one-active-card" : ""}`;
       item.dataset.id = task.id;
 
       item.innerHTML = `
@@ -1333,6 +1502,7 @@ export async function mountTaskList(root) {
           <button class="icon-button move-down" type="button" aria-label="Move task down" ${index === shown.length - 1 ? "disabled" : ""}>↓</button>
           <button class="icon-button delete-button" type="button" aria-label="Delete task">×</button>
         </div>
+        ${oneActive && !personalFullListOpen ? '<button class="one-active-complete-button" type="button">Complete</button>' : ""}
       `;
 
       item.querySelector(".task-text").textContent = task.text;
@@ -1391,7 +1561,13 @@ export async function mountTaskList(root) {
     }
 
     resetConfirming = false;
-    restoreFocus = { id: next[0].id, selector: ".task-checkbox" };
+    restoreFocus = {
+      id: next[0].id,
+      selector:
+        oneActiveLayoutEnabled() && !personalFullListOpen
+          ? ".one-active-complete-button"
+          : ".task-checkbox",
+    };
     await persist(next, { clearEnding: true });
   });
 
@@ -1494,6 +1670,7 @@ export async function mountTaskList(root) {
         ? synchronized
         : result.tasks;
     clearPreviousCompletionState();
+    closePersonalFullListReview();
     setCarryoverOpen(false);
     tasks = nextTasks;
     tasksKind = kind;
@@ -1540,6 +1717,7 @@ export async function mountTaskList(root) {
       return;
     }
 
+    const oneActiveCompletion = oneActiveLayoutEnabled() && !personalFullListOpen;
     restoreFocus = { id, selector: ".task-checkbox" };
     const snapshot = takeCompletionSnapshot(id);
     const kind = currentListKind();
@@ -1554,6 +1732,12 @@ export async function mountTaskList(root) {
       style: document.body.dataset.completionStyle,
       sound: document.body.dataset.completionSound,
     });
+    if (oneActiveCompletion) {
+      const nextActive = nextUnfinishedTask(nextTasks);
+      restoreFocus = nextActive
+        ? { id: nextActive.id, selector: ".one-active-complete-button" }
+        : null;
+    }
     if (plan?.kind === "final" && plan.playVisualCelebration) {
       finalCelebrationActive = true;
     }
@@ -1600,6 +1784,9 @@ export async function mountTaskList(root) {
     } catch {
       tasks = previous;
       tasksKind = previousKind;
+      if (oneActiveCompletion) {
+        restoreFocus = { id, selector: ".one-active-complete-button" };
+      }
       clearPreviousCompletionState();
       render();
       showListError(
@@ -1617,6 +1804,16 @@ export async function mountTaskList(root) {
     const shown = visibleTasks();
     const fromIndex = shown.findIndex((task) => task.id === item.dataset.id);
     if (fromIndex === -1) {
+      return;
+    }
+
+    if (event.target.closest(".one-active-complete-button")) {
+      const checkbox = item.querySelector(".task-checkbox");
+      if (checkbox && !checkbox.checked) {
+        captureCompletionSnapshot(item.dataset.id);
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+      }
       return;
     }
 
@@ -1721,6 +1918,51 @@ export async function mountTaskList(root) {
     });
   }
 
+  for (const button of personalTaskLayoutButtons) {
+    button.addEventListener("click", () => {
+      if (
+        !personalPrivateFeaturesAllowed(
+          document.body.dataset.presentation,
+          personalPresentation
+        )
+      ) {
+        return;
+      }
+
+      const action = nextPersonalTaskLayoutAction(
+        button.dataset.personalTaskLayout
+      );
+      if (!action || action === personalTaskLayout) {
+        paintPersonalTaskLayout(personalTaskLayout);
+        return;
+      }
+
+      const previous = personalTaskLayout;
+      void saveSetting({
+        save: savePersonalTaskLayout,
+        load: loadPersonalTaskLayout,
+        value: action,
+        apply: (value) => {
+          applyPersonalTaskLayout(value);
+          render();
+        },
+        restore: () => {
+          applyPersonalTaskLayout(previous);
+          render();
+        },
+      });
+    });
+  }
+
+  personalFullListToggle.addEventListener("click", () => {
+    if (!oneActiveLayoutEnabled()) {
+      return;
+    }
+
+    personalFullListOpen = !personalFullListOpen;
+    render();
+  });
+
   onPresentationModeChanged((next) => {
     applyPresentationMode(next);
     applyActiveAudioForView();
@@ -1730,9 +1972,10 @@ export async function mountTaskList(root) {
       return;
     }
 
-    updatePersonalChrome();
-    updateClientChrome();
-    updateResetAction();
+    if (!oneActiveLayoutEnabled()) {
+      closePersonalFullListReview();
+    }
+    render();
   });
 
   onPersonalPresentationChanged((next) => {
@@ -1793,6 +2036,11 @@ export async function mountTaskList(root) {
 
   onPersonalTaskSoundChanged((value) => {
     applyPersonalTaskSound(value);
+  });
+
+  onPersonalTaskLayoutChanged((value) => {
+    applyPersonalTaskLayout(value);
+    render();
   });
 
   onPersonalAffirmationChanged((value) => {
@@ -2188,6 +2436,7 @@ export async function mountTaskList(root) {
   personalPresentation = await loadPersonalPresentation();
   applyPersonalPresentation(personalPresentation);
   applyPresentationMode(await loadPresentationMode());
+  applyPersonalTaskLayout(await loadPersonalTaskLayout());
   applyCompletionStyle(await loadCompletionStyle());
   applyCompletionSound(await loadCompletionSound());
   applyFinalSound(await loadFinalSound());

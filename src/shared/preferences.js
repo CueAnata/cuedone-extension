@@ -1,5 +1,6 @@
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
 import { normalizePersonalPresentation } from "./personal-lists.js";
+import { normalizePersonalTaskLayout } from "./personal-layout.js";
 import {
   normalizeAffirmation,
   normalizeCompleteMessage,
@@ -12,6 +13,7 @@ export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
 export const TASK_ENTRY_OPEN_KEY = "cuedone.taskEntryOpen";
 export const PRESENTATION_MODE_KEY = "cuedone.presentationMode";
 export const PERSONAL_PRESENTATION_KEY = "cuedone.personalPresentation";
+export const PERSONAL_TASK_LAYOUT_KEY = "cuedone.personalTaskLayout";
 export const END_MOTIVATOR_KEY = "cuedone.endMotivator";
 export const REWARD_KEY = "cuedone.reward";
 export const COMPLETION_STYLE_KEY = "cuedone.completionStyle";
@@ -165,6 +167,18 @@ export function loadPersonalPresentation() {
 export function savePersonalPresentation(value) {
   return setLocal({
     [PERSONAL_PRESENTATION_KEY]: normalizePersonalPresentation(value),
+  });
+}
+
+export function loadPersonalTaskLayout() {
+  return getLocal(PERSONAL_TASK_LAYOUT_KEY).then((data) =>
+    normalizePersonalTaskLayout(data[PERSONAL_TASK_LAYOUT_KEY])
+  );
+}
+
+export function savePersonalTaskLayout(value) {
+  return setLocal({
+    [PERSONAL_TASK_LAYOUT_KEY]: normalizePersonalTaskLayout(value),
   });
 }
 
@@ -367,6 +381,18 @@ export function onPersonalPresentationChanged(callback) {
 
     callback(
       normalizePersonalPresentation(changes[PERSONAL_PRESENTATION_KEY].newValue)
+    );
+  });
+}
+
+export function onPersonalTaskLayoutChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_TASK_LAYOUT_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizePersonalTaskLayout(changes[PERSONAL_TASK_LAYOUT_KEY].newValue)
     );
   });
 }

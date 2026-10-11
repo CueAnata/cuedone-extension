@@ -193,6 +193,8 @@ input {
 .final-sound-select:focus-visible,
 .task-sound-select:focus-visible,
 .sound-preview-button:focus-visible,
+.personal-full-list-toggle:focus-visible,
+.one-active-complete-button:focus-visible,
 .personal-settings-toggle:focus-visible,
 .client-settings-toggle:focus-visible {
   outline: 2px solid var(--focus);
@@ -746,6 +748,22 @@ body[data-presentation="personal"] .personal-settings:not([hidden]) {
   color: var(--muted);
 }
 
+.personal-task-layout-settings {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .personal-task-layout-settings:not([hidden]) {
+  display: flex;
+}
+
+.personal-task-layout-switch {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .personal-list-error {
   margin-top: 8px;
   color: var(--danger);
@@ -753,6 +771,134 @@ body[data-presentation="personal"] .personal-settings:not([hidden]) {
 
 .personal-list-error[hidden] {
   display: none;
+}
+
+.personal-one-active {
+  display: none;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .personal-one-active:not([hidden]) {
+  display: block;
+}
+
+.personal-one-active-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.personal-one-active-kicker,
+.personal-one-active-progress,
+.personal-one-active-waiting {
+  margin: 0;
+}
+
+.personal-one-active-kicker {
+  color: var(--accent-hover);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+.personal-one-active-progress {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.personal-one-active-waiting {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.personal-full-list-toggle {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.personal-full-list-toggle:hover {
+  border-color: var(--accent);
+}
+
+.personal-one-active-track {
+  height: 5px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.personal-one-active-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card .drag-handle,
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card .task-checkbox,
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card .task-actions {
+  display: none;
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card .task-label {
+  padding: 0;
+  cursor: default;
+  pointer-events: none;
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .task-item.is-one-active-card .task-text {
+  font-size: 1.08rem;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+.one-active-complete-button {
+  justify-self: start;
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fffdf8;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.one-active-complete-button:hover {
+  background: var(--accent-hover);
 }
 
 .personal-audio-settings {
@@ -1040,7 +1186,20 @@ body[data-presentation="personal"][data-personal-presentation="private"]
 
   .personal-complete-message-row,
   .personal-pause-message-row,
-  .personal-affirmation-choice-row {
+  .personal-affirmation-choice-row,
+  .personal-task-layout-row {
+    flex-wrap: wrap;
+  }
+
+  .personal-task-layout-switch {
+    width: 100%;
+  }
+
+  .personal-task-layout-switch .view-switch-button {
+    flex: 1;
+  }
+
+  .personal-one-active-head {
     flex-wrap: wrap;
   }
 }

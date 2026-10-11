@@ -13,16 +13,19 @@ import {
   shouldRestoreSideFromPopup,
   taskEntryVisibility,
   PERSONAL_PRESENTATION_KEY,
+  PERSONAL_TASK_LAYOUT_KEY,
   PRESENTATION_MODE_KEY,
   END_MOTIVATOR_KEY,
   REWARD_KEY,
   loadPersonalPresentation,
+  loadPersonalTaskLayout,
   loadPresentationMode,
   loadEndMotivator,
   loadReward,
   normalizePresentationMode,
   normalizeEndMotivator,
   savePersonalPresentation,
+  savePersonalTaskLayout,
   savePresentationMode,
   saveEndMotivator,
   saveReward,
@@ -57,6 +60,7 @@ import {
   onPersonalCompletionSoundChanged,
   onPersonalFinalSoundChanged,
   onPersonalTaskSoundChanged,
+  onPersonalTaskLayoutChanged,
   savePersonalCompletionSound,
   savePersonalFinalSound,
   savePersonalTaskSound,
@@ -219,6 +223,24 @@ test("Personal presentation defaults to Private and persists Public separately",
   assert.equal(await loadPersonalPresentation(), "public");
   await savePersonalPresentation("not-a-list");
   assert.equal(await loadPersonalPresentation(), "private");
+});
+
+test("Personal task layout defaults to Full list and synchronizes One active task", async () => {
+  const store = mockChromeStorage();
+  const observed = [];
+  const unsubscribe = onPersonalTaskLayoutChanged((value) =>
+    observed.push(value)
+  );
+
+  assert.equal(await loadPersonalTaskLayout(), "full-list");
+  await savePersonalTaskLayout("one-active");
+  assert.equal(store[PERSONAL_TASK_LAYOUT_KEY], "one-active");
+  assert.equal(await loadPersonalTaskLayout(), "one-active");
+  await savePersonalTaskLayout("first-then");
+  unsubscribe();
+
+  assert.equal(await loadPersonalTaskLayout(), "full-list");
+  assert.deepEqual(observed, ["one-active", "full-list"]);
 });
 
 test("end motivator is optional, trimmed, and persisted locally", async () => {
@@ -455,7 +477,7 @@ test("Personal audio preference changes synchronize through shared local storage
 });
 
 test("saving Client presentation or motivator does not alter tasks", async () => {
-  mockChromeStorage();
+  const store = mockChromeStorage();
   const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
     "../src/shared/task-store.js"
   );
@@ -471,6 +493,7 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveFinalSound("applause");
   await saveTaskSound("soft-click");
   await savePersonalPresentation("public");
+  await savePersonalTaskLayout("one-active");
   await savePersonalCompletionSound("on");
   await savePersonalTaskSound("none");
   await savePersonalFinalSound("yay");
@@ -484,6 +507,7 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await savePersonalPauseMessage({ choice: "every-step", customText: "" });
   await savePersonalEnding({ kind: "complete", text: "You did it!" });
   assert.deepEqual(await loadTasks(), tasks);
+  assert.equal(store[PERSONAL_TASK_LAYOUT_KEY], "one-active");
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
   const { loadPublicTasks } = await import("../src/shared/task-store.js");
   assert.deepEqual(await loadPublicTasks(), []);

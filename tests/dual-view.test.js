@@ -7,6 +7,20 @@ const sideHtml = readFileSync("src/sidepanel/sidepanel.html", "utf8");
 const popupJs = readFileSync("src/popup/popup.js", "utf8");
 const sideJs = readFileSync("src/sidepanel/sidepanel.js", "utf8");
 const taskListJs = readFileSync("src/shared/task-list.js", "utf8");
+const layoutPreviewHtml = readFileSync("layout-preview.html", "utf8");
+
+test("layout preview opens directly as Private One Active Task with local assets", () => {
+  assert.match(layoutPreviewHtml, /href="\.\/src\/shared\/styles\.css"/);
+  assert.match(layoutPreviewHtml, /href="\.\/src\/popup\/popup\.css"/);
+  assert.match(layoutPreviewHtml, /src="\.\/icons\/icon48\.png"/);
+  assert.doesNotMatch(layoutPreviewHtml, /(?:href|src)="\//);
+  assert.match(layoutPreviewHtml, /data-personal-presentation="private"/);
+  assert.match(layoutPreviewHtml, /data-personal-task-layout="one-active"/);
+  assert.match(layoutPreviewHtml, /Outline the project update/);
+  assert.match(layoutPreviewHtml, /Write the project update for Monday/);
+  assert.match(layoutPreviewHtml, /Review full list/);
+  assert.match(layoutPreviewHtml, /function showReview\(reviewOpen\)/);
+});
 
 test("Top and Side are equal working views with the compact header control", () => {
   for (const html of [popupHtml, sideHtml]) {
@@ -183,7 +197,7 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
     'settingsToggle.addEventListener("click"'
   );
   const toggleEnd = taskListJs.indexOf(
-    "onPresentationModeChanged",
+    'personalSettingsToggle.addEventListener("click"',
     toggleStart
   );
   const toggleHandler = taskListJs.slice(toggleStart, toggleEnd);
@@ -334,6 +348,61 @@ test("Personal Settings is a collapsed Private/Public selector that isolates lis
   assert.match(
     compact,
     /\.sidepanel-view\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-label/
+  );
+});
+
+test("Personal Private One Active Task is persistent, reviewable, and presentation-only", () => {
+  assert.match(taskListJs, /data-personal-task-layout="full-list"/);
+  assert.match(taskListJs, /data-personal-task-layout="one-active"/);
+  assert.match(taskListJs, /class="personal-one-active" hidden/);
+  assert.match(taskListJs, /class="personal-full-list-toggle"/);
+  assert.match(taskListJs, /aria-controls="task-list"/);
+  assert.match(taskListJs, /class="one-active-complete-button"/);
+  assert.match(taskListJs, /savePersonalTaskLayout/);
+  assert.match(taskListJs, /onPersonalTaskLayoutChanged/);
+  assert.match(taskListJs, /personalOneActiveAllowed/);
+  assert.match(taskListJs, /personalOneActiveState/);
+  assert.match(taskListJs, /formatWaitingTaskCount/);
+
+  const renderStart = taskListJs.indexOf("function render()");
+  const renderEnd = taskListJs.indexOf(
+    'form.addEventListener("submit"',
+    renderStart
+  );
+  const render = taskListJs.slice(renderStart, renderEnd);
+  assert.match(render, /const shown = visibleTasks\(\)/);
+  assert.match(render, /reviewAll: personalFullListOpen/);
+  assert.match(render, /oneActiveState\.visibleTasks/);
+  assert.match(render, /renderedTasks\.forEach/);
+  assert.match(render, /shown\.findIndex/);
+  assert.match(render, /is-one-active-card/);
+  assert.doesNotMatch(render, /saveList|deleteTask|reorderTasks/);
+
+  const completeStart = taskListJs.indexOf(
+    'if (event.target.closest(".one-active-complete-button"))'
+  );
+  const completeEnd = taskListJs.indexOf(
+    'if (event.target.closest(".delete-button"))',
+    completeStart
+  );
+  const complete = taskListJs.slice(completeStart, completeEnd);
+  assert.match(complete, /captureCompletionSnapshot/);
+  assert.match(complete, /dispatchEvent\(new Event\("change"/);
+
+  const modeChange = taskListJs.slice(
+    taskListJs.indexOf("onPresentationModeChanged((next) => {"),
+    taskListJs.indexOf("onPersonalPresentationChanged", completeEnd)
+  );
+  assert.match(modeChange, /render\(\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\][\s\S]*?\.task-item\.is-one-active-card/
+  );
+  assert.doesNotMatch(
+    css,
+    /body\[data-presentation="client"\][^}]*is-one-active-card/
   );
 });
 
