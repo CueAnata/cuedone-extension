@@ -941,11 +941,13 @@ export async function mountTaskList(root) {
   }
 
   function clearStaleEnding(kind, clearPause = false) {
-    // Private saves already clear storage in the same task write.
-    // Public edits must never clear the Private session message.
+    // Private list writes clear stale completion feedback atomically. Public
+    // edits never touch the Private ending, and ordinary Private edits retain
+    // a deliberate pause until Continue list or an explicit lifecycle action.
     if (kind !== "private" || (!clearPause && personalEnding.kind === "pause")) {
       return;
     }
+
     applyPersonalEnding(clearEndingState());
     paintPersonalMessages();
   }

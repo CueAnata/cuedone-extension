@@ -4,10 +4,10 @@ import { createTask } from "../src/shared/tasks.js";
 import {
   AFFIRMATION_PRESETS,
   COMPLETE_MESSAGE_PRESETS,
+  DEFAULT_UNFINISHED_ENDING_TEXT,
   PAUSE_MESSAGE_PRESETS,
   PERSONAL_MESSAGE_MAX_LENGTH,
   bindEndingToTasks,
-  endingMatchesTasks,
   canFinishForNow,
   chooseAffirmation,
   clearEndingState,
@@ -15,6 +15,7 @@ import {
   disableAffirmation,
   enableAffirmation,
   endingVisible,
+  endingMatchesTasks,
   finishForNowVisible,
   formatAffirmationText,
   isCompletedList,
@@ -76,6 +77,10 @@ test("affirmation and ending catalogs include the approved presets", () => {
   );
   assert.match(
     PAUSE_MESSAGE_PRESETS.map((item) => item.text).join("\n"),
+    /Good progress today\./
+  );
+  assert.match(
+    PAUSE_MESSAGE_PRESETS.map((item) => item.text).join("\n"),
     /Progress made\. Permission to pause/
   );
   assert.match(
@@ -131,9 +136,14 @@ test("Random affirmation chooses once when enabled and stays stable afterward", 
   assert.equal(formatAffirmationText(disableAffirmation(enabled)), "");
 });
 
-test("ending choices stay independent and Random stays stable for one event", () => {
+test("unfinished endings default to Good progress today while completed endings stay independent", () => {
   assert.equal(normalizeCompleteMessage().choice, "none");
-  assert.equal(normalizePauseMessage().choice, "none");
+  assert.equal(normalizePauseMessage().choice, "good-progress");
+  assert.equal(DEFAULT_UNFINISHED_ENDING_TEXT, "Good progress today.");
+  assert.deepEqual(createEndingState("pause"), {
+    kind: "pause",
+    text: "Good progress today.",
+  });
   const complete = createEndingState(
     "complete",
     { choice: "random", customText: "" },
@@ -153,6 +163,10 @@ test("ending choices stay independent and Random stays stable for one event", ()
   assert.deepEqual(clearEndingState(), { kind: "none", text: "" });
   assert.deepEqual(
     createEndingState("complete", { choice: "none", customText: "" }),
+    { kind: "none", text: "" }
+  );
+  assert.deepEqual(
+    createEndingState("pause", { choice: "none", customText: "" }),
     { kind: "none", text: "" }
   );
 });
@@ -185,7 +199,8 @@ test("Finish for now and completed-list messages follow list state", () => {
     endingVisible(
       { kind: "pause", text: "Done for now." },
       "personal",
-      "public"
+      "public",
+      unfinished
     ),
     false
   );
@@ -199,7 +214,6 @@ test("Finish for now and completed-list messages follow list state", () => {
     true
   );
 });
-
 
 test("pause survives task edits; completion requires the exact completed list", () => {
   const pause = bindEndingToTasks({ kind: "pause", text: "Pause" }, unfinished);
@@ -230,4 +244,45 @@ test("legacy deliberate pauses restore, while unbound completion messages stay h
   assert.equal(endingVisible({ kind: "complete", text: "Old completion" }, "personal", "private", complete), false);
   assert.equal(endingVisible(legacy, "personal", "private", unfinished), true);
   assert.equal(finishForNowVisible({ tasks: unfinished, presentationMode: "personal", personalPresentation: "private", ending: legacy }), false);
+});
+
+test("a deliberate unfinished pause survives reopening-like task changes until Continue", () => {
+  const pause = createEndingState("pause");
+  assert.equal(endingMatchesTasks(pause, unfinished), true);
+  assert.equal(
+    endingVisible(pause, "personal", "private", unfinished),
+    true
+  );
+
+  const edited = [
+    { ...unfinished[0], completed: true },
+    unfinished[1],
+    createTask("Added after pausing", 3, "c"),
+  ];
+  assert.equal(endingMatchesTasks(pause, edited), true);
+  assert.equal(endingVisible(pause, "personal", "private", edited), true);
+  assert.equal(endingVisible(pause, "personal", "public", edited), false);
+  assert.equal(endingVisible(pause, "client", "private", edited), false);
+  assert.equal(endingMatchesTasks(clearEndingState(), edited), false);
+});
+
+test("a completed ending restores only for its exact completed list", () => {
+  const ending = bindEndingToTasks(
+    createEndingState("complete", {
+      choice: "all-done",
+      customText: "",
+    }),
+    complete
+  );
+  assert.equal(endingMatchesTasks(ending, complete), true);
+  assert.equal(endingVisible(ending, "personal", "private", complete), true);
+  assert.equal(endingMatchesTasks(ending, unfinished), false);
+  assert.equal(
+    endingMatchesTasks(ending, [...complete, createTask("Different", 3, "c")]),
+    false
+  );
+  assert.equal(
+    endingMatchesTasks({ kind: "complete", text: "Legacy ending" }, complete),
+    false
+  );
 });
