@@ -1,3 +1,5 @@
+import { PERSONAL_ENDING_KEY } from "./preferences.js";
+import { clearEndingState, normalizeEndingState } from "./personal-messages.js";
 import { isTaskList } from "./tasks.js";
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
 
@@ -13,8 +15,17 @@ export async function loadTasks() {
   return listFromStorage(data[TASKS_STORAGE_KEY]);
 }
 
-export async function saveTasks(tasks) {
-  await setLocal({ [TASKS_STORAGE_KEY]: tasks });
+export async function saveTasks(tasks, { clearEnding = false } = {}) {
+  const values = { [TASKS_STORAGE_KEY]: tasks };
+  const ending = clearEnding
+    ? clearEndingState()
+    : normalizeEndingState((await getLocal(PERSONAL_ENDING_KEY))[PERSONAL_ENDING_KEY]);
+  // Ordinary edits leave a deliberate pause untouched, including a concurrent
+  // Continue list. Completion messages and explicit resets clear in this write.
+  if (clearEnding || ending.kind !== "pause") {
+    values[PERSONAL_ENDING_KEY] = clearEndingState();
+  }
+  await setLocal(values);
 }
 
 export async function loadPublicTasks() {
@@ -34,8 +45,8 @@ export async function loadList(kind) {
   return kind === "public" ? loadPublicTasks() : loadTasks();
 }
 
-export async function saveList(kind, tasks) {
-  return kind === "public" ? savePublicTasks(tasks) : saveTasks(tasks);
+export async function saveList(kind, tasks, options) {
+  return kind === "public" ? savePublicTasks(tasks) : saveTasks(tasks, options);
 }
 
 export function onTasksChanged(callback) {

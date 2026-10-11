@@ -130,7 +130,11 @@ export function normalizeEndingState(value) {
     return { kind: "none", text: "" };
   }
 
-  return { kind, text };
+  const state = { kind, text };
+  if (typeof stored.taskSnapshot === "string") {
+    state.taskSnapshot = stored.taskSnapshot;
+  }
+  return state;
 }
 
 export function affirmationShowsCustom(affirmation) {
@@ -255,12 +259,29 @@ export function isCompletedList(tasks) {
   );
 }
 
-export function endingVisible(ending, presentationMode, personalPresentation) {
+// Completion endings belong to an exact list; deliberate pauses last until
+// Continue list or an explicit Reset/New List, independently of ordinary edits.
+export function bindEndingToTasks(ending, tasks) {
   const state = normalizeEndingState(ending);
+  if (state.kind !== "complete") return state;
+  return { ...state, taskSnapshot: JSON.stringify(tasks) };
+}
+
+export function endingMatchesTasks(ending, tasks) {
+  const state = normalizeEndingState(ending);
+  if (!Array.isArray(tasks)) return false;
+  if (state.kind === "pause") return true;
+  if (!state.taskSnapshot) return false;
+  if (state.taskSnapshot !== JSON.stringify(tasks)) return false;
+  return state.kind === "complete"
+    ? isCompletedList(tasks)
+    : state.kind === "pause" && canFinishForNow(tasks);
+}
+
+export function endingVisible(ending, presentationMode, personalPresentation, tasks) {
   return (
     personalPrivateFeaturesAllowed(presentationMode, personalPresentation) &&
-    state.kind !== "none" &&
-    Boolean(state.text)
+    endingMatchesTasks(ending, tasks)
   );
 }
 
@@ -273,6 +294,6 @@ export function finishForNowVisible({
   return (
     personalPrivateFeaturesAllowed(presentationMode, personalPresentation) &&
     canFinishForNow(tasks) &&
-    normalizeEndingState(ending).kind === "none"
+    !endingMatchesTasks(ending, tasks)
   );
 }

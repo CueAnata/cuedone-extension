@@ -1,3 +1,4 @@
+import { createSettingsSaver } from "./settings-save.js";
 import {
   addTask,
   canResetList,
@@ -113,6 +114,7 @@ import {
   PAUSE_MESSAGE_PRESETS,
   PERSONAL_MESSAGE_MAX_LENGTH,
   affirmationShowsCustom,
+  bindEndingToTasks,
   chooseAffirmation,
   clearEndingState,
   createEndingState,
@@ -134,6 +136,13 @@ import { loadList, onListChanged, saveList } from "./task-store.js";
 
 export async function mountTaskList(root) {
   let tasks = [];
+  let savedReward = normalizeReward();
+  let listLoadRevision = 0;
+  let clientSoundRevision = 0;
+  let personalSoundRevision = 0;
+  let pendingClientSound = null;
+  let pendingPersonalSound = null;
+  const saveSetting = createSettingsSaver(showListError);
   let draggedId = null;
   let restoreFocus = null;
   let entryOpen = true;
@@ -362,8 +371,8 @@ export async function mountTaskList(root) {
           />
         </div>
       </div>
-      <p class="personal-list-error" role="alert" hidden></p>
     </section>
+    <p class="personal-list-error" role="alert" hidden></p>
     <p class="personal-affirmation" hidden></p>
     <section class="personal-ending" hidden>
       <span class="personal-ending-icon" aria-hidden="true"></span>
@@ -818,12 +827,13 @@ export async function mountTaskList(root) {
   }
 
   function persistPersonalSetting(save, value, restore) {
-    return save(value).catch(() => {
-      restore();
-      showListError(
-        "CueDone could not save that setting. Your current setting is unchanged."
-      );
-    });
+    const [load, apply] = save === savePersonalAffirmation
+      ? [loadPersonalAffirmation, applyPersonalAffirmation]
+      : save === savePersonalCompleteMessage
+        ? [loadPersonalCompleteMessage, applyPersonalCompleteMessage]
+        : [loadPersonalPauseMessage, applyPersonalPauseMessage];
+    return saveSetting({ save, load, value, restore,
+      apply: (saved) => { apply(saved); paintPersonalMessages(); } });
   }
 
   function applyPersonalAffirmation(value, { skipCustomValue = false } = {}) {
@@ -883,7 +893,8 @@ export async function mountTaskList(root) {
     const showEnding = endingVisible(
       personalEnding,
       document.body.dataset.presentation,
-      personalPresentation
+      personalPresentation,
+      visibleTasks()
     );
     personalAffirmationDisplay.hidden = !affirmationText || showEnding;
     personalAffirmationDisplay.textContent = affirmationText;
@@ -910,7 +921,8 @@ export async function mountTaskList(root) {
     });
   }
 
-  async function persistEnding(nextEnding) {
+  async function persistEnding(nextEnding, endingTasks = visibleTasks()) {
+    nextEnding = bindEndingToTasks(nextEnding, endingTasks);
     const previous = personalEnding;
     applyPersonalEnding(nextEnding);
     paintPersonalMessages();
@@ -928,12 +940,14 @@ export async function mountTaskList(root) {
     }
   }
 
-  async function clearStaleEnding() {
-    if (personalEnding.kind === "none") {
-      return true;
+  function clearStaleEnding(kind, clearPause = false) {
+    // Private saves already clear storage in the same task write.
+    // Public edits must never clear the Private session message.
+    if (kind !== "private" || (!clearPause && personalEnding.kind === "pause")) {
+      return;
     }
-
-    return persistEnding(clearEndingState());
+    applyPersonalEnding(clearEndingState());
+    paintPersonalMessages();
   }
 
   function prepareListSwitch() {
@@ -945,6 +959,7 @@ export async function mountTaskList(root) {
   }
 
   async function showActiveList(kind, { resetCarryover = true } = {}) {
+    const revision = ++listLoadRevision;
     if (resetCarryover) {
       prepareListSwitch();
     }
@@ -957,12 +972,18 @@ export async function mountTaskList(root) {
 
     try {
       const loaded = await loadList(kind);
+      if (revision !== listLoadRevision || kind !== currentListKind()) {
+        return false;
+      }
       tasks = loaded;
       tasksKind = kind;
       showListError("");
       render();
       return true;
     } catch {
+      if (revision !== listLoadRevision || kind !== currentListKind()) {
+        return false;
+      }
       if (kind === "public") {
         tasks = [];
         tasksKind = "public";
@@ -1058,6 +1079,7 @@ export async function mountTaskList(root) {
   }
 
   function applySynchronizedTasks(nextTasks, message = "") {
+    ++listLoadRevision;
     completionSnapshot = null;
     tasks = nextTasks;
     tasksKind = currentListKind();
@@ -1207,7 +1229,21 @@ export async function mountTaskList(root) {
   }
 
   function persistReward() {
-    saveReward(currentReward());
+    const value = currentReward();
+    function restoreReward(reward) {
+      savedReward = normalizeReward(reward);
+      rewardEditing = initialRewardEditing(savedReward);
+      applyReward(savedReward);
+    }
+    void saveSetting({
+      save: saveReward,
+      load: loadReward,
+      value,
+      // Successful saves must not collapse the Custom editor while typing.
+      commit: (reward) => { savedReward = normalizeReward(reward); },
+      apply: restoreReward,
+      restore: () => restoreReward(savedReward),
+    });
   }
 
   function updateClientChrome() {
@@ -1243,7 +1279,7 @@ export async function mountTaskList(root) {
     resetConfirm.hidden = !canReset || !resetConfirming;
   }
 
-  async function persist(nextTasks) {
+  async function persist(nextTasks, { clearEnding = false } = {}) {
     const previous = tasks;
     const previousKind = tasksKind;
     const kind = currentListKind();
@@ -1251,9 +1287,9 @@ export async function mountTaskList(root) {
     tasksKind = kind;
     render();
     try {
-      await saveList(kind, tasks);
+      await saveList(kind, tasks, { clearEnding });
       showListError("");
-      await clearStaleEnding();
+      clearStaleEnding(kind, clearEnding);
     } catch {
       tasks = previous;
       tasksKind = previousKind;
@@ -1354,7 +1390,7 @@ export async function mountTaskList(root) {
 
     resetConfirming = false;
     restoreFocus = { id: next[0].id, selector: ".task-checkbox" };
-    await persist(next);
+    await persist(next, { clearEnding: true });
   });
 
   newListToggle.addEventListener("click", () => {
@@ -1409,7 +1445,7 @@ export async function mountTaskList(root) {
       reviewedTasks: snapshotTasks(visibleTasks()),
       selectedIds: carryoverReview.selectedIds,
       loadTasks: () => loadList(kind),
-      saveTasks: (next) => saveList(kind, next),
+      saveTasks: (next) => saveList(kind, next, { clearEnding: true }),
     });
 
     newListSaveInProgress = false;
@@ -1468,7 +1504,7 @@ export async function mountTaskList(root) {
       applyPersonalAffirmation(nextAffirmation);
       savePersonalAffirmation(nextAffirmation).catch(() => {});
     }
-    await clearStaleEnding();
+    clearStaleEnding(kind, true);
     render();
     applyEntryMode(true);
     saveTaskEntryOpen(true).catch(() => {});
@@ -1476,15 +1512,19 @@ export async function mountTaskList(root) {
   });
 
   doneButton.addEventListener("click", async () => {
-    applyEntryMode(false);
-    await saveTaskEntryOpen(false);
-    addToggle.focus();
+    const previous = entryOpen;
+    if (await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
+      value: false, apply: applyEntryMode, restore: () => applyEntryMode(previous) })) {
+      addToggle.focus();
+    }
   });
 
   addToggle.addEventListener("click", async () => {
-    applyEntryMode(true);
-    await saveTaskEntryOpen(true);
-    input.focus();
+    const previous = entryOpen;
+    if (await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
+      value: true, apply: applyEntryMode, restore: () => applyEntryMode(previous) })) {
+      input.focus();
+    }
   });
 
   list.addEventListener("change", async (event) => {
@@ -1545,13 +1585,15 @@ export async function mountTaskList(root) {
           personalPresentation
         ) &&
         checkbox.checked &&
-        isCompletedList(tasks)
+        personalEnding.kind !== "pause" &&
+        isCompletedList(nextTasks)
       ) {
         await persistEnding(
-          createEndingState("complete", personalCompleteMessage)
+          createEndingState("complete", personalCompleteMessage),
+          nextTasks
         );
       } else {
-        await clearStaleEnding();
+        clearStaleEnding(kind);
       }
     } catch {
       tasks = previous;
@@ -1677,7 +1719,8 @@ export async function mountTaskList(root) {
     });
   }
 
-  onPresentationModeChanged(() => {
+  onPresentationModeChanged((next) => {
+    applyPresentationMode(next);
     applyActiveAudioForView();
     const kind = currentListKind();
     if (kind !== tasksKind) {
@@ -1705,6 +1748,7 @@ export async function mountTaskList(root) {
   });
 
   onRewardChanged((reward) => {
+    savedReward = normalizeReward(reward);
     if (
       document.activeElement === rewardCustomInput ||
       document.activeElement === rewardSelect
@@ -1722,7 +1766,7 @@ export async function mountTaskList(root) {
   });
 
   onCompletionSoundChanged((value) => {
-    applyCompletionSound(value);
+    applyCompletionSound(pendingClientSound === "off" ? "off" : value);
   });
 
   onFinalCelebrationChanged((value) => {
@@ -1738,7 +1782,7 @@ export async function mountTaskList(root) {
   });
 
   onPersonalCompletionSoundChanged((value) => {
-    applyPersonalSound(value);
+    applyPersonalSound(pendingPersonalSound === "off" ? "off" : value);
   });
 
   onPersonalFinalSoundChanged((value) => {
@@ -1774,9 +1818,10 @@ export async function mountTaskList(root) {
         return;
       }
 
-      applyCompletionStyle(action);
-      saveCompletionStyle(action);
-      updateResetAction();
+      const previous = document.body.dataset.completionStyle;
+      void saveSetting({ save: saveCompletionStyle, load: loadCompletionStyle, value: action,
+        apply: (value) => { applyCompletionStyle(value); updateResetAction(); },
+        restore: () => applyCompletionStyle(previous) });
     });
   }
 
@@ -1787,11 +1832,26 @@ export async function mountTaskList(root) {
         return;
       }
 
-      applyCompletionSound(action);
+      const previous = document.body.dataset.completionSound;
+      const revision = ++clientSoundRevision;
+      pendingClientSound = action;
+      if (action === "off") applyCompletionSound(action);
       if (action === "on") {
         unlockCelebrationAudio();
       }
-      saveCompletionSound(action);
+      void saveSetting({
+        save: saveCompletionSound,
+        load: loadCompletionSound,
+        value: action,
+        apply: (value) => {
+          // An earlier On save must not restart audio after a later Off click.
+          applyCompletionSound(revision !== clientSoundRevision && pendingClientSound === "off"
+            ? "off" : value);
+        },
+        restore: () => applyCompletionSound(previous),
+      }).then(() => {
+        if (revision === clientSoundRevision) pendingClientSound = null;
+      });
     });
   }
 
@@ -1802,14 +1862,18 @@ export async function mountTaskList(root) {
       return;
     }
 
-    applyFinalCelebration(action);
-    saveFinalCelebration(action);
+    const previous = document.body.dataset.finalCelebration;
+    applyFinalCelebration(previous);
+    void saveSetting({ save: saveFinalCelebration, load: loadFinalCelebration, value: action,
+      apply: applyFinalCelebration, restore: () => applyFinalCelebration(previous) });
   });
 
   finalSoundSelect.addEventListener("change", () => {
     const sound = normalizeFinalSound(finalSoundSelect.value);
-    applyFinalSound(sound);
-    saveFinalSound(sound);
+    const previous = document.body.dataset.finalSound;
+    applyFinalSound(previous);
+    void saveSetting({ save: saveFinalSound, load: loadFinalSound, value: sound,
+      apply: applyFinalSound, restore: () => applyFinalSound(previous) });
   });
 
   finalSoundPreviewButton.addEventListener("click", () => {
@@ -1825,8 +1889,10 @@ export async function mountTaskList(root) {
 
   taskSoundSelect.addEventListener("change", () => {
     const sound = normalizeTaskSound(taskSoundSelect.value);
-    applyTaskSound(sound);
-    saveTaskSound(sound);
+    const previous = document.body.dataset.taskSound;
+    applyTaskSound(previous);
+    void saveSetting({ save: saveTaskSound, load: loadTaskSound, value: sound,
+      apply: applyTaskSound, restore: () => applyTaskSound(previous) });
   });
 
   taskSoundPreviewButton.addEventListener("click", () => {
@@ -1848,15 +1914,24 @@ export async function mountTaskList(root) {
       }
 
       const previous = personalSound;
-      applyPersonalSound(action);
+      const revision = ++personalSoundRevision;
+      pendingPersonalSound = action;
+      if (action === "off") applyPersonalSound(action);
       if (action === "on") {
         unlockCelebrationAudio();
       }
-      savePersonalCompletionSound(action).catch(() => {
-        applyPersonalSound(previous);
-        showListError(
-          "CueDone could not save that sound setting. Your current setting is unchanged."
-        );
+      void saveSetting({
+        save: savePersonalCompletionSound,
+        load: loadPersonalCompletionSound,
+        value: action,
+        apply: (value) => {
+          // An earlier On save must not restart audio after a later Off click.
+          applyPersonalSound(revision !== personalSoundRevision && pendingPersonalSound === "off"
+            ? "off" : value);
+        },
+        restore: () => applyPersonalSound(previous),
+      }).then(() => {
+        if (revision === personalSoundRevision) pendingPersonalSound = null;
       });
     });
   }
@@ -1869,10 +1944,9 @@ export async function mountTaskList(root) {
 
     const previous = personalTaskSound;
     const sound = normalizeTaskSound(personalTaskSoundSelect.value);
-    applyPersonalTaskSound(sound);
-    savePersonalTaskSound(sound).catch(() => {
-      applyPersonalTaskSound(previous);
-    });
+    applyPersonalTaskSound(previous);
+    void saveSetting({ save: savePersonalTaskSound, load: loadPersonalTaskSound, value: sound,
+      apply: applyPersonalTaskSound, restore: () => applyPersonalTaskSound(previous) });
   });
 
   personalFinalSoundSelect.addEventListener("change", () => {
@@ -1883,10 +1957,9 @@ export async function mountTaskList(root) {
 
     const previous = personalFinalSound;
     const sound = normalizeFinalSound(personalFinalSoundSelect.value);
-    applyPersonalFinalSound(sound);
-    savePersonalFinalSound(sound).catch(() => {
-      applyPersonalFinalSound(previous);
-    });
+    applyPersonalFinalSound(previous);
+    void saveSetting({ save: savePersonalFinalSound, load: loadPersonalFinalSound, value: sound,
+      apply: applyPersonalFinalSound, restore: () => applyPersonalFinalSound(previous) });
   });
 
   personalFinalSoundPreviewButton.addEventListener("click", () => {
@@ -2127,18 +2200,9 @@ export async function mountTaskList(root) {
   applyFinalCelebration(await loadFinalCelebration());
   applyActiveAudioForView();
   const initialKind = currentListKind();
-  try {
-    tasks = await loadList(initialKind);
-    tasksKind = initialKind;
-  } catch {
-    tasks = [];
-    tasksKind = initialKind;
-    showListError(
-      "CueDone could not load that list. The other list was not shown."
-    );
-  }
+  await showActiveList(initialKind, { resetCarryover: false });
   applyEntryMode(await loadTaskEntryOpen());
-  const savedReward = await loadReward();
+  savedReward = await loadReward();
   rewardEditing = initialRewardEditing(savedReward);
   applyReward(savedReward);
   render();

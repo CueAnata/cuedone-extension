@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CueDone layout preview</title>
+    <link rel="stylesheet" href="/src/shared/styles.css" />
+    <link id="view-css" rel="stylesheet" href="/src/popup/popup.css" />
+    <style>
+      body.debug { outline: 0; }
+    </style>
+  </head>
+  <body class="popup-view" data-presentation="personal" data-personal-presentation="public">
+    <header class="app-header">
+      <img class="logo-mark" src="/icons/icon48.png" alt="" width="32" height="32" />
+      <div class="brand-text">
+        <h1>CueDone</h1>
+        <p class="tagline">See it. Do it. CueDone.</p>
+      </div>
+      <div class="header-controls">
+        <div class="view-switch" role="group" aria-label="CueDone view">
+          <button type="button" class="view-switch-button is-current">Top</button>
+          <button type="button" class="view-switch-button">Side</button>
+        </div>
+        <div class="mode-switch" role="group" aria-label="CueDone presentation">
+          <button type="button" class="view-switch-button is-current">Personal</button>
+          <button type="button" class="view-switch-button">Client</button>
+        </div>
+      </div>
+    </header>
+    <main class="app-main">
+      <section class="personal-settings">
+        <div class="personal-settings-head">
+          <p class="personal-list-label" id="personal-list-label">Using Public list</p>
+          <button class="personal-settings-toggle is-open" type="button" aria-expanded="true">
+            <span class="personal-settings-gear" aria-hidden="true">&#9881;</span>
+            <span>Settings</span>
+          </button>
+        </div>
+        <div class="personal-settings-panel">
+          <div class="personal-pref-row">
+            <p class="personal-pref-label">Personal presentation</p>
+            <div class="mode-switch" role="group">
+              <button type="button" class="view-switch-button">Private</button>
+              <button type="button" class="view-switch-button is-current">Public</button>
+            </div>
+          </div>
+          <p class="personal-settings-note">
+            Private and Public are separate lists. This is a presentation choice,
+            not a lock or account.
+          </p>
+        </div>
+      </section>
+      <ul class="task-list" aria-label="Public agenda">
+        <li class="task-item is-current-task">
+          <span class="drag-handle">⋮⋮</span>
+          <label class="task-label">
+            <input class="task-checkbox" type="checkbox" />
+            <span class="task-text">Review agenda for the Monday standup</span>
+          </label>
+          <div class="task-actions">
+            <button class="icon-button" type="button">↑</button>
+            <button class="icon-button" type="button">↓</button>
+            <button class="icon-button" type="button">×</button>
+          </div>
+        </li>
+        <li class="task-item">
+          <span class="drag-handle">⋮⋮</span>
+          <label class="task-label">
+            <input class="task-checkbox" type="checkbox" />
+            <span class="task-text">Share next steps</span>
+          </label>
+          <div class="task-actions">
+            <button class="icon-button" type="button">↑</button>
+            <button class="icon-button" type="button">↓</button>
+            <button class="icon-button" type="button">×</button>
+          </div>
+        </li>
+      </ul>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const view = params.get("view") === "side" ? "side" : "top";
+      const list = params.get("list") === "private" ? "private" : "public";
+      const settings = params.get("settings") === "open";
+      document.body.className = view === "side" ? "sidepanel-view" : "popup-view";
+      document.body.dataset.presentation = "personal";
+      document.body.dataset.personalPresentation = list;
+      document.getElementById("view-css").href =
+        view === "side" ? "/src/sidepanel/sidepanel.css" : "/src/popup/popup.css";
+      document.getElementById("personal-list-label").textContent =
+        list === "public" ? "Using Public list" : "Using Private list";
+      const panel = document.querySelector(".personal-settings-panel");
+      const toggle = document.querySelector(".personal-settings-toggle");
+      panel.hidden = !settings;
+      toggle.classList.toggle("is-open", settings);
+      toggle.setAttribute("aria-expanded", String(settings));
+    </script>
+  </body>
+</html>

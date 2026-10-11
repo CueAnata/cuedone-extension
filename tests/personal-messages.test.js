@@ -6,6 +6,8 @@ import {
   COMPLETE_MESSAGE_PRESETS,
   PAUSE_MESSAGE_PRESETS,
   PERSONAL_MESSAGE_MAX_LENGTH,
+  bindEndingToTasks,
+  endingMatchesTasks,
   canFinishForNow,
   chooseAffirmation,
   clearEndingState,
@@ -189,10 +191,43 @@ test("Finish for now and completed-list messages follow list state", () => {
   );
   assert.equal(
     endingVisible(
-      { kind: "complete", text: "You did it!" },
+      bindEndingToTasks({ kind: "complete", text: "You did it!" }, complete),
       "personal",
-      "private"
+      "private",
+      complete
     ),
     true
   );
+});
+
+
+test("pause survives task edits; completion requires the exact completed list", () => {
+  const pause = bindEndingToTasks({ kind: "pause", text: "Pause" }, unfinished);
+  assert.equal(endingMatchesTasks(pause, unfinished), true);
+  for (const changed of [
+    [...unfinished, createTask("New", 3, "c")],
+    unfinished.slice(1),
+    [...unfinished].reverse(),
+    unfinished.map((task, i) => i ? task : { ...task, text: "Edited" }),
+    unfinished.map((task, i) => i ? task : { ...task, completed: true }),
+    [],
+  ]) {
+    assert.equal(endingMatchesTasks(pause, changed), true);
+    assert.equal(endingVisible(pause, "personal", "private", changed), true);
+  }
+  const ending = bindEndingToTasks({ kind: "complete", text: "Done" }, complete);
+  assert.equal(endingMatchesTasks(ending, complete), true);
+  assert.equal(endingMatchesTasks(ending, unfinished), false);
+  assert.equal(endingMatchesTasks(bindEndingToTasks({ kind: "complete", text: "Done" }, unfinished), unfinished), false);
+  assert.equal(endingMatchesTasks(bindEndingToTasks({ kind: "pause", text: "Pause" }, complete), complete), true);
+  assert.equal(endingVisible(pause, "personal", "public", unfinished), false);
+  assert.equal(endingVisible(pause, "client", "private", unfinished), false);
+  assert.deepEqual(normalizeEndingState(pause), pause);
+});
+
+test("legacy deliberate pauses restore, while unbound completion messages stay hidden", () => {
+  const legacy = { kind: "pause", text: "Old pause" };
+  assert.equal(endingVisible({ kind: "complete", text: "Old completion" }, "personal", "private", complete), false);
+  assert.equal(endingVisible(legacy, "personal", "private", unfinished), true);
+  assert.equal(finishForNowVisible({ tasks: unfinished, presentationMode: "personal", personalPresentation: "private", ending: legacy }), false);
 });

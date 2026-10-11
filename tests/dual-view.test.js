@@ -28,7 +28,8 @@ test("Top and Side are equal working views with the compact header control", () 
 test("shared task entry supports setup and work mode in both views", () => {
   assert.match(taskListJs, /Done/);
   assert.match(taskListJs, /\+ Add task/);
-  assert.match(taskListJs, /saveTaskEntryOpen\(false\)/);
+  assert.match(taskListJs, /save: saveTaskEntryOpen, load: loadTaskEntryOpen/);
+  assert.match(taskListJs, /value: false, apply: applyEntryMode/);
   assert.match(taskListJs, /saveTaskEntryOpen\(true\)/);
 });
 
@@ -381,7 +382,7 @@ test("Personal Private audio is isolated, saved after completion, and silent in 
   assert.doesNotMatch(personalPreview, /dataset\.completionSound/);
 
   const switchFn = taskListJs.slice(
-    taskListJs.indexOf("onPresentationModeChanged(() => {"),
+    taskListJs.indexOf("onPresentationModeChanged((next) => {"),
     taskListJs.indexOf("onRewardChanged((reward) => {")
   );
   assert.match(switchFn, /applyActiveAudioForView\(\)/);
@@ -441,10 +442,10 @@ test("Personal Private affirmations and session endings stay isolated and silent
   assert.doesNotMatch(continueHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
 
   const persistFn = taskListJs.slice(
-    taskListJs.indexOf("async function persist(nextTasks)"),
+    taskListJs.indexOf("async function persist(nextTasks,"),
     taskListJs.indexOf("function render()")
   );
-  assert.match(persistFn, /await clearStaleEnding\(\)/);
+  assert.match(persistFn, /clearStaleEnding\(kind, clearEnding\)/);
 
   const css = readFileSync("src/shared/styles.css", "utf8");
   assert.match(css, /\.personal-affirmation \{/);
@@ -494,7 +495,7 @@ test("Reset List appears only when every task is complete and confirms before un
     taskListJs.indexOf("doneButton.addEventListener")
   );
   assert.match(confirmHandler, /resetCompletedTasks\(shown\)/);
-  assert.match(confirmHandler, /await persist\(next\)/);
+  assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true \}\)/);
   assert.doesNotMatch(confirmHandler, /deleteTask/);
   assert.doesNotMatch(confirmHandler, /saveReward/);
   assert.doesNotMatch(confirmHandler, /saveCompletionStyle/);
