@@ -1,12 +1,5 @@
 import { canResetList } from "./tasks.js";
-
-export function nextUnfinishedTask(tasks) {
-  if (!Array.isArray(tasks)) {
-    return null;
-  }
-
-  return tasks.find((task) => task && task.completed === false) ?? null;
-}
+export { nextUnfinishedTask } from "./tasks.js";
 
 export function taskProgress(tasks) {
   const list = Array.isArray(tasks) ? tasks : [];

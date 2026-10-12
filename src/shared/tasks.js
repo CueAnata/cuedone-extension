@@ -39,6 +39,26 @@ export function toggleTask(tasks, id) {
   );
 }
 
+export function setTaskCompleted(tasks, id, completed = true) {
+  if (!Array.isArray(tasks)) {
+    return tasks;
+  }
+
+  return tasks.map((task) =>
+    task.id === id && task.completed !== Boolean(completed)
+      ? { ...task, completed: Boolean(completed) }
+      : task
+  );
+}
+
+export function nextUnfinishedTask(tasks) {
+  if (!Array.isArray(tasks)) {
+    return null;
+  }
+
+  return tasks.find((task) => task && task.completed === false) ?? null;
+}
+
 export function deleteTask(tasks, id) {
   return tasks.filter((task) => task.id !== id);
 }

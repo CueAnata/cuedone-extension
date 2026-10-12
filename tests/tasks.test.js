@@ -6,9 +6,11 @@ import {
   createTask,
   deleteTask,
   isTaskList,
+  nextUnfinishedTask,
   normalizeTaskText,
   reorderTasks,
   resetCompletedTasks,
+  setTaskCompleted,
   toggleTask,
 } from "../src/shared/tasks.js";
 
@@ -65,6 +67,19 @@ test("toggleTask keeps completed tasks in place", () => {
     ["a", "b", "c"]
   );
   assert.equal(toggled[0].completed, true);
+});
+
+test("setTaskCompleted is idempotent and preserves list order", () => {
+  const tasks = [createTask("One", 1, "a"), createTask("Two", 2, "b")];
+  const completed = setTaskCompleted(tasks, "a");
+
+  assert.deepEqual(
+    completed.map((task) => task.id),
+    ["a", "b"]
+  );
+  assert.equal(completed[0].completed, true);
+  assert.equal(setTaskCompleted(completed, "a")[0], completed[0]);
+  assert.equal(nextUnfinishedTask(completed)?.id, "b");
 });
 
 test("deleteTask removes only the matching task", () => {
