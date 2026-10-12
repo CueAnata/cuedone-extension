@@ -7,6 +7,7 @@ import {
   celebrationAudioEnabledForTests,
   clearCelebrationFeedback,
   FINAL_SOUND_ASSETS,
+  playBreakClockRing,
   playCelebrationSound,
   playTaskSound,
   resetCelebrationAudioForTests,
@@ -250,6 +251,22 @@ test("sound off means no celebration audio", () => {
   showCelebration({ kind: "final", playSound: false });
   assert.equal(audio.created(), 0);
   assert.equal(audio.resumes(), 0);
+});
+
+test("break-clock ringing uses the master audio gate and stops with Sound Off", async () => {
+  installDom();
+  const audio = installAudio();
+  assert.equal(playBreakClockRing(), false);
+  assert.equal(audio.created(), 0);
+
+  setCelebrationAudioEnabled(true);
+  assert.equal(playBreakClockRing(), true);
+  await Promise.resolve();
+  assert.equal(audio.oscillatorStarts(), 14);
+  const stoppedBefore = audio.oscillatorStops();
+  setCelebrationAudioEnabled(false);
+  assert.ok(audio.oscillatorStops() >= stoppedBefore);
+  assert.equal(playBreakClockRing(), false);
 });
 
 test("sound-on path plays from the user gesture and resumes AudioContext", () => {

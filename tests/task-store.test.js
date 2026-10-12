@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   loadPersonalEnding,
+  PERSONAL_BREAK_TIMER_KEY,
   PERSONAL_ENDING_KEY,
   savePersonalEnding,
 } from "../src/shared/preferences.js";
+import {
+  enableBreakClock,
+  normalizeBreakTimerModel,
+  pauseBreakClock,
+  resumeBreakClock,
+} from "../src/shared/break-clock.js";
 import {
   bindEndingToTasks,
   clearEndingState,
@@ -298,6 +305,46 @@ test("Reset List and Start a New List clear a deliberate pause", async () => {
   await saveList("private", newList, { clearEnding: true });
   assert.deepEqual(store[TASKS_STORAGE_KEY], newList);
   assert.deepEqual(store[PERSONAL_ENDING_KEY], clearEndingState());
+});
+
+test("Private lifecycle writes can clear an ending and resume the break clock atomically", async () => {
+  const completed = [{ ...createTask("One", 1, "one"), completed: true }];
+  const running = enableBreakClock(
+    { enabled: false, intervalMinutes: 15 },
+    1_000
+  );
+  const paused = pauseBreakClock(running, 61_000);
+  const resumed = resumeBreakClock(paused, 120_000);
+  const pausedTimer = normalizeBreakTimerModel({ version: 1, clock: paused });
+  const resumedTimer = normalizeBreakTimerModel({
+    ...pausedTimer,
+    clock: resumed,
+  });
+  const store = mockChromeStorage({
+    [TASKS_STORAGE_KEY]: completed,
+    [PERSONAL_ENDING_KEY]: createEndingState("pause"),
+    [PERSONAL_BREAK_TIMER_KEY]: pausedTimer,
+  });
+  const writes = [];
+  const set = chrome.storage.local.set;
+  chrome.storage.local.set = async (values) => {
+    writes.push(values);
+    return set(values);
+  };
+  const reset = completed.map((task) => ({ ...task, completed: false }));
+
+  await saveList("private", reset, {
+    clearEnding: true,
+    breakTimer: resumedTimer,
+  });
+
+  assert.equal(writes.length, 1);
+  assert.deepEqual(writes[0], {
+    [TASKS_STORAGE_KEY]: reset,
+    [PERSONAL_ENDING_KEY]: clearEndingState(),
+    [PERSONAL_BREAK_TIMER_KEY]: resumedTimer,
+  });
+  assert.deepEqual(store[PERSONAL_BREAK_TIMER_KEY], resumedTimer);
 });
 
 test("completed ending remains separate from unfinished pause behavior", async () => {

@@ -58,7 +58,9 @@ test("service worker module graph contains no await", () => {
   const files = collectModuleGraph(WORKER_ENTRY).sort();
   assert.deepEqual(files, [
     WORKER_ENTRY,
+    "src/platform/break-notifications.js",
     "src/platform/browser.js",
+    "src/shared/break-clock.js",
     "src/shared/personal-layout.js",
     "src/shared/personal-lists.js",
     "src/shared/personal-messages.js",

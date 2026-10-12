@@ -8,6 +8,7 @@ import {
   normalizePauseMessage,
 } from "./personal-messages.js";
 import { normalizeReward } from "./reward.js";
+import { normalizeBreakTimerModel } from "./break-clock.js";
 
 export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
 export const TASK_ENTRY_OPEN_KEY = "cuedone.taskEntryOpen";
@@ -28,6 +29,11 @@ export const PERSONAL_AFFIRMATION_KEY = "cuedone.personalAffirmation";
 export const PERSONAL_COMPLETE_MESSAGE_KEY = "cuedone.personalCompleteMessage";
 export const PERSONAL_PAUSE_MESSAGE_KEY = "cuedone.personalPauseMessage";
 export const PERSONAL_ENDING_KEY = "cuedone.personalEnding";
+export const PERSONAL_BREAK_TIMER_KEY = "cuedone.personalBreakTimer.v1";
+export const PERSONAL_BREAK_NOTIFICATIONS_KEY =
+  "cuedone.personalBreakNotifications";
+export const PERSONAL_BREAK_NOTIFIED_DUE_AT_KEY =
+  "cuedone.personalBreakNotificationDueAt";
 const MOTIVATOR_MAX_LENGTH = 120;
 const FINAL_CELEBRATION_VALUES = [
   "random",
@@ -353,6 +359,44 @@ export function savePersonalEnding(value) {
   });
 }
 
+export function loadPersonalBreakTimer() {
+  return getLocal(PERSONAL_BREAK_TIMER_KEY).then((data) =>
+    normalizeBreakTimerModel(data[PERSONAL_BREAK_TIMER_KEY])
+  );
+}
+
+export function savePersonalBreakTimer(value) {
+  return setLocal({
+    [PERSONAL_BREAK_TIMER_KEY]: normalizeBreakTimerModel(value),
+  });
+}
+
+export function normalizePersonalBreakNotifications(value) {
+  return value === true;
+}
+
+export function loadPersonalBreakNotifications() {
+  return getLocal(PERSONAL_BREAK_NOTIFICATIONS_KEY).then((data) =>
+    normalizePersonalBreakNotifications(
+      data[PERSONAL_BREAK_NOTIFICATIONS_KEY]
+    )
+  );
+}
+
+export function savePersonalBreakNotifications(value) {
+  return setLocal({
+    [PERSONAL_BREAK_NOTIFICATIONS_KEY]:
+      normalizePersonalBreakNotifications(value),
+  });
+}
+
+export function savePersonalSessionState(ending, breakTimer) {
+  return setLocal({
+    [PERSONAL_ENDING_KEY]: normalizeEndingState(ending),
+    [PERSONAL_BREAK_TIMER_KEY]: normalizeBreakTimerModel(breakTimer),
+  });
+}
+
 export function onTaskEntryOpenChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName !== "local" || !changes[TASK_ENTRY_OPEN_KEY]) {
@@ -534,5 +578,31 @@ export function onPersonalEndingChanged(callback) {
     }
 
     callback(normalizeEndingState(changes[PERSONAL_ENDING_KEY].newValue));
+  });
+}
+
+export function onPersonalBreakTimerChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_BREAK_TIMER_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizeBreakTimerModel(changes[PERSONAL_BREAK_TIMER_KEY].newValue)
+    );
+  });
+}
+
+export function onPersonalBreakNotificationsChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_BREAK_NOTIFICATIONS_KEY]) {
+      return;
+    }
+
+    callback(
+      normalizePersonalBreakNotifications(
+        changes[PERSONAL_BREAK_NOTIFICATIONS_KEY].newValue
+      )
+    );
   });
 }

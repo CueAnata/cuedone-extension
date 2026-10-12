@@ -195,6 +195,14 @@ input {
 .sound-preview-button:focus-visible,
 .personal-full-list-toggle:focus-visible,
 .one-active-complete-button:focus-visible,
+.personal-break-interval:focus-visible,
+.personal-break-source:focus-visible,
+.personal-break-suggestion-input:focus-visible,
+.personal-break-suggestion-add:focus-visible,
+.personal-break-suggestion-remove:focus-visible,
+.personal-break-show:focus-visible,
+.personal-break-skip:focus-visible,
+.personal-break-done:focus-visible,
 .personal-settings-toggle:focus-visible,
 .client-settings-toggle:focus-visible {
   outline: 2px solid var(--focus);
@@ -970,6 +978,328 @@ body[data-presentation="personal"][data-personal-presentation="private"]
   color: var(--text);
 }
 
+.personal-break-settings {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+body[data-presentation="personal"][data-personal-presentation="private"]
+  .personal-break-settings:not([hidden]) {
+  display: flex;
+}
+
+.personal-break-interval-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.personal-break-interval {
+  width: 64px;
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+}
+
+.personal-break-status,
+.personal-break-notification-note,
+.personal-break-notification-status,
+.personal-break-source-note,
+.personal-break-suggestion-feedback,
+.personal-break-suggestion-empty,
+.personal-break-custom-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.personal-break-source {
+  min-height: 30px;
+  max-width: 156px;
+  padding: 5px 28px 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.personal-break-source-note {
+  margin-top: -3px;
+}
+
+.personal-break-notification-note {
+  margin-top: -3px;
+}
+
+.personal-break-notification-status:not(:empty) {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.personal-break-suggestion-feedback:not(:empty) {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.personal-break-suggestions-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.personal-break-suggestion-entry {
+  display: flex;
+  gap: 6px;
+}
+
+.personal-break-suggestion-input {
+  min-width: 0;
+  min-height: 30px;
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.personal-break-suggestion-add,
+.personal-break-suggestion-remove,
+.personal-break-show,
+.personal-break-skip,
+.personal-break-done {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.personal-break-suggestion-add,
+.personal-break-show,
+.personal-break-done {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fffdf8;
+}
+
+.personal-break-suggestion-add:hover,
+.personal-break-show:hover,
+.personal-break-done:hover {
+  background: var(--accent-hover);
+}
+
+.personal-break-skip:hover,
+.personal-break-suggestion-remove:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.personal-break-show:disabled {
+  border-color: var(--line);
+  background: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.personal-break-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.personal-break-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.personal-break-suggestion-item span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.personal-break-suggestion-remove {
+  min-height: 26px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.personal-break-alert {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid #e8c39a;
+  border-radius: var(--radius);
+  background: #fff8ed;
+}
+
+.personal-break-alert-copy {
+  min-width: 0;
+}
+
+.personal-break-alert-kicker,
+.personal-break-alert-title,
+.personal-break-revealed {
+  margin: 0;
+}
+
+.personal-break-alert-kicker {
+  color: var(--accent-hover);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.personal-break-alert-title {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.personal-break-revealed {
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.personal-break-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.personal-break-clock-art {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  transform-origin: 50% 88%;
+}
+
+.personal-break-face {
+  position: absolute;
+  left: 10px;
+  top: 13px;
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--text);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px #f1d2ad;
+}
+
+.personal-break-bell {
+  position: absolute;
+  top: 4px;
+  width: 24px;
+  height: 12px;
+  border: 3px solid var(--text);
+  border-bottom: 0;
+  border-radius: 18px 18px 3px 3px;
+  background: var(--accent);
+}
+
+.personal-break-bell.is-left {
+  left: 5px;
+  transform: rotate(-28deg);
+}
+
+.personal-break-bell.is-right {
+  right: 5px;
+  transform: rotate(28deg);
+}
+
+.personal-break-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--text);
+  transform-origin: 50% 100%;
+}
+
+.personal-break-hand.is-hour {
+  height: 13px;
+  transform: translateX(-50%) rotate(-42deg);
+}
+
+.personal-break-hand.is-minute {
+  height: 18px;
+  transform: translateX(-50%) rotate(52deg);
+}
+
+.personal-break-clock-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+}
+
+.personal-break-foot {
+  position: absolute;
+  bottom: 0;
+  width: 20px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--text);
+}
+
+.personal-break-foot.is-left {
+  left: 10px;
+  transform: rotate(-18deg);
+}
+
+.personal-break-foot.is-right {
+  right: 10px;
+  transform: rotate(18deg);
+}
+
 .personal-affirmation {
   margin: 0 0 10px;
   padding: 6px 10px 6px 11px;
@@ -1082,6 +1412,13 @@ body[data-presentation="personal"][data-personal-presentation="private"]
 
 .personal-ending[hidden],
 .personal-affirmation[hidden],
+.personal-break-alert[hidden],
+.personal-break-revealed[hidden],
+.personal-break-show[hidden],
+.personal-break-skip[hidden],
+.personal-break-done[hidden],
+.personal-break-suggestion-empty[hidden],
+.personal-break-custom-empty[hidden],
 .finish-for-now-button[hidden],
 .personal-message-custom[hidden] {
   display: none !important;
@@ -1201,6 +1538,28 @@ body[data-presentation="personal"][data-personal-presentation="private"]
 
   .personal-one-active-head {
     flex-wrap: wrap;
+  }
+
+  .personal-break-interval-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .personal-break-notification-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .personal-break-alert {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .personal-break-clock-art {
+    width: 58px;
+    height: 58px;
+    transform: scale(0.82);
+    transform-origin: left center;
   }
 }
 
@@ -1773,6 +2132,28 @@ body[data-presentation="client"] .celebration-layer.is-visible {
   }
 }
 
+@keyframes break-clock-ring {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-7deg);
+  }
+  30% {
+    transform: rotate(7deg);
+  }
+  45% {
+    transform: rotate(-6deg);
+  }
+  60% {
+    transform: rotate(6deg);
+  }
+  75% {
+    transform: rotate(-3deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .celebration-mark,
   .celebration-message,
@@ -1786,6 +2167,10 @@ body[data-presentation="client"] .celebration-layer.is-visible {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .personal-break-alert.is-ringing .personal-break-clock-art {
+    animation: break-clock-ring 0.72s ease-in-out 2;
+  }
+
   .task-input,
   .add-button,
   .done-button,

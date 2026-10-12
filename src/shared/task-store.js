@@ -1,4 +1,8 @@
-import { PERSONAL_ENDING_KEY } from "./preferences.js";
+import {
+  PERSONAL_BREAK_TIMER_KEY,
+  PERSONAL_ENDING_KEY,
+} from "./preferences.js";
+import { normalizeBreakTimerModel } from "./break-clock.js";
 import { clearEndingState, normalizeEndingState } from "./personal-messages.js";
 import { isTaskList } from "./tasks.js";
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
@@ -15,7 +19,10 @@ export async function loadTasks() {
   return listFromStorage(data[TASKS_STORAGE_KEY]);
 }
 
-export async function saveTasks(tasks, { clearEnding = false } = {}) {
+export async function saveTasks(
+  tasks,
+  { clearEnding = false, breakTimer = null } = {}
+) {
   const values = { [TASKS_STORAGE_KEY]: tasks };
   const ending = clearEnding
     ? clearEndingState()
@@ -24,6 +31,9 @@ export async function saveTasks(tasks, { clearEnding = false } = {}) {
   // Continue list. Completion messages and explicit resets clear in this write.
   if (clearEnding || ending.kind !== "pause") {
     values[PERSONAL_ENDING_KEY] = clearEndingState();
+  }
+  if (breakTimer !== null) {
+    values[PERSONAL_BREAK_TIMER_KEY] = normalizeBreakTimerModel(breakTimer);
   }
   await setLocal(values);
 }

@@ -309,6 +309,8 @@ test("Personal Settings is a collapsed Private/Public selector that isolates lis
   assert.match(taskListJs, /data-personal-presentation="public"/);
   assert.match(taskListJs, /Using Private list/);
   assert.match(taskListJs, /formatActiveListLabel/);
+  assert.match(taskListJs, /personalSettingsToggleLabel\.textContent = expanded \? "Done" : "Settings"/);
+  assert.match(taskListJs, /personalSettingsToggleIcon\.textContent = expanded \? "✓" : "⚙"/);
   assert.match(taskListJs, /not a lock or account/);
   assert.match(taskListJs, /savePersonalPresentation/);
   assert.match(taskListJs, /visibleTasksForActiveList/);
@@ -514,7 +516,10 @@ test("Personal Private affirmations and session endings stay isolated and silent
     taskListJs.indexOf("async function persist(nextTasks, { clearEnding = false } = {})"),
     taskListJs.indexOf("function render()")
   );
-  assert.match(persistFn, /saveList\(kind, tasks, \{ clearEnding \}\)/);
+  assert.match(
+    persistFn,
+    /saveList\(kind, tasks, \{[\s\S]*clearEnding,[\s\S]*breakTimer: resumedBreakTimer/
+  );
   assert.match(persistFn, /clearStaleEnding\(kind, clearEnding\)/);
 
   const css = readFileSync("src/shared/styles.css", "utf8");
@@ -568,7 +573,7 @@ test("Reset List appears only when every task is complete and confirms before un
   assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true \}\)/);
   assert.match(
     confirmHandler,
-    /saveTasks: \(next\) => saveList\(kind, next, \{ clearEnding: true \}\)/
+    /saveTasks: \(next\) =>[\s\S]*saveList\(kind, next, \{[\s\S]*clearEnding: true,[\s\S]*breakTimer: resumedBreakTimer/
   );
   assert.doesNotMatch(confirmHandler, /deleteTask/);
   assert.doesNotMatch(confirmHandler, /saveReward/);

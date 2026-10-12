@@ -543,6 +543,32 @@ function startOscillators(context, kind, token) {
   });
 }
 
+function startBreakClockOscillators(context, token) {
+  if (!audioEnabled || token !== playbackToken) {
+    return;
+  }
+
+  const now = context.currentTime;
+  for (let strike = 0; strike < 7; strike += 1) {
+    for (const frequency of [720, 920]) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "triangle";
+      oscillator.frequency.value = frequency;
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      activeOscillators.add(oscillator);
+      oscillator.onended = () => activeOscillators.delete(oscillator);
+      const start = now + strike * 0.13;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(0.11, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+      oscillator.start(start);
+      oscillator.stop(start + 0.11);
+    }
+  }
+}
+
 export function unlockCelebrationAudio() {
   if (!audioEnabled) {
     return null;
@@ -562,6 +588,41 @@ export function unlockCelebrationAudio() {
   }
 
   return audioContext;
+}
+
+export function playBreakClockRing() {
+  if (!audioEnabled) {
+    return false;
+  }
+
+  const token = stopActivePlayback();
+  const context = unlockCelebrationAudio();
+  if (!context) {
+    return false;
+  }
+
+  const start = () => {
+    if (
+      !audioEnabled ||
+      token !== playbackToken ||
+      !context ||
+      context.state !== "running"
+    ) {
+      return;
+    }
+    try {
+      startBreakClockOscillators(context, token);
+    } catch {
+      // Break audio is optional and must never block the timer prompt.
+    }
+  };
+
+  if (context.state === "running") {
+    start();
+    return true;
+  }
+  context.resume?.().then(start).catch(() => {});
+  return true;
 }
 
 function playWebAudio(kind, token) {

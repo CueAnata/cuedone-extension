@@ -31,6 +31,7 @@ import {
 } from "./reward.js";
 import {
   clearCelebrationFeedback,
+  playBreakClockRing,
   playCelebrationSound,
   playTaskSound,
   setCelebrationAudioEnabled,
@@ -45,11 +46,22 @@ import {
   taskListsMatch,
 } from "./list-lifecycle.js";
 import {
+  connectBreakClockView,
+  hasBreakNotificationPermission,
+  onBreakNotificationPermissionChanged,
+  onBrowserViewResumed,
+  requestBreakNotificationPermission,
+  scheduleBrowserAlarm,
+} from "../platform/browser.js";
+import { beginBreakNotificationOptIn } from "../platform/break-notifications.js";
+import {
   loadCompletionSound,
   loadCompletionStyle,
   loadFinalCelebration,
   loadFinalSound,
   loadPersonalAffirmation,
+  loadPersonalBreakNotifications,
+  loadPersonalBreakTimer,
   loadPersonalCompleteMessage,
   loadPersonalCompletionSound,
   loadPersonalEnding,
@@ -67,6 +79,8 @@ import {
   onFinalCelebrationChanged,
   onFinalSoundChanged,
   onPersonalAffirmationChanged,
+  onPersonalBreakNotificationsChanged,
+  onPersonalBreakTimerChanged,
   onPersonalCompleteMessageChanged,
   onPersonalCompletionSoundChanged,
   onPersonalEndingChanged,
@@ -84,11 +98,14 @@ import {
   saveFinalCelebration,
   saveFinalSound,
   savePersonalAffirmation,
+  savePersonalBreakNotifications,
+  savePersonalBreakTimer,
   savePersonalCompleteMessage,
   savePersonalCompletionSound,
   savePersonalEnding,
   savePersonalFinalSound,
   savePersonalPauseMessage,
+  savePersonalSessionState,
   savePersonalPresentation,
   savePersonalTaskLayout,
   savePersonalTaskSound,
@@ -99,6 +116,27 @@ import {
   normalizeFinalSound,
   normalizeTaskSound,
 } from "./preferences.js";
+import {
+  BREAK_SUGGESTION_MAX_LENGTH,
+  MAX_BREAK_INTERVAL_MINUTES,
+  MIN_BREAK_INTERVAL_MINUTES,
+  addCustomBreakSuggestion,
+  breakClockAlarmDelay,
+  breakClockStatus,
+  changeBreakInterval,
+  disableBreakClock,
+  dismissBreak,
+  enableBreakClock,
+  formatBreakClockStatus,
+  normalizeBreakTimerModel,
+  pauseBreakClock,
+  removeCustomBreakSuggestion,
+  resumeBreakClock,
+  revealBreakSuggestion,
+  withBreakClock,
+  withBreakSuggestionSource,
+  withBreakSuggestions,
+} from "./break-clock.js";
 import { applyPresentationMode } from "./mode-switch.js";
 import {
   activeListKind,
@@ -174,7 +212,15 @@ export async function mountTaskList(root) {
   let personalCompleteMessage = normalizeCompleteMessage();
   let personalPauseMessage = normalizePauseMessage();
   let personalEnding = clearEndingState();
+  let personalBreakNotifications = false;
+  let personalBreakTimer = normalizeBreakTimerModel();
+  let personalBreakClock = personalBreakTimer.clock;
+  let personalBreakSuggestions = personalBreakTimer.customSuggestions;
+  let cancelBreakClockAlarm = () => {};
+  let lastHandledBreakDueAt = null;
   let tasksKind = "private";
+
+  connectBreakClockView();
 
   root.innerHTML = `
     <form class="task-form">
@@ -201,7 +247,7 @@ export async function mountTaskList(root) {
           aria-controls="personal-settings-panel"
         >
           <span class="personal-settings-gear" aria-hidden="true">&#9881;</span>
-          <span>Settings</span>
+          <span class="personal-settings-toggle-label">Settings</span>
         </button>
       </div>
       <div id="personal-settings-panel" class="personal-settings-panel" hidden>
@@ -413,10 +459,152 @@ export async function mountTaskList(root) {
             hidden
           />
         </div>
+        <div class="personal-break-settings" hidden>
+          <div class="personal-pref-row">
+            <p class="personal-pref-label" id="personal-break-clock-label">
+              Break clock
+            </p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="personal-break-clock-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-break-clock="off"
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-break-clock="on"
+              >
+                On
+              </button>
+            </div>
+          </div>
+          <div class="personal-pref-row personal-break-interval-row">
+            <label class="personal-pref-label" for="personal-break-interval">
+              Break interval
+            </label>
+            <span class="personal-break-interval-control">
+              <input
+                id="personal-break-interval"
+                class="personal-break-interval"
+                type="number"
+                min="${MIN_BREAK_INTERVAL_MINUTES}"
+                max="${MAX_BREAK_INTERVAL_MINUTES}"
+                step="1"
+                inputmode="numeric"
+              />
+              <span>minutes</span>
+            </span>
+          </div>
+          <p class="personal-break-status" aria-live="polite"></p>
+          <div class="personal-pref-row personal-break-notification-row">
+            <p class="personal-pref-label" id="personal-break-notification-label">
+              Notify me when CueDone is closed
+            </p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="personal-break-notification-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-break-notification="off"
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-break-notification="on"
+              >
+                On
+              </button>
+            </div>
+          </div>
+          <p class="personal-break-notification-note">
+            Shows a silent, private system alert and a ! on the CueDone toolbar
+            icon when a break is waiting.
+          </p>
+          <p class="personal-break-notification-status" aria-live="polite"></p>
+          <div class="personal-pref-row personal-break-source-row">
+            <label class="personal-pref-label" for="personal-break-source">
+              Break suggestions
+            </label>
+            <select id="personal-break-source" class="personal-break-source">
+              <option value="choose-for-me">Choose for me</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <p class="personal-break-source-note">
+            Choose for me uses CueDone’s whimsical ideas. Custom uses only
+            your saved break suggestions.
+          </p>
+          <div class="personal-break-suggestions-editor">
+            <label class="personal-pref-label" for="personal-break-suggestion-input">
+              My break suggestions
+            </label>
+            <div class="personal-break-suggestion-entry">
+              <input
+                id="personal-break-suggestion-input"
+                class="personal-break-suggestion-input"
+                type="text"
+                maxlength="${BREAK_SUGGESTION_MAX_LENGTH}"
+                placeholder="Add a playful break idea"
+                autocomplete="off"
+              />
+              <button class="personal-break-suggestion-add" type="button">
+                Add
+              </button>
+            </div>
+            <ul class="personal-break-suggestion-list" aria-label="My break suggestions"></ul>
+            <p class="personal-break-suggestion-feedback" aria-live="polite"></p>
+            <p class="personal-break-suggestion-empty">
+              No custom ideas saved yet.
+            </p>
+          </div>
+          <p class="personal-settings-note">
+            Closing Top does not reset the clock. If a break becomes due while
+            CueDone is closed or the computer sleeps, it appears when a view is
+            next available. Finish for now pauses it.
+          </p>
+        </div>
       </div>
     </section>
     <p class="personal-list-error" role="alert" hidden></p>
     <p class="personal-affirmation" hidden></p>
+    <section class="personal-break-alert" role="alert" hidden>
+      <div class="personal-break-clock-art" aria-hidden="true">
+        <span class="personal-break-bell is-left"></span>
+        <span class="personal-break-bell is-right"></span>
+        <span class="personal-break-face">
+          <span class="personal-break-hand is-hour"></span>
+          <span class="personal-break-hand is-minute"></span>
+          <span class="personal-break-clock-dot"></span>
+        </span>
+        <span class="personal-break-foot is-left"></span>
+        <span class="personal-break-foot is-right"></span>
+      </div>
+      <div class="personal-break-alert-copy">
+        <p class="personal-break-alert-kicker">BREAK TIME</p>
+        <p class="personal-break-alert-title">A little reset?</p>
+          <p class="personal-break-revealed" hidden></p>
+          <p class="personal-break-custom-empty" hidden>
+            Add a custom break idea in Settings before using Custom.
+          </p>
+        <div class="personal-break-alert-actions">
+          <button class="personal-break-show" type="button">Show</button>
+          <button class="personal-break-skip" type="button">Skip</button>
+          <button class="personal-break-done" type="button" hidden>Done</button>
+        </div>
+      </div>
+    </section>
     <section class="personal-ending" hidden>
       <span class="personal-ending-icon" aria-hidden="true"></span>
       <p class="personal-ending-text"></p>
@@ -661,6 +849,12 @@ export async function mountTaskList(root) {
   const personalSettings = root.querySelector(".personal-settings");
   const personalListLabel = root.querySelector(".personal-list-label");
   const personalSettingsToggle = root.querySelector(".personal-settings-toggle");
+  const personalSettingsToggleIcon = personalSettingsToggle.querySelector(
+    ".personal-settings-gear"
+  );
+  const personalSettingsToggleLabel = personalSettingsToggle.querySelector(
+    ".personal-settings-toggle-label"
+  );
   const personalSettingsPanel = root.querySelector(".personal-settings-panel");
   const personalPresentationButtons = root.querySelectorAll(
     "[data-personal-presentation]"
@@ -711,6 +905,50 @@ export async function mountTaskList(root) {
   const personalPauseMessageCustom = root.querySelector(
     "#personal-pause-message-custom"
   );
+  const personalBreakSettings = root.querySelector(
+    ".personal-break-settings"
+  );
+  const personalBreakClockButtons = root.querySelectorAll(
+    "[data-personal-break-clock]"
+  );
+  const personalBreakIntervalInput = root.querySelector(
+    ".personal-break-interval"
+  );
+  const personalBreakStatus = root.querySelector(".personal-break-status");
+  const personalBreakNotificationButtons = root.querySelectorAll(
+    "[data-personal-break-notification]"
+  );
+  const personalBreakNotificationStatus = root.querySelector(
+    ".personal-break-notification-status"
+  );
+  const personalBreakSourceSelect = root.querySelector(
+    ".personal-break-source"
+  );
+  const personalBreakSuggestionInput = root.querySelector(
+    ".personal-break-suggestion-input"
+  );
+  const personalBreakSuggestionAdd = root.querySelector(
+    ".personal-break-suggestion-add"
+  );
+  const personalBreakSuggestionList = root.querySelector(
+    ".personal-break-suggestion-list"
+  );
+  const personalBreakSuggestionEmpty = root.querySelector(
+    ".personal-break-suggestion-empty"
+  );
+  const personalBreakSuggestionFeedback = root.querySelector(
+    ".personal-break-suggestion-feedback"
+  );
+  const personalBreakAlert = root.querySelector(".personal-break-alert");
+  const personalBreakRevealed = root.querySelector(
+    ".personal-break-revealed"
+  );
+  const personalBreakCustomEmpty = root.querySelector(
+    ".personal-break-custom-empty"
+  );
+  const personalBreakShow = root.querySelector(".personal-break-show");
+  const personalBreakSkip = root.querySelector(".personal-break-skip");
+  const personalBreakDone = root.querySelector(".personal-break-done");
   const personalAffirmationDisplay = root.querySelector(".personal-affirmation");
   const personalEndingSection = root.querySelector(".personal-ending");
   const personalEndingIcon = root.querySelector(".personal-ending-icon");
@@ -830,6 +1068,8 @@ export async function mountTaskList(root) {
     personalSettingsPanel.hidden = !expanded;
     personalSettingsToggle.setAttribute("aria-expanded", String(expanded));
     personalSettingsToggle.classList.toggle("is-open", expanded);
+    personalSettingsToggleIcon.textContent = expanded ? "✓" : "⚙";
+    personalSettingsToggleLabel.textContent = expanded ? "Done" : "Settings";
   }
 
   function paintPersonalPresentation(value) {
@@ -944,11 +1184,13 @@ export async function mountTaskList(root) {
     personalTaskLayoutSettings.hidden = !privateFeatures;
     personalAudioSettings.hidden = !privateFeatures;
     personalMessageSettings.hidden = !privateFeatures;
+    personalBreakSettings.hidden = !privateFeatures;
     personalListLabel.textContent = formatActiveListLabel(kind);
     list.setAttribute("aria-label", taskListAriaLabel(kind));
     paintPersonalPresentation(personalPresentation);
     paintPersonalTaskLayout(personalTaskLayout);
     paintPersonalMessages();
+    paintBreakClock();
     syncActiveAudioGate();
   }
 
@@ -1010,6 +1252,218 @@ export async function mountTaskList(root) {
     personalEnding = normalizeEndingState(value);
   }
 
+  function breakClockAllowed() {
+    return personalPrivateFeaturesAllowed(
+      document.body.dataset.presentation,
+      personalPresentation
+    );
+  }
+
+  function applyPersonalBreakNotifications(value) {
+    personalBreakNotifications = value === true;
+    for (const button of personalBreakNotificationButtons) {
+      const isCurrent =
+        button.dataset.personalBreakNotification ===
+        (personalBreakNotifications ? "on" : "off");
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+  }
+
+  function refreshBreakNotificationPermissionStatus() {
+    if (!personalBreakNotifications) {
+      personalBreakNotificationStatus.textContent = "";
+      return Promise.resolve();
+    }
+
+    return hasBreakNotificationPermission().then((granted) => {
+      personalBreakNotificationStatus.textContent = granted
+        ? "Background break alerts are ready."
+        : "Chrome notifications are blocked. Select On to request permission again.";
+    });
+  }
+
+  async function persistPersonalBreakNotifications(next) {
+    const previous = personalBreakNotifications;
+    applyPersonalBreakNotifications(next);
+    try {
+      await savePersonalBreakNotifications(next);
+      await refreshBreakNotificationPermissionStatus();
+      showListError("");
+      return true;
+    } catch {
+      applyPersonalBreakNotifications(previous);
+      await refreshBreakNotificationPermissionStatus();
+      showListError(
+        "CueDone could not save the notification setting. Its previous setting is unchanged."
+      );
+      return false;
+    }
+  }
+
+  function renderCustomBreakSuggestions() {
+    personalBreakSuggestionList.replaceChildren();
+    for (const suggestion of personalBreakSuggestions) {
+      const item = document.createElement("li");
+      item.className = "personal-break-suggestion-item";
+      const text = document.createElement("span");
+      text.textContent = suggestion.text;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "personal-break-suggestion-remove";
+      remove.dataset.suggestionId = suggestion.id;
+      remove.setAttribute("aria-label", `Remove ${suggestion.text}`);
+      remove.textContent = "Remove";
+      item.append(text, remove);
+      personalBreakSuggestionList.append(item);
+    }
+    personalBreakSuggestionEmpty.hidden = personalBreakSuggestions.length > 0;
+  }
+
+  function customBreakSuggestionsUnavailable() {
+    return (
+      personalBreakTimer.suggestionSource === "custom" &&
+      personalBreakSuggestions.length === 0
+    );
+  }
+
+  function scheduleBreakClock(status) {
+    cancelBreakClockAlarm();
+    cancelBreakClockAlarm = () => {};
+    if (!breakClockAllowed() || status.phase !== "running") {
+      return;
+    }
+
+    const delay = breakClockAlarmDelay(personalBreakClock);
+    if (delay === null) {
+      return;
+    }
+    cancelBreakClockAlarm = scheduleBrowserAlarm(
+      delay + 20,
+      () => paintBreakClock(),
+    );
+  }
+
+  function paintBreakClock() {
+    const status = breakClockStatus(personalBreakClock);
+    const isDue =
+      breakClockAllowed() &&
+      personalEnding.kind === "none" &&
+      status.phase === "due";
+    for (const button of personalBreakClockButtons) {
+      const isCurrent =
+        button.dataset.personalBreakClock ===
+        (personalBreakClock.enabled ? "on" : "off");
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+    personalBreakIntervalInput.value = String(
+      personalBreakClock.intervalMinutes
+    );
+    personalBreakStatus.textContent = formatBreakClockStatus(
+      personalBreakClock
+    );
+    personalBreakSourceSelect.value = personalBreakTimer.suggestionSource;
+    personalBreakAlert.hidden = !isDue;
+    personalBreakRevealed.textContent = personalBreakClock.revealedSuggestion;
+    personalBreakRevealed.hidden = !personalBreakClock.revealedSuggestion;
+    personalBreakShow.hidden = Boolean(personalBreakClock.revealedSuggestion);
+    personalBreakSkip.hidden = Boolean(personalBreakClock.revealedSuggestion);
+    personalBreakDone.hidden = !personalBreakClock.revealedSuggestion;
+    personalBreakCustomEmpty.hidden =
+      !isDue ||
+      Boolean(personalBreakClock.revealedSuggestion) ||
+      !customBreakSuggestionsUnavailable();
+    personalBreakShow.disabled = customBreakSuggestionsUnavailable();
+    personalBreakAlert.classList.toggle("is-ringing", isDue);
+
+    if (status.phase !== "due") {
+      lastHandledBreakDueAt = null;
+    } else if (lastHandledBreakDueAt !== personalBreakClock.dueAt) {
+      if (!isDue) {
+        scheduleBreakClock(status);
+        return;
+      }
+      lastHandledBreakDueAt = personalBreakClock.dueAt;
+      if (personalSound === "on") {
+        try {
+          playBreakClockRing();
+        } catch {
+          // The visual break prompt is independent from optional audio.
+        }
+      }
+    }
+    scheduleBreakClock(status);
+  }
+
+  function applyPersonalBreakTimer(value) {
+    const wasDue = breakClockStatus(personalBreakClock).phase === "due";
+    const previousDueAt = personalBreakClock.dueAt;
+    personalBreakTimer = normalizeBreakTimerModel(value);
+    personalBreakClock = personalBreakTimer.clock;
+    personalBreakSuggestions = personalBreakTimer.customSuggestions;
+    if (wasDue && breakClockStatus(personalBreakClock).phase !== "due") {
+      stopCelebrationAudio();
+    }
+    if (previousDueAt !== personalBreakClock.dueAt) {
+      lastHandledBreakDueAt = null;
+    }
+    renderCustomBreakSuggestions();
+    paintBreakClock();
+  }
+
+  async function persistBreakClock(next, failureMessage) {
+    const previous = personalBreakTimer;
+    const nextTimer = withBreakClock(personalBreakTimer, next);
+    try {
+      await savePersonalBreakTimer(nextTimer);
+      applyPersonalBreakTimer(nextTimer);
+      showListError("");
+      return true;
+    } catch {
+      applyPersonalBreakTimer(previous);
+      showListError(
+        failureMessage ||
+          "CueDone could not save the break clock. Its previous setting is unchanged."
+      );
+      return false;
+    }
+  }
+
+  async function persistBreakSuggestions(next) {
+    const previous = personalBreakTimer;
+    const nextTimer = withBreakSuggestions(personalBreakTimer, next);
+    try {
+      await savePersonalBreakTimer(nextTimer);
+      applyPersonalBreakTimer(nextTimer);
+      showListError("");
+      return true;
+    } catch {
+      applyPersonalBreakTimer(previous);
+      showListError(
+        "CueDone could not save that break suggestion. Your suggestions are unchanged."
+      );
+      return false;
+    }
+  }
+
+  async function persistBreakSuggestionSource(next) {
+    const previous = personalBreakTimer;
+    const nextTimer = withBreakSuggestionSource(personalBreakTimer, next);
+    try {
+      await savePersonalBreakTimer(nextTimer);
+      applyPersonalBreakTimer(nextTimer);
+      showListError("");
+      return true;
+    } catch {
+      applyPersonalBreakTimer(previous);
+      showListError(
+        "CueDone could not save that break choice. Your previous choice is unchanged."
+      );
+      return false;
+    }
+  }
+
   function paintPersonalMessages() {
     const allowed = personalPrivateFeaturesAllowed(
       document.body.dataset.presentation,
@@ -1047,17 +1501,36 @@ export async function mountTaskList(root) {
     });
   }
 
-  async function persistEnding(nextEnding, endingTasks = visibleTasks()) {
+  async function persistEnding(
+    nextEnding,
+    endingTasks = visibleTasks(),
+    { nextBreakClock = null } = {}
+  ) {
     nextEnding = bindEndingToTasks(nextEnding, endingTasks);
     const previous = personalEnding;
+    const previousBreakTimer = personalBreakTimer;
+    const nextBreakTimer =
+      nextBreakClock === null
+        ? null
+        : withBreakClock(personalBreakTimer, nextBreakClock);
     applyPersonalEnding(nextEnding);
+    if (nextBreakTimer !== null) {
+      applyPersonalBreakTimer(nextBreakTimer);
+    }
     paintPersonalMessages();
     try {
-      await savePersonalEnding(nextEnding);
+      if (nextBreakClock === null) {
+        await savePersonalEnding(nextEnding);
+      } else {
+        await savePersonalSessionState(nextEnding, nextBreakTimer);
+      }
       showListError("");
       return true;
     } catch {
       applyPersonalEnding(previous);
+      if (nextBreakTimer !== null) {
+        applyPersonalBreakTimer(previousBreakTimer);
+      }
       paintPersonalMessages();
       showListError(
         "CueDone could not save that change. Your current message is unchanged."
@@ -1415,8 +1888,22 @@ export async function mountTaskList(root) {
     tasks = nextTasks;
     tasksKind = kind;
     render();
+    const resumedBreakClock =
+      clearEnding && breakClockAllowed()
+        ? resumeBreakClock(personalBreakClock)
+        : null;
+    const resumedBreakTimer =
+      resumedBreakClock === null
+        ? null
+        : withBreakClock(personalBreakTimer, resumedBreakClock);
     try {
-      await saveList(kind, tasks, { clearEnding });
+      await saveList(kind, tasks, {
+        clearEnding,
+        breakTimer: resumedBreakTimer,
+      });
+      if (resumedBreakTimer !== null) {
+        applyPersonalBreakTimer(resumedBreakTimer);
+      }
       showListError("");
       clearStaleEnding(kind, clearEnding);
     } catch {
@@ -1619,11 +2106,22 @@ export async function mountTaskList(root) {
     pendingSynchronizedTasks = null;
 
     const kind = currentListKind();
+    const resumedBreakClock = breakClockAllowed()
+      ? resumeBreakClock(personalBreakClock)
+      : null;
+    const resumedBreakTimer =
+      resumedBreakClock === null
+        ? null
+        : withBreakClock(personalBreakTimer, resumedBreakClock);
     const result = await saveNewListFromReview({
       reviewedTasks: snapshotTasks(visibleTasks()),
       selectedIds: carryoverReview.selectedIds,
       loadTasks: () => loadList(kind),
-      saveTasks: (next) => saveList(kind, next, { clearEnding: true }),
+      saveTasks: (next) =>
+        saveList(kind, next, {
+          clearEnding: true,
+          breakTimer: resumedBreakTimer,
+        }),
     });
 
     newListSaveInProgress = false;
@@ -1684,6 +2182,9 @@ export async function mountTaskList(root) {
       savePersonalAffirmation(nextAffirmation).catch(() => {});
     }
     clearStaleEnding(kind, true);
+    if (resumedBreakTimer !== null) {
+      applyPersonalBreakTimer(resumedBreakTimer);
+    }
     render();
     applyEntryMode(true);
     saveTaskEntryOpen(true).catch(() => {});
@@ -2059,7 +2560,23 @@ export async function mountTaskList(root) {
   onPersonalEndingChanged((value) => {
     applyPersonalEnding(value);
     paintPersonalMessages();
+    paintBreakClock();
   });
+
+  onPersonalBreakTimerChanged((value) => {
+    applyPersonalBreakTimer(value);
+  });
+
+  onPersonalBreakNotificationsChanged((value) => {
+    applyPersonalBreakNotifications(value);
+    void refreshBreakNotificationPermissionStatus();
+  });
+
+  onBreakNotificationPermissionChanged(() => {
+    void refreshBreakNotificationPermissionStatus();
+  });
+
+  onBrowserViewResumed(() => paintBreakClock());
 
   for (const button of completionStyleButtons) {
     button.addEventListener("click", () => {
@@ -2336,6 +2853,162 @@ export async function mountTaskList(root) {
     });
   });
 
+  for (const button of personalBreakClockButtons) {
+    button.addEventListener("click", () => {
+      if (!breakClockAllowed()) {
+        return;
+      }
+      const requested = button.dataset.personalBreakClock;
+      const next =
+        requested === "on"
+          ? enableBreakClock(personalBreakClock)
+          : disableBreakClock(personalBreakClock);
+      if (next.enabled === personalBreakClock.enabled) {
+        paintBreakClock();
+        return;
+      }
+      if (next.enabled && personalSound === "on") {
+        unlockCelebrationAudio();
+      }
+      void persistBreakClock(next);
+    });
+  }
+
+  for (const button of personalBreakNotificationButtons) {
+    button.addEventListener("click", async () => {
+      if (!breakClockAllowed()) {
+        return;
+      }
+
+      const requested = button.dataset.personalBreakNotification === "on";
+      if (!requested) {
+        if (!personalBreakNotifications) {
+          applyPersonalBreakNotifications(false);
+          return;
+        }
+        await persistPersonalBreakNotifications(false);
+        return;
+      }
+
+      personalBreakNotificationStatus.textContent =
+        "Waiting for Chrome notification permission…";
+      const { saved, granted } = await beginBreakNotificationOptIn({
+        saveEnabled: persistPersonalBreakNotifications,
+        requestPermission: requestBreakNotificationPermission,
+      });
+      if (!saved) {
+        return;
+      }
+      if (!granted) {
+        personalBreakNotificationStatus.textContent =
+          "Chrome notifications are blocked. Select On to request permission again.";
+        return;
+      }
+
+      await refreshBreakNotificationPermissionStatus();
+    });
+  }
+
+  personalBreakIntervalInput.addEventListener("change", () => {
+    if (!breakClockAllowed()) {
+      paintBreakClock();
+      return;
+    }
+    const next = changeBreakInterval(
+      personalBreakClock,
+      personalBreakIntervalInput.value
+    );
+    void persistBreakClock(next);
+  });
+
+  personalBreakSourceSelect.addEventListener("change", async () => {
+    const requested = personalBreakSourceSelect.value;
+    personalBreakSuggestionFeedback.textContent = "";
+    if (await persistBreakSuggestionSource(requested)) {
+      personalBreakSuggestionFeedback.textContent =
+        requested === "custom" && personalBreakSuggestions.length === 0
+          ? "Custom is selected. Add at least one idea for CueDone to choose."
+          : requested === "custom"
+            ? "Custom is selected. CueDone will choose from your saved ideas."
+            : "Choose for me is selected. CueDone will use its whimsical ideas.";
+    }
+  });
+
+  personalBreakShow.addEventListener("click", () => {
+    const next = revealBreakSuggestion(
+      personalBreakClock,
+      personalBreakSuggestions,
+      personalBreakTimer.suggestionSource
+    );
+    void persistBreakClock(
+      next,
+      "CueDone could not save that break choice. The break is still waiting."
+    );
+  });
+
+  function dismissCurrentBreak() {
+    void persistBreakClock(
+      dismissBreak(personalBreakClock),
+      "CueDone could not dismiss that break. The break is still waiting."
+    );
+  }
+
+  personalBreakSkip.addEventListener("click", dismissCurrentBreak);
+  personalBreakDone.addEventListener("click", dismissCurrentBreak);
+
+  async function addBreakSuggestionFromInput() {
+    const submittedText = personalBreakSuggestionInput.value.trim();
+    const next = addCustomBreakSuggestion(
+      personalBreakSuggestions,
+      submittedText
+    );
+    if (next.length === personalBreakSuggestions.length) {
+      personalBreakSuggestionFeedback.textContent = submittedText
+        ? "That custom idea could not be added."
+        : "Type a custom break idea first.";
+      return;
+    }
+    if (await persistBreakSuggestions(next)) {
+      personalBreakSuggestionInput.value = "";
+      personalBreakSuggestionFeedback.textContent =
+        personalBreakTimer.suggestionSource === "custom"
+          ? `Saved “${submittedText}”. CueDone can choose it for your next break.`
+          : `Saved “${submittedText}”. Choose Custom above to use your saved ideas.`;
+      personalBreakSuggestionInput.focus();
+    }
+  }
+
+  personalBreakSuggestionAdd.addEventListener("click", () => {
+    void addBreakSuggestionFromInput();
+  });
+
+  personalBreakSuggestionInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    void addBreakSuggestionFromInput();
+  });
+
+  personalBreakSuggestionList.addEventListener("click", (event) => {
+    const button = event.target.closest(".personal-break-suggestion-remove");
+    if (!button) {
+      return;
+    }
+    const next = removeCustomBreakSuggestion(
+      personalBreakSuggestions,
+      button.dataset.suggestionId
+    );
+    void persistBreakSuggestions(next).then((saved) => {
+      if (saved) {
+        personalBreakSuggestionFeedback.textContent =
+          next.length === 0 && personalBreakTimer.suggestionSource === "custom"
+            ? "Removed. Add another idea before the next Custom break."
+            : "Custom break idea removed.";
+      }
+    });
+  });
+
   finishForNowButton.addEventListener("click", async () => {
     if (
       !finishForNowVisible({
@@ -2353,11 +3026,15 @@ export async function mountTaskList(root) {
       return;
     }
 
-    await persistEnding(next);
+    await persistEnding(next, visibleTasks(), {
+      nextBreakClock: pauseBreakClock(personalBreakClock),
+    });
   });
 
   continueListButton.addEventListener("click", async () => {
-    await persistEnding(clearEndingState());
+    await persistEnding(clearEndingState(), visibleTasks(), {
+      nextBreakClock: resumeBreakClock(personalBreakClock),
+    });
   });
 
   list.addEventListener("pointerdown", (event) => {
@@ -2448,6 +3125,9 @@ export async function mountTaskList(root) {
   applyPersonalCompleteMessage(await loadPersonalCompleteMessage());
   applyPersonalPauseMessage(await loadPersonalPauseMessage());
   applyPersonalEnding(await loadPersonalEnding());
+  applyPersonalBreakNotifications(await loadPersonalBreakNotifications());
+  await refreshBreakNotificationPermissionStatus();
+  applyPersonalBreakTimer(await loadPersonalBreakTimer());
   applyFinalCelebration(await loadFinalCelebration());
   applyActiveAudioForView();
   const initialKind = currentListKind();
