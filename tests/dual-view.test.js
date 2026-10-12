@@ -69,6 +69,8 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(taskListJs, /data-completion-sound="off"/);
   assert.match(taskListJs, /data-completion-sound="on"/);
   assert.match(taskListJs, /class="client-settings-toggle"/);
+  assert.match(taskListJs, /class="client-settings-gear"/);
+  assert.match(taskListJs, /class="client-settings-label"/);
   assert.match(taskListJs, /aria-expanded="false"/);
   assert.match(taskListJs, /aria-controls="client-settings-panel"/);
   assert.match(taskListJs, /id="client-settings-panel" class="client-settings-panel" hidden/);
@@ -191,7 +193,12 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   const setter = taskListJs.slice(setterStart, setterEnd);
   assert.match(setter, /settingsPanel\.hidden = !expanded/);
   assert.match(setter, /setAttribute\("aria-expanded", String\(expanded\)\)/);
+  assert.match(setter, /classList\.toggle\("is-open", expanded\)/);
+  assert.match(setter, /clientSettingsDoneInline\.hidden = !expanded/);
   assert.doesNotMatch(setter, /save|play|task|Celebrate/);
+  assert.match(taskListJs, /class="client-settings-actions"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"/);
+  assert.match(taskListJs, /✓ Done/);
 
   const toggleStart = taskListJs.indexOf(
     'settingsToggle.addEventListener("click"'
@@ -204,6 +211,19 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.match(toggleHandler, /setSettingsPanelOpen/);
   assert.match(toggleHandler, /aria-expanded/);
   assert.doesNotMatch(toggleHandler, /save|play|task|Celebrate/);
+
+  assert.match(panelMarkup, /class="client-settings-done"/);
+  assert.match(panelMarkup, /✓ Done/);
+  assert.match(taskListJs, /clientSettingsDoneInline\.hidden = !expanded/);
+  const doneStart = taskListJs.indexOf('clientSettingsDone.addEventListener("click"');
+  const doneEnd = taskListJs.indexOf(
+    'personalSettingsToggle.addEventListener("click"',
+    doneStart
+  );
+  const doneHandler = taskListJs.slice(doneStart, doneEnd);
+  assert.match(doneHandler, /setSettingsPanelOpen\(false\)/);
+  assert.match(taskListJs, /clientSettingsDoneInline\.addEventListener\("click"/);
+  assert.doesNotMatch(doneHandler, /save|play|task|Celebrate/);
 
   assert.ok(
     taskListJs.indexOf('class="client-motivator"') > panelEnd,

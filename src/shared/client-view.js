@@ -1,4 +1,5 @@
 import { canResetList } from "./tasks.js";
+import { formatProgress as formatProgressShared, normalizeProgress } from "./progress.js";
 
 export function nextUnfinishedTask(tasks) {
   if (!Array.isArray(tasks)) {
@@ -9,21 +10,11 @@ export function nextUnfinishedTask(tasks) {
 }
 
 export function taskProgress(tasks) {
-  const list = Array.isArray(tasks) ? tasks : [];
-  const total = list.length;
-  const complete = list.filter((task) => task && task.completed === true).length;
-
-  return {
-    complete,
-    total,
-    percent: total === 0 ? 0 : Math.round((complete / total) * 100),
-  };
+  return normalizeProgress(tasks);
 }
 
 export function formatProgressLabel(progress) {
-  const complete = Number(progress?.complete) || 0;
-  const total = Number(progress?.total) || 0;
-  return `${complete} of ${total} complete`;
+  return formatProgressShared(progress);
 }
 
 export function resetListVisible({

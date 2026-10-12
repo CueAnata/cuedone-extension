@@ -662,8 +662,55 @@ input {
   padding-top: 2px;
 }
 
+.client-settings-actions {
+  display: flex;
+  align-self: flex-end;
+  gap: 8px;
+}
+
 .client-settings-panel[hidden] {
   display: none;
+}
+
+.client-settings-done-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.client-settings-done-inline[hidden] {
+  display: none;
+}
+
+.client-settings-done-inline:hover {
+  filter: brightness(0.96);
+}
+
+.client-settings-done {
+  align-self: flex-end;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.client-settings-done:hover {
+  background: var(--accent);
+  color: white;
 }
 
 .personal-settings {

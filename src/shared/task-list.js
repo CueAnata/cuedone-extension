@@ -645,15 +645,18 @@ export async function mountTaskList(root) {
             </button>
           </div>
         </div>
-        <button
-          class="client-settings-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="client-settings-panel"
-        >
-          <span class="client-settings-gear" aria-hidden="true">&#9881;</span>
-          <span>Settings</span>
-        </button>
+        <div class="client-settings-actions">
+          <button
+            class="client-settings-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="client-settings-panel"
+          >
+            <span class="client-settings-gear" aria-hidden="true">&#9881;</span>
+            <span class="client-settings-label">Settings</span>
+          </button>
+          <button class="client-settings-done-inline" type="button" hidden>✓ Done</button>
+        </div>
         <div id="client-settings-panel" class="client-settings-panel" hidden>
           <div class="client-pref-row">
             <p class="client-pref-label" id="completion-style-label">On complete</p>
@@ -720,6 +723,7 @@ export async function mountTaskList(root) {
               <option value="butterflies">Butterflies</option>
             </select>
           </div>
+          <button class="client-settings-done" type="button">✓ Done</button>
         </div>
       </div>
     </section>
@@ -1008,7 +1012,11 @@ export async function mountTaskList(root) {
   const progressTrack = root.querySelector(".progress-track");
   const progressFill = root.querySelector(".progress-fill");
   const settingsToggle = root.querySelector(".client-settings-toggle");
+  const settingsToggleIcon = settingsToggle.querySelector(".client-settings-gear");
+  const settingsToggleLabel = settingsToggle.querySelector(".client-settings-label");
   const settingsPanel = root.querySelector(".client-settings-panel");
+  const clientSettingsDone = root.querySelector(".client-settings-done");
+  const clientSettingsDoneInline = root.querySelector(".client-settings-done-inline");
   const completionStyleButtons = root.querySelectorAll(
     "[data-completion-style]"
   );
@@ -1621,6 +1629,9 @@ export async function mountTaskList(root) {
     settingsPanel.hidden = !expanded;
     settingsToggle.setAttribute("aria-expanded", String(expanded));
     settingsToggle.classList.toggle("is-open", expanded);
+    settingsToggleIcon.textContent = "⚙";
+    settingsToggleLabel.textContent = "Settings";
+    clientSettingsDoneInline.hidden = !expanded;
   }
 
   function setNewListBusy(busy) {
@@ -2405,6 +2416,14 @@ export async function mountTaskList(root) {
     setSettingsPanelOpen(
       settingsToggle.getAttribute("aria-expanded") !== "true"
     );
+  });
+
+  clientSettingsDone.addEventListener("click", () => {
+    setSettingsPanelOpen(false);
+  });
+
+  clientSettingsDoneInline.addEventListener("click", () => {
+    setSettingsPanelOpen(false);
   });
 
   personalSettingsToggle.addEventListener("click", () => {

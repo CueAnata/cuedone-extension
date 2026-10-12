@@ -1,3 +1,5 @@
+import { normalizeProgress } from "./progress.js";
+
 export const PERSONAL_TASK_LAYOUTS = ["full-list", "one-active"];
 
 export function normalizePersonalTaskLayout(value) {
@@ -24,15 +26,7 @@ export function personalOneActiveState(tasks, { reviewAll = false } = {}) {
   const list = Array.isArray(tasks) ? tasks : [];
   const activeTask =
     list.find((task) => task && task.completed === false) ?? null;
-  const total = list.length;
-  const complete = list.filter(
-    (task) => task && task.completed === true
-  ).length;
-  const progress = {
-    complete,
-    total,
-    percent: total === 0 ? 0 : Math.round((complete / total) * 100),
-  };
+  const progress = normalizeProgress(list);
   const unfinished = list.filter(
     (task) => task && task.completed === false
   ).length;

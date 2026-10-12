@@ -65,6 +65,7 @@ test("service worker module graph contains no await", () => {
     "src/shared/personal-lists.js",
     "src/shared/personal-messages.js",
     "src/shared/preferences.js",
+    "src/shared/progress.js",
     "src/shared/reward.js",
   ]);
 
