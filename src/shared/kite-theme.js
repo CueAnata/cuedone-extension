@@ -42,19 +42,20 @@ export function describeKiteStage(progress) {
 }
 
 function kiteDiamond({ x, y }) {
-  // diamond centred at (x,y), size ~16x16, split diagonally orange/blue with cross
-  // points: top (x,y-8), right (x+8,y), bottom (x,y+8), left (x-8,y)
+  // enlarged diamond centred at (x,y), ~26×26 to fill frame, preserves proportions
+  // points: top (x,y-12), right (x+12,y), bottom (x,y+12), left (x-12,y)
   return `
     <g class="kite-shape" transform="translate(${x},${y})">
-      <polygon points="0,-8 8,0 0,8 -8,0" fill="#fffdf8" stroke="#1a1a1a" stroke-width="1.25" stroke-linejoin="round"/>
-      <polygon points="0,-8 8,0 0,0 -8,0" fill="#1e5aa8" stroke="#1a1a1a" stroke-width="0.9" stroke-linejoin="round"/>
-      <polygon points="0,0 8,0 0,8 -8,0" fill="#ff8c2f" stroke="#1a1a1a" stroke-width="0.9" stroke-linejoin="round"/>
-      <line x1="0" y1="-8" x2="0" y2="8" stroke="#1a1a1a" stroke-width="0.9" stroke-linecap="round"/>
-      <line x1="-8" y1="0" x2="8" y2="0" stroke="#1a1a1a" stroke-width="0.9" stroke-linecap="round"/>
-      <g class="kite-ribbon" transform="translate(0,8)">
-        <path d="M0 0 C2 3  -2 6  1 9  C-1 11 2 13 0 16" fill="none" stroke="#1a1a1a" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M-3 3 L-5 5 L-2 6 Z" fill="#ff8c2f" stroke="#1a1a1a" stroke-width="0.7" stroke-linejoin="round"/>
-        <path d="M1 8 L-1 10 L2 11 Z" fill="#1e5aa8" stroke="#1a1a1a" stroke-width="0.7" stroke-linejoin="round"/>
+      <polygon points="0,-12 12,0 0,12 -12,0" fill="#fffdf8" stroke="#1a1a1a" stroke-width="1.45" stroke-linejoin="round"/>
+      <polygon points="0,-12 12,0 0,0 -12,0" fill="#1e5aa8" stroke="#1a1a1a" stroke-width="1.05" stroke-linejoin="round"/>
+      <polygon points="0,0 12,0 0,12 -12,0" fill="#ff8c2f" stroke="#1a1a1a" stroke-width="1.05" stroke-linejoin="round"/>
+      <line x1="0" y1="-12" x2="0" y2="12" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round"/>
+      <line x1="-12" y1="0" x2="12" y2="0" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round"/>
+      <g class="kite-ribbon" transform="translate(0,12)">
+        <path d="M0 0 C3 4 -3 8 2 12 C-2 15 3 18 0 22" fill="none" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M-4 4 L-7 6.5 L-3 8 Z" fill="#ff8c2f" stroke="#1a1a1a" stroke-width="0.85" stroke-linejoin="round"/>
+        <path d="M2 10 L-2 13 L3 15 Z" fill="#1e5aa8" stroke="#1a1a1a" stroke-width="0.85" stroke-linejoin="round"/>
+        <path d="M-2 18 L-5 20.5 L-1 22 Z" fill="#ff8c2f" stroke="#1a1a1a" stroke-width="0.85" stroke-linejoin="round"/>
       </g>
     </g>`;
 }
@@ -102,17 +103,17 @@ export function kiteSceneMarkup() {
   <line x1="0" y1="52" x2="148" y2="52" stroke="#1a1a1a" stroke-width="1.4" stroke-linecap="round"/>
   ${personFigure()}
   <!-- strings per stage - only one visible via CSS -->
-  <path class="kite-string kite-string--0" d="M41 28 C42 34 42 40 42 44" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
-  <path class="kite-string kite-string--1" d="M41 28 C46 30 50 34 54 38" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
-  <path class="kite-string kite-string--2" d="M41 28 C54 28 68 26 78 22" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
-  <path class="kite-string kite-string--3" d="M41 28 C58 26 80 18 92 14" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
-  <path class="kite-string kite-string--4" d="M41 28 C60 24 88 14 106 12" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
-  <!-- kites per stage -->
-  <g class="kite kite--0">${kiteDiamond({ x: 42, y: 44 })}</g>
-  <g class="kite kite--1">${kiteDiamond({ x: 54, y: 38 })}</g>
-  <g class="kite kite--2">${kiteDiamond({ x: 78, y: 22 })}</g>
-  <g class="kite kite--3">${kiteDiamond({ x: 92, y: 14 })}</g>
-  <g class="kite kite--4">${kiteDiamond({ x: 106, y: 12 })}</g>
+  <path class="kite-string kite-string--0" d="M41 28 C43 32 45 36 48 40" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
+  <path class="kite-string kite-string--1" d="M41 28 C48 30 53 32 58 34" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
+  <path class="kite-string kite-string--2" d="M41 28 C56 28 70 24 80 20" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
+  <path class="kite-string kite-string--3" d="M41 28 C60 26 82 18 94 14" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
+  <path class="kite-string kite-string--4" d="M41 28 C62 24 90 16 108 13" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linecap="round"/>
+  <!-- kites per stage - enlarged to fill interior, kept fully inside border -->
+  <g class="kite kite--0">${kiteDiamond({ x: 48, y: 40 })}</g>
+  <g class="kite kite--1">${kiteDiamond({ x: 58, y: 34 })}</g>
+  <g class="kite kite--2">${kiteDiamond({ x: 80, y: 20 })}</g>
+  <g class="kite kite--3">${kiteDiamond({ x: 94, y: 14 })}</g>
+  <g class="kite kite--4">${kiteDiamond({ x: 108, y: 13 })}</g>
 </svg>
 </div>`;
 }
