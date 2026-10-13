@@ -9,6 +9,7 @@ import {
 } from "./personal-messages.js";
 import { normalizeReward } from "./reward.js";
 import { normalizeBreakTimerModel } from "./break-clock.js";
+import { normalizePlantTheme, normalizeVisualTheme } from "./plant-theme.js";
 
 export const PREFERRED_VIEW_KEY = "cuedone.preferredView";
 export const TASK_ENTRY_OPEN_KEY = "cuedone.taskEntryOpen";
@@ -34,6 +35,8 @@ export const PERSONAL_BREAK_NOTIFICATIONS_KEY =
   "cuedone.personalBreakNotifications";
 export const PERSONAL_BREAK_NOTIFIED_DUE_AT_KEY =
   "cuedone.personalBreakNotificationDueAt";
+export const PERSONAL_PLANT_THEME_KEY = "cuedone.personalPlantTheme";
+export const PERSONAL_VISUAL_THEME_KEY = "cuedone.personalVisualTheme";
 const MOTIVATOR_MAX_LENGTH = 120;
 const FINAL_CELEBRATION_VALUES = [
   "random",
@@ -604,5 +607,49 @@ export function onPersonalBreakNotificationsChanged(callback) {
         changes[PERSONAL_BREAK_NOTIFICATIONS_KEY].newValue
       )
     );
+  });
+}
+
+export function loadPersonalPlantTheme() {
+  return getLocal(PERSONAL_PLANT_THEME_KEY).then((data) =>
+    normalizePlantTheme(data[PERSONAL_PLANT_THEME_KEY])
+  );
+}
+
+export function savePersonalPlantTheme(value) {
+  return setLocal({
+    [PERSONAL_PLANT_THEME_KEY]: normalizePlantTheme(value),
+  });
+}
+
+export function onPersonalPlantThemeChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_PLANT_THEME_KEY]) {
+      return;
+    }
+
+    callback(normalizePlantTheme(changes[PERSONAL_PLANT_THEME_KEY].newValue));
+  });
+}
+
+export function loadPersonalVisualTheme() {
+  return getLocal(PERSONAL_VISUAL_THEME_KEY).then((data) =>
+    normalizeVisualTheme(data[PERSONAL_VISUAL_THEME_KEY])
+  );
+}
+
+export function savePersonalVisualTheme(value) {
+  return setLocal({
+    [PERSONAL_VISUAL_THEME_KEY]: normalizeVisualTheme(value),
+  });
+}
+
+export function onPersonalVisualThemeChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName !== "local" || !changes[PERSONAL_VISUAL_THEME_KEY]) {
+      return;
+    }
+
+    callback(normalizeVisualTheme(changes[PERSONAL_VISUAL_THEME_KEY].newValue));
   });
 }
