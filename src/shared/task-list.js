@@ -67,6 +67,8 @@ import {
   loadPersonalEnding,
   loadPersonalFinalSound,
   loadPersonalPauseMessage,
+  loadPersonalPlantTheme,
+  loadPersonalVisualTheme,
   loadPersonalPresentation,
   loadPersonalTaskLayout,
   loadPersonalTaskSound,
@@ -86,6 +88,8 @@ import {
   onPersonalEndingChanged,
   onPersonalFinalSoundChanged,
   onPersonalPauseMessageChanged,
+  onPersonalPlantThemeChanged,
+  onPersonalVisualThemeChanged,
   onPersonalPresentationChanged,
   onPersonalTaskLayoutChanged,
   onPersonalTaskSoundChanged,
@@ -105,6 +109,8 @@ import {
   savePersonalEnding,
   savePersonalFinalSound,
   savePersonalPauseMessage,
+  savePersonalPlantTheme,
+  savePersonalVisualTheme,
   savePersonalSessionState,
   savePersonalPresentation,
   savePersonalTaskLayout,
@@ -157,6 +163,36 @@ import {
   personalOneActiveState,
 } from "./personal-layout.js";
 import {
+  describePlantStage,
+  formatPlantAccessibleText,
+  isPlantVisible,
+  normalizePlantTheme,
+  normalizeVisualTheme,
+  plantStageFromProgress,
+  plantStageLabel,
+  PLANT_STAGE_COUNT,
+} from "./plant-theme.js";
+import {
+  describeConstellationStage,
+  constellationStageFromProgress,
+} from "./constellation-theme.js";
+import {
+  describeGumballStage,
+  gumballStageFromProgress,
+} from "./gumball-theme.js";
+import {
+  describeMountainStage,
+  mountainSceneMarkup,
+  mountainStageFromProgress,
+} from "./mountain-theme.js";
+import { describeDynamiteStage, dynamiteStageFromProgress } from "./dynamite-theme.js";
+import { describeCoffeeStage, coffeeStageFromProgress, coffeeLevels, isPouring, isSteaming } from "./coffee-theme.js";
+import { describeBatteryStage, batteryStageFromProgress } from "./battery-theme.js";
+import { describeAquariumStage, aquariumStageFromProgress } from "./aquarium-theme.js";
+import { describeAnimalPuzzleStage, animalPuzzleStageFromProgress } from "./animal-puzzle-theme.js";
+import { describeRocketStage, rocketStageFromProgress } from "./rocket-theme.js";
+import { describeZenTerrariumStage, zenTerrariumStageFromProgress } from "./zen-terrarium-theme.js";
+import {
   AFFIRMATION_PRESETS,
   COMPLETE_MESSAGE_PRESETS,
   PAUSE_MESSAGE_PRESETS,
@@ -204,6 +240,8 @@ export async function mountTaskList(root) {
   let pendingSynchronizedKind = null;
   let personalPresentation = "private";
   let personalTaskLayout = "full-list";
+  let personalPlantTheme = "off";
+  let personalVisualTheme = "plant";
   let personalFullListOpen = false;
   let personalSound = "off";
   let personalTaskSound = "bubble-pop";
@@ -219,23 +257,330 @@ export async function mountTaskList(root) {
   let cancelBreakClockAlarm = () => {};
   let lastHandledBreakDueAt = null;
   let tasksKind = "private";
+  let previousGumballComplete = null;
+  let previousGumballWasFinal = false;
+  let isFirstGumballRender = true;
+  let previousDynamiteStage = null;
+  let isFirstDynamiteRender = true;
+  let previousEntryHiddenDueToEntry = false;
+  let suppressNextEntryVisual = false;
+  const GUMBALL_COLORS = [
+    "#e53935",
+    "#43a047",
+    "#1e88e5",
+    "#fbc02d",
+    "#8e24aa",
+    "#ec407a",
+    "#ff6f00",
+    "#00acc1",
+    "#7cb342",
+    "#ab47bc",
+    "#ef6c00",
+    "#26c6da",
+  ];
+  const GUMBALL_POSITIONS = [
+    { left: 23, bottom: 4 },
+    { left: 34, bottom: 4 },
+    { left: 17, bottom: 11 },
+    { left: 28, bottom: 11 },
+    { left: 39, bottom: 11 },
+    { left: 12, bottom: 19 },
+    { left: 23, bottom: 19 },
+    { left: 34, bottom: 19 },
+    { left: 45, bottom: 19 },
+    { left: 8, bottom: 27 },
+    { left: 19, bottom: 27 },
+    { left: 30, bottom: 27 },
+    { left: 41, bottom: 27 },
+    { left: 6, bottom: 35 },
+    { left: 17, bottom: 35 },
+    { left: 28, bottom: 35 },
+    { left: 39, bottom: 35 },
+    { left: 50, bottom: 35 },
+    { left: 11, bottom: 43 },
+    { left: 22, bottom: 43 },
+    { left: 33, bottom: 43 },
+    { left: 44, bottom: 43 },
+    { left: 17, bottom: 51 },
+    { left: 28, bottom: 51 },
+    { left: 39, bottom: 51 },
+    { left: 23, bottom: 59 },
+    { left: 34, bottom: 59 },
+    { left: 12, bottom: 67 },
+    { left: 29, bottom: 67 },
+    { left: 40, bottom: 67 },
+  ];
+  function getGumballColor(index) {
+    return GUMBALL_COLORS[index % GUMBALL_COLORS.length];
+  }
+  function getGumballPos(index) {
+    if (index < GUMBALL_POSITIONS.length) return GUMBALL_POSITIONS[index];
+    const base = GUMBALL_POSITIONS[index % GUMBALL_POSITIONS.length];
+    return { left: Math.max(2, Math.min(50, base.left + (index % 3) - 1)), bottom: base.bottom };
+  }
+  function prefersReducedMotion() {
+    return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+  }
+  function syncGumballVisual(visualEl, progress, isFirst) {
+    if (!visualEl) return;
+    const ballsWrap = visualEl.querySelector(".gumball-balls");
+    const rolling = visualEl.querySelector(".gumball-rolling");
+    if (!ballsWrap) return;
+    const complete = Number(progress?.complete) || 0;
+    const total = Number(progress?.total) || 0;
+    const isFinal = total > 0 && complete >= total;
+    const reduced = prefersReducedMotion();
+    const shouldAnimateNew = !isFirst && !reduced && previousGumballComplete != null && complete > previousGumballComplete;
+    ballsWrap.replaceChildren();
+    for (let i = 0; i < complete; i += 1) {
+      const ball = document.createElement("div");
+      ball.className = "gumball-ball" + (shouldAnimateNew && i === complete - 1 ? " is-new" : "");
+      const pos = getGumballPos(i);
+      ball.style.left = `${pos.left}px`;
+      ball.style.bottom = `${pos.bottom}px`;
+      ball.style.background = getGumballColor(i);
+      if (reduced) ball.style.animation = "none";
+      ballsWrap.append(ball);
+    }
+    visualEl.classList.toggle("is-final", isFinal);
+    if (rolling) {
+      rolling.style.background = complete > 0 ? getGumballColor(complete - 1) : "#1e88e5";
+      if (reduced) rolling.style.animation = "none";
+    }
+  }
+  function getThemeStage(theme, progress) {
+    switch (theme) {
+      case "gumball": return { stage: gumballStageFromProgress(progress), desc: describeGumballStage(progress) };
+      case "constellation": return { stage: constellationStageFromProgress(progress), desc: describeConstellationStage(progress) };
+      case "mountain": return { stage: mountainStageFromProgress(progress), desc: describeMountainStage(progress) };
+      case "dynamite": return { stage: dynamiteStageFromProgress(progress), desc: describeDynamiteStage(progress) };
+      case "coffee": return { stage: coffeeStageFromProgress(progress), desc: describeCoffeeStage(progress) };
+      case "battery": return { stage: batteryStageFromProgress(progress), desc: describeBatteryStage(progress) };
+      case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
+      case "animal-puzzle": return { stage: animalPuzzleStageFromProgress(progress), desc: describeAnimalPuzzleStage(progress) };
+      case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
+      case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
+      default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
+    }
+  }
+  function syncDynamiteVisual(visualEl, progress) {
+    if (!visualEl) return;
+    const fuseOuter = visualEl.querySelector(".bomb-fuse") || visualEl.querySelector(".dynamite-fuse");
+    const fuse = visualEl.querySelector(".bomb-fuse-inner") || visualEl.querySelector(".dynamite-fuse");
+    const sparkSvg = visualEl.querySelector(".bomb-spark-svg");
+    const sparkDiv = visualEl.querySelector(".bomb-spark") || visualEl.querySelector(".dynamite-spark");
+    const spark = sparkSvg || sparkDiv;
+    const fuseSvg = visualEl.querySelector(".bomb-fuse-svg") || visualEl.querySelector(".dynamite-fuse-svg");
+    if (!fuse || !spark) return;
+    const total = Number(progress.total) || 0;
+    const complete = Number(progress.complete) || 0;
+    if (total === 0) {
+      fuse.style.setProperty("--fuse-length", "44px");
+      fuse.style.setProperty("--fuse-offset", "0px");
+      if (sparkSvg) {
+        sparkSvg.setAttribute("visibility", "hidden");
+        sparkSvg.style.display = "none";
+      } else {
+        spark.classList.remove("is-visible");
+        spark.classList.remove("is-final");
+      }
+      return;
+    }
+    const percent = Math.max(0, Math.min(1, complete / total));
+    const reduced = prefersReducedMotion();
+    fuse.style.setProperty("--fuse-length", "44px");
+    fuse.style.setProperty("--fuse-offset", "0px");
+    // Keep fuse attached to socket and extend outward to open tip; length scales with total but stays within fixed scene
+    let totalLen = 44;
+    try {
+      if (fuse && typeof fuse.getTotalLength === "function") {
+        const m = fuse.getTotalLength();
+        if (Number.isFinite(m) && m > 8) totalLen = m;
+      }
+    } catch {}
+    const offset = totalLen * percent;
+    // Clamp offset so at full completion the ember sits exactly at the socket
+    const clampedOffset = Math.max(0, Math.min(totalLen, offset));
+    fuse.style.setProperty("--fuse-length", `${totalLen}px`);
+    fuse.style.setProperty("--fuse-offset", `${clampedOffset}px`);
+    if (reduced) {
+      fuse.style.transition = "none";
+      if (spark) spark.style.transition = "none";
+    } else {
+      fuse.style.transition = "";
+      if (spark) spark.style.transition = "";
+    }
+    if (complete === 0) {
+      if (sparkSvg) {
+        sparkSvg.setAttribute("visibility", "hidden");
+        sparkSvg.style.display = "none";
+      }
+      if (spark) {
+        spark.classList.remove("is-visible");
+        spark.classList.remove("is-final");
+      }
+    } else if (complete >= total) {
+      if (sparkSvg) {
+        // At full completion place it exactly at the socket where the fuse enters the cap, then burst
+        try {
+          const len = fuse.getTotalLength ? fuse.getTotalLength() : totalLen;
+          const pt = fuse.getPointAtLength(len);
+          sparkSvg.setAttribute("transform", `translate(${pt.x}, ${pt.y})`);
+        } catch {}
+        sparkSvg.setAttribute("visibility", "hidden");
+        sparkSvg.style.display = "none";
+      }
+      if (spark) {
+        spark.classList.remove("is-visible");
+        spark.classList.add("is-final");
+      }
+    } else {
+      if (sparkSvg) {
+        sparkSvg.setAttribute("visibility", "visible");
+        sparkSvg.style.display = "";
+        const length = fuse.getTotalLength();
+        const point = fuse.getPointAtLength(length * percent);
+        sparkSvg.setAttribute("transform", `translate(${point.x} ${point.y})`);
+      }
+      if (spark) {
+        spark.classList.add("is-visible");
+        spark.classList.remove("is-final");
+      }
+    }
+  }
+  function syncCoffeeVisual(visualEl, progress) {
+    if (!visualEl) return;
+    const carafeFill = visualEl.querySelector(".carafe-fill");
+    const mugFill = visualEl.querySelector(".mug-fill");
+    const stream = visualEl.querySelector(".pour-stream");
+    const inner = visualEl.querySelector(".carafe-pour-inner");
+    if (!carafeFill || !mugFill) return;
+    const { carafe, mug } = coffeeLevels(progress);
+    const pouring = isPouring(progress);
+    const steaming = isSteaming(progress);
+    const reduced = prefersReducedMotion();
+    carafeFill.style.height = `${carafe}%`;
+    mugFill.style.height = `${mug}%`;
+    if (stream) {
+      stream.classList.toggle("is-pouring", pouring);
+      stream.style.height = pouring ? "42px" : "0px";
+      stream.style.transition = reduced ? "none" : "";
+    }
+    if (inner) {
+      const carafeH = 40;
+      const fillH = carafeH * (carafe / 100);
+      const fillTop = carafeH - fillH;
+      const top = Math.max(0, fillTop - 2);
+      const height = Math.max(0, 44 - top);
+      inner.style.top = `${top}px`;
+      inner.style.height = pouring ? `${height}px` : "0px";
+      inner.classList.toggle("is-pouring", pouring);
+      inner.style.transition = reduced ? "none" : "";
+    }
+    visualEl.classList.toggle("is-steaming", steaming);
+    carafeFill.style.transition = reduced ? "none" : "";
+    mugFill.style.transition = reduced ? "none" : "";
+  }
 
   connectBreakClockView();
 
   root.innerHTML = `
-    <form class="task-form">
-      <label class="sr-only" for="new-task">New task</label>
-      <input
-        id="new-task"
-        class="task-input"
-        type="text"
-        maxlength="200"
-        placeholder="Add a task"
-        autocomplete="off"
-      />
-      <button class="add-button" type="submit">Add</button>
-      <button class="done-button" type="button">Done</button>
-    </form>
+    <div class="task-entry-row">
+      <form class="task-form">
+        <label class="sr-only" for="new-task">New task</label>
+        <input
+          id="new-task"
+          class="task-input"
+          type="text"
+          maxlength="200"
+          placeholder="Add a task"
+          autocomplete="off"
+        />
+        <button class="add-button" type="submit">Add</button>
+        <button class="done-button" type="button">Done</button>
+      </form>
+      <div class="personal-plant personal-plant--entry" hidden aria-hidden="true">
+        <div class="personal-plant-visual personal-plant-visual--entry" role="img" aria-label="" hidden>
+          <span class="personal-plant-pot" aria-hidden="true"></span>
+          <span class="personal-plant-stem" aria-hidden="true"></span>
+          <span class="personal-plant-leaves" aria-hidden="true"></span>
+          <span class="personal-plant-bloom" aria-hidden="true"></span>
+        </div>
+        <div class="personal-gumball-visual personal-gumball-visual--entry" role="img" aria-label="" hidden>
+          <div class="gumball-machine" aria-hidden="true">
+            <div class="gumball-cap"></div>
+            <div class="gumball-globe">
+              <div class="gumball-balls"></div>
+            </div>
+            <div class="gumball-base">
+              <div class="gumball-panel">
+                <div class="gumball-flap"></div>
+                <div class="gumball-chute"></div>
+              </div>
+            </div>
+            <div class="gumball-rolling" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="personal-constellation-visual personal-constellation-visual--entry" role="img" aria-label="" hidden>
+          <div class="constellation-sky constellation-sky--entry" aria-hidden="true">
+            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="10" y1="10" x2="28" y2="8" class="constellation-line line--1" />
+              <line x1="28" y1="8" x2="46" y2="14" class="constellation-line line--2" />
+              <line x1="28" y1="8" x2="18" y2="26" class="constellation-line line--3" />
+              <line x1="46" y1="14" x2="38" y2="30" class="constellation-line line--4" />
+            </svg>
+            <span class="constellation-star star--1"></span>
+            <span class="constellation-star star--2"></span>
+            <span class="constellation-star star--3"></span>
+            <span class="constellation-star star--4"></span>
+            <span class="constellation-star star--5"></span>
+          </div>
+        </div>
+        <div class="personal-mountain-visual personal-mountain-visual--entry" role="img" aria-label="" hidden>
+          ${mountainSceneMarkup()}
+        </div>
+        <div class="personal-dynamite-visual personal-dynamite-visual--entry" role="img" aria-label="" hidden>
+          <div class="dynamite-scene" aria-hidden="true">
+            <div class="bomb-illustration" aria-hidden="true">
+              <div class="bomb-body"><div class="bomb-cap"></div></div>
+              <svg class="bomb-fuse-svg" viewBox="0 0 60 28" aria-hidden="true">
+                <defs>
+                  <radialGradient id="bombSparkGradEntry" cx="35%" cy="30%" r="65%">
+                    <stop offset="0%" stop-color="#fff9c4"/><stop offset="35%" stop-color="#ffeb3b"/><stop offset="62%" stop-color="#ff9800"/><stop offset="100%" stop-color="#ff3d00"/>
+                  </radialGradient>
+                </defs>
+                <path class="bomb-fuse" d="M52 6 C38 4, 32 16, 30 24" />
+                <path class="bomb-fuse-inner" d="M52 6 C38 4, 32 16, 30 24" />
+                <g class="bomb-spark-svg" visibility="hidden"><circle r="4.8" fill="url(#bombSparkGradEntry)" stroke="#bf360c" stroke-width="0.6"/><g opacity="0.9" class="bomb-spark-glow"><circle r="8.5" fill="none" stroke="#ffb300" stroke-width="0.9" stroke-dasharray="1.4 2.6" opacity="0.95"/><circle r="10.5" fill="none" stroke="#ff6f00" stroke-width="0.5" stroke-dasharray="1 3" opacity="0.55"/></g></g>
+              </svg>
+              <div class="bomb-burst"></div>
+            </div>
+          </div>
+        </div>
+        <div class="personal-coffee-visual personal-coffee-visual--entry" role="img" aria-label="" hidden>
+          <div class="coffee-scene" aria-hidden="true">
+            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div><div class="carafe-pour-inner" aria-hidden="true"></div></div><div class="carafe-spout"><div class="pour-stream" aria-hidden="true"></div></div><div class="carafe-handle"></div><div class="carafe-lid"></div></div>
+            <div class="mug" aria-hidden="true"><div class="mug-body"><div class="mug-fill"></div></div><div class="mug-handle"></div><span class="mug-steam s1"></span><span class="mug-steam s2"></span><span class="mug-steam-heart" aria-hidden="true"><svg viewBox="0 0 22 34" aria-hidden="true"><path d="M11 28 C 11 28 5.2 22.2 5.2 17.6 C5.2 14.1 7.4 12.2 10.1 14.2 L11 15 L11.9 14.2 C14.6 12.2 16.8 14.1 16.8 17.6 C16.8 22.2 11 28 11 28 Z" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linejoin="round"/><path d="M11 14.2 C 8.5 12.5, 14.5 9.2, 11 6.5 C 8.2 4.2, 14 1.2, 11 -1.2" fill="none" stroke="#1a1a1a" stroke-width="1.15" stroke-linecap="round"/><path d="M11 5.2 C 13.8 3, 7.2 -0.8, 11 -3.8" fill="none" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round" opacity="0.95"/></svg></span></div>
+          </div>
+        </div>
+        <div class="personal-battery-visual personal-battery-visual--entry" role="img" aria-label="" hidden>
+          <div class="battery-scene" aria-hidden="true"><span class="battery-body"><span class="battery-fill"></span></span><span class="battery-tip"></span><span class="battery-bolt battery-bolt--top" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradTop" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 24 L22 4 L16 13 L33 2 L10 20 L16 16 Z" fill="url(#boltGradTop)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 24 L22 4 L16 13 L33 2" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="battery-bolt battery-bolt--bottom" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradBot" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 14 L22 34 L16 25 L33 36 L10 18 L16 22 Z" fill="url(#boltGradBot)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 14 L22 34 L16 25 L33 36" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        </div>
+        <div class="personal-aquarium-visual personal-aquarium-visual--entry" role="img" aria-label="" hidden>
+          <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-bag"></span></span></div>
+        </div>
+        <div class="personal-animal-puzzle-visual personal-animal-puzzle-visual--entry" role="img" aria-label="" hidden>
+          <div class="animal-puzzle-scene" aria-hidden="true"><span class="puzzle-piece p1"></span><span class="puzzle-piece p2"></span><span class="puzzle-piece p3"></span><span class="puzzle-piece p4"></span><span class="puzzle-full"></span></div>
+        </div>
+        <div class="personal-rocket-visual personal-rocket-visual--entry" role="img" aria-label="" hidden>
+          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
+        </div>
+        <div class="personal-zen-terrarium-visual personal-zen-terrarium-visual--entry" role="img" aria-label="" hidden>
+          <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
+        </div>
+      </div>
+    </div>
+    <p class="personal-plant-status personal-plant-status--entry sr-only" aria-live="polite"></p>
     <button class="add-task-toggle" type="button" hidden>+ Add task</button>
     <section class="personal-settings" hidden>
       <div class="personal-settings-head">
@@ -309,6 +654,52 @@ export async function mountTaskList(root) {
           <p class="personal-settings-note">
             One active task keeps the next unfinished task in focus. Review the
             full list whenever you need to organize or revisit tasks.
+          </p>
+        </div>
+        <div class="personal-plant-theme-settings" hidden>
+          <div class="personal-pref-row">
+            <p class="personal-pref-label" id="personal-plant-theme-label">
+              Visual progress
+            </p>
+            <div
+              class="mode-switch"
+              role="group"
+              aria-labelledby="personal-plant-theme-label"
+            >
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-plant-theme="off"
+              >
+                Off
+              </button>
+              <button
+                type="button"
+                class="view-switch-button"
+                data-personal-plant-theme="plant"
+              >
+                On
+              </button>
+            </div>
+          </div>
+          <div class="personal-visual-theme-row" hidden>
+            <label class="personal-pref-label" for="personal-visual-theme">Theme</label>
+            <select id="personal-visual-theme" class="personal-visual-theme-select">
+              <option value="plant">Plant</option>
+              <option value="gumball">Gumball Jar</option>
+              <option value="constellation">Constellation</option>
+              <option value="mountain">Mountain Climb</option>
+              <option value="dynamite">Dynamite Fuse</option>
+              <option value="coffee">Coffee Pour</option>
+              <option value="battery">Battery</option>
+              <option value="aquarium">Aquarium</option>
+              <option value="animal-puzzle">Animal Puzzle</option>
+              <option value="rocket">Rocket</option>
+              <option value="zen-terrarium">Zen Terrarium</option>
+            </select>
+          </div>
+          <p class="personal-settings-note">
+            Plant grows with your progress. Empty shows no plant and adds no finale.
           </p>
         </div>
         <div class="personal-audio-settings" hidden>
@@ -752,6 +1143,87 @@ export async function mountTaskList(root) {
       >
         <div class="personal-one-active-fill"></div>
       </div>
+      <div class="personal-plant" hidden aria-hidden="true">
+        <div class="personal-plant-visual" role="img" aria-label="" hidden>
+          <span class="personal-plant-pot" aria-hidden="true"></span>
+          <span class="personal-plant-stem" aria-hidden="true"></span>
+          <span class="personal-plant-leaves" aria-hidden="true"></span>
+          <span class="personal-plant-bloom" aria-hidden="true"></span>
+        </div>
+        <div class="personal-gumball-visual" role="img" aria-label="" hidden>
+          <div class="gumball-machine" aria-hidden="true">
+            <div class="gumball-cap"></div>
+            <div class="gumball-globe">
+              <div class="gumball-balls"></div>
+            </div>
+            <div class="gumball-base">
+              <div class="gumball-panel">
+                <div class="gumball-flap"></div>
+                <div class="gumball-chute"></div>
+              </div>
+            </div>
+            <div class="gumball-rolling" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div class="personal-constellation-visual" role="img" aria-label="" hidden>
+          <div class="constellation-sky" aria-hidden="true">
+            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="10" y1="10" x2="28" y2="8" class="constellation-line line--1" />
+              <line x1="28" y1="8" x2="46" y2="14" class="constellation-line line--2" />
+              <line x1="28" y1="8" x2="18" y2="26" class="constellation-line line--3" />
+              <line x1="46" y1="14" x2="38" y2="30" class="constellation-line line--4" />
+            </svg>
+            <span class="constellation-star star--1"></span>
+            <span class="constellation-star star--2"></span>
+            <span class="constellation-star star--3"></span>
+            <span class="constellation-star star--4"></span>
+            <span class="constellation-star star--5"></span>
+          </div>
+        </div>
+        <div class="personal-mountain-visual" role="img" aria-label="" hidden>
+          ${mountainSceneMarkup()}
+        </div>
+        <div class="personal-dynamite-visual" role="img" aria-label="" hidden>
+          <div class="dynamite-scene" aria-hidden="true">
+            <div class="bomb-illustration" aria-hidden="true">
+              <div class="bomb-body"><div class="bomb-cap"></div></div>
+              <svg class="bomb-fuse-svg" viewBox="0 0 60 28" aria-hidden="true">
+                <defs>
+                  <radialGradient id="bombSparkGrad" cx="35%" cy="30%" r="65%">
+                    <stop offset="0%" stop-color="#fff9c4"/><stop offset="35%" stop-color="#ffeb3b"/><stop offset="62%" stop-color="#ff9800"/><stop offset="100%" stop-color="#ff3d00"/>
+                  </radialGradient>
+                </defs>
+                <path class="bomb-fuse" d="M52 6 C38 4, 32 16, 30 24" />
+                <path class="bomb-fuse-inner" d="M52 6 C38 4, 32 16, 30 24" />
+                <g class="bomb-spark-svg" visibility="hidden"><circle r="4.8" fill="url(#bombSparkGrad)" stroke="#bf360c" stroke-width="0.6"/><g opacity="0.9" class="bomb-spark-glow"><circle r="8.5" fill="none" stroke="#ffb300" stroke-width="0.9" stroke-dasharray="1.4 2.6" opacity="0.95"/><circle r="10.5" fill="none" stroke="#ff6f00" stroke-width="0.5" stroke-dasharray="1 3" opacity="0.55"/></g></g>
+              </svg>
+              <div class="bomb-burst"></div>
+            </div>
+          </div>
+        </div>
+        <div class="personal-coffee-visual" role="img" aria-label="" hidden>
+          <div class="coffee-scene" aria-hidden="true">
+            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div><div class="carafe-pour-inner" aria-hidden="true"></div></div><div class="carafe-spout"><div class="pour-stream" aria-hidden="true"></div></div><div class="carafe-handle"></div><div class="carafe-lid"></div></div>
+            <div class="mug" aria-hidden="true"><div class="mug-body"><div class="mug-fill"></div></div><div class="mug-handle"></div><span class="mug-steam s1"></span><span class="mug-steam s2"></span><span class="mug-steam-heart" aria-hidden="true"><svg viewBox="0 0 22 34" aria-hidden="true"><path d="M11 28 C 11 28 5.2 22.2 5.2 17.6 C5.2 14.1 7.4 12.2 10.1 14.2 L11 15 L11.9 14.2 C14.6 12.2 16.8 14.1 16.8 17.6 C16.8 22.2 11 28 11 28 Z" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linejoin="round"/><path d="M11 14.2 C 8.5 12.5, 14.5 9.2, 11 6.5 C 8.2 4.2, 14 1.2, 11 -1.2" fill="none" stroke="#1a1a1a" stroke-width="1.15" stroke-linecap="round"/><path d="M11 5.2 C 13.8 3, 7.2 -0.8, 11 -3.8" fill="none" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round" opacity="0.95"/></svg></span></div>
+          </div>
+        </div>
+        <div class="personal-battery-visual" role="img" aria-label="" hidden>
+          <div class="battery-scene" aria-hidden="true"><span class="battery-body"><span class="battery-fill"></span></span><span class="battery-tip"></span><span class="battery-bolt battery-bolt--top" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradTop2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 24 L22 4 L16 13 L33 2 L10 20 L16 16 Z" fill="url(#boltGradTop2)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 24 L22 4 L16 13 L33 2" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="battery-bolt battery-bolt--bottom" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradBot2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 14 L22 34 L16 25 L33 36 L10 18 L16 22 Z" fill="url(#boltGradBot2)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 14 L22 34 L16 25 L33 36" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        </div>
+        <div class="personal-aquarium-visual" role="img" aria-label="" hidden>
+          <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-bag"></span></span></div>
+        </div>
+        <div class="personal-animal-puzzle-visual" role="img" aria-label="" hidden>
+          <div class="animal-puzzle-scene" aria-hidden="true"><span class="puzzle-piece p1"></span><span class="puzzle-piece p2"></span><span class="puzzle-piece p3"></span><span class="puzzle-piece p4"></span><span class="puzzle-full"></span></div>
+        </div>
+        <div class="personal-rocket-visual" role="img" aria-label="" hidden>
+          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
+        </div>
+        <div class="personal-zen-terrarium-visual" role="img" aria-label="" hidden>
+          <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
+        </div>
+      </div>
+      <p class="personal-plant-status sr-only" aria-live="polite"></p>
     </section>
     <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
     <p class="empty-state">No tasks yet. Add one to get started.</p>
@@ -869,6 +1341,18 @@ export async function mountTaskList(root) {
   const personalTaskLayoutButtons = root.querySelectorAll(
     "[data-personal-task-layout]"
   );
+  const personalPlantThemeSettings = root.querySelector(
+    ".personal-plant-theme-settings"
+  );
+  const personalPlantThemeButtons = root.querySelectorAll(
+    "[data-personal-plant-theme]"
+  );
+  const personalVisualThemeRow = root.querySelector(
+    ".personal-visual-theme-row"
+  );
+  const personalVisualThemeSelect = root.querySelector(
+    "#personal-visual-theme"
+  );
   const personalAudioSettings = root.querySelector(".personal-audio-settings");
   const personalSoundButtons = root.querySelectorAll(
     "[data-personal-completion-sound]"
@@ -976,6 +1460,34 @@ export async function mountTaskList(root) {
   const personalOneActiveFill = root.querySelector(
     ".personal-one-active-fill"
   );
+  const personalPlant = root.querySelector(".personal-plant:not(.personal-plant--entry)");
+  const personalPlantVisual = root.querySelector(".personal-plant-visual:not(.personal-plant-visual--entry)");
+  const personalPlantStatus = root.querySelector(".personal-plant-status:not(.personal-plant-status--entry)");
+  const personalPlantEntry = root.querySelector(".personal-plant--entry");
+  const personalPlantVisualEntry = root.querySelector(".personal-plant-visual--entry");
+  const personalPlantStatusEntry = root.querySelector(".personal-plant-status--entry");
+  const personalGumballVisual = root.querySelector(".personal-gumball-visual:not(.personal-gumball-visual--entry)");
+  const personalGumballVisualEntry = root.querySelector(".personal-gumball-visual--entry");
+  const personalConstellationVisual = root.querySelector(".personal-constellation-visual:not(.personal-constellation-visual--entry)");
+  const personalConstellationVisualEntry = root.querySelector(".personal-constellation-visual--entry");
+  const personalMountainVisual = root.querySelector(".personal-mountain-visual:not(.personal-mountain-visual--entry)");
+  const personalMountainVisualEntry = root.querySelector(".personal-mountain-visual--entry");
+  const personalDynamiteVisual = root.querySelector(".personal-dynamite-visual:not(.personal-dynamite-visual--entry)");
+  const personalDynamiteVisualEntry = root.querySelector(".personal-dynamite-visual--entry");
+  const personalCoffeeVisual = root.querySelector(".personal-coffee-visual:not(.personal-coffee-visual--entry)");
+  const personalCoffeeVisualEntry = root.querySelector(".personal-coffee-visual--entry");
+  const personalBatteryVisual = root.querySelector(".personal-battery-visual:not(.personal-battery-visual--entry)");
+  const personalBatteryVisualEntry = root.querySelector(".personal-battery-visual--entry");
+  const personalAquariumVisual = root.querySelector(".personal-aquarium-visual:not(.personal-aquarium-visual--entry)");
+  const personalAquariumVisualEntry = root.querySelector(".personal-aquarium-visual--entry");
+  const personalAnimalPuzzleVisual = root.querySelector(".personal-animal-puzzle-visual:not(.personal-animal-puzzle-visual--entry)");
+  const personalAnimalPuzzleVisualEntry = root.querySelector(".personal-animal-puzzle-visual--entry");
+  const personalRocketVisual = root.querySelector(".personal-rocket-visual:not(.personal-rocket-visual--entry)");
+  const personalRocketVisualEntry = root.querySelector(".personal-rocket-visual--entry");
+  const personalZenTerrariumVisual = root.querySelector(".personal-zen-terrarium-visual:not(.personal-zen-terrarium-visual--entry)");
+  const personalZenTerrariumVisualEntry = root.querySelector(".personal-zen-terrarium-visual--entry");
+  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalAnimalPuzzleVisualEntry, "animal-puzzle"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalAnimalPuzzleVisual, "animal-puzzle"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
   const personalFullListToggle = root.querySelector(
     ".personal-full-list-toggle"
   );
@@ -1049,6 +1561,63 @@ export async function mountTaskList(root) {
     addToggle.style.display = visibility.showAddTaskToggle
       ? "inline-flex"
       : "none";
+    // Private Full list only: hide progress graphic while entry form is open so input gets full row width
+    const shouldHideNow = !oneActiveLayoutEnabled() && isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme }) && visibleTasks().length > 0 && entryOpen;
+    if (shouldHideNow) {
+      previousEntryHiddenDueToEntry = true;
+      personalPlantEntry.hidden = true;
+      personalPlantEntry.classList.remove("suppress-animations");
+    } else if (previousEntryHiddenDueToEntry && !shouldHideNow) {
+      // Reappearing after entry — show updated progress without replaying completion animation
+      suppressNextEntryVisual = true;
+      previousEntryHiddenDueToEntry = false;
+      personalPlantEntry.classList.add("suppress-animations");
+      // Force visible now and sync to current progress so Done shows updated count immediately
+      const stillVisible = !oneActiveLayoutEnabled() && isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme }) && visibleTasks().length > 0;
+      if (stillVisible) {
+        personalPlantEntry.hidden = false;
+        const progress = personalOneActiveState(visibleTasks(), { reviewAll: personalFullListOpen }).progress;
+        const visualThemeNow = normalizeVisualTheme(personalVisualTheme);
+        const plantVisibleNow = isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme });
+        if (plantVisibleNow) {
+          const { stage, desc } = getThemeStage(visualThemeNow, progress);
+          if (stage != null && desc) {
+            personalPlantEntry.dataset.visualTheme = visualThemeNow;
+            for (const [el, key] of flatEntryVisualsOuter) if (el) { el.hidden = key !== visualThemeNow; if (key === visualThemeNow) { el.dataset.stage = String(stage); el.setAttribute("aria-label", desc.accessibleText); if (key === "plant") el.dataset.bloom = stage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
+            personalPlantStatusEntry.textContent = desc.accessibleText;
+            if (visualThemeNow === "gumball") {
+              syncGumballVisual(personalGumballVisualEntry, progress, isFirstGumballRender);
+              // Update tracking to avoid replay on this reappearance
+              previousGumballComplete = Number(progress.complete) || 0;
+              if (plantVisibleNow) isFirstGumballRender = false;
+            }
+            if (visualThemeNow === "dynamite") {
+              syncDynamiteVisual(personalDynamiteVisualEntry, progress);
+            }
+            if (visualThemeNow === "coffee") {
+              syncCoffeeVisual(personalCoffeeVisualEntry, progress);
+            }
+          }
+        }
+      }
+      const entryEl = personalPlantEntry;
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        globalThis.requestAnimationFrame(() => {
+          globalThis.requestAnimationFrame(() => {
+            entryEl.classList.remove("suppress-animations");
+            suppressNextEntryVisual = false;
+          });
+        });
+      } else {
+        suppressNextEntryVisual = false;
+        entryEl.classList.remove("suppress-animations");
+      }
+    } else {
+      previousEntryHiddenDueToEntry = shouldHideNow;
+      if (!shouldHideNow) {
+        personalPlantEntry.classList.remove("suppress-animations");
+      }
+    }
   }
 
   function isClientMode() {
@@ -1113,6 +1682,34 @@ export async function mountTaskList(root) {
       personalFullListOpen = false;
     }
     paintPersonalTaskLayout(personalTaskLayout);
+  }
+
+  function paintPersonalPlantTheme(value) {
+    const current = normalizePlantTheme(value);
+    for (const button of personalPlantThemeButtons) {
+      const isCurrent = button.dataset.personalPlantTheme === current;
+      button.classList.toggle("is-current", isCurrent);
+      button.setAttribute("aria-pressed", String(isCurrent));
+    }
+  }
+
+  function paintPersonalVisualTheme(value) {
+    const current = normalizeVisualTheme(value);
+    if (personalVisualThemeSelect) {
+      personalVisualThemeSelect.value = current;
+    }
+  }
+
+  function applyPersonalVisualTheme(value) {
+    personalVisualTheme = normalizeVisualTheme(value);
+    document.body.dataset.personalVisualTheme = personalVisualTheme;
+    paintPersonalVisualTheme(personalVisualTheme);
+  }
+
+  function applyPersonalPlantTheme(value) {
+    personalPlantTheme = normalizePlantTheme(value);
+    document.body.dataset.personalPlantTheme = personalPlantTheme;
+    paintPersonalPlantTheme(personalPlantTheme);
   }
 
   function closePersonalFullListReview() {
@@ -1188,8 +1785,13 @@ export async function mountTaskList(root) {
       document.body.dataset.presentation,
       personalPresentation
     );
+    const showPlantSettings = privateFeatures;
     personalSettings.hidden = !personal;
     personalTaskLayoutSettings.hidden = !privateFeatures;
+    personalPlantThemeSettings.hidden = !showPlantSettings;
+    if (personalVisualThemeRow) {
+      personalVisualThemeRow.hidden = !(privateFeatures && personalPlantTheme === "plant");
+    }
     personalAudioSettings.hidden = !privateFeatures;
     personalMessageSettings.hidden = !privateFeatures;
     personalBreakSettings.hidden = !privateFeatures;
@@ -1197,6 +1799,8 @@ export async function mountTaskList(root) {
     list.setAttribute("aria-label", taskListAriaLabel(kind));
     paintPersonalPresentation(personalPresentation);
     paintPersonalTaskLayout(personalTaskLayout);
+    paintPersonalPlantTheme(personalPlantTheme);
+    paintPersonalVisualTheme(personalVisualTheme);
     paintPersonalMessages();
     paintBreakClock();
     syncActiveAudioGate();
@@ -1975,6 +2579,187 @@ export async function mountTaskList(root) {
       String(personalFullListOpen)
     );
 
+    const plantVisible = isPlantVisible({
+      tasks: shown,
+      presentationMode: document.body.dataset.presentation,
+      personalPresentation,
+      layout: personalTaskLayout,
+      theme: personalPlantTheme,
+    });
+    const visualTheme = normalizeVisualTheme(personalVisualTheme);
+    function themeStage(theme, progress) {
+      switch (theme) {
+        case "gumball": return { stage: gumballStageFromProgress(progress), desc: describeGumballStage(progress) };
+        case "constellation": return { stage: constellationStageFromProgress(progress), desc: describeConstellationStage(progress) };
+        case "mountain": return { stage: mountainStageFromProgress(progress), desc: describeMountainStage(progress) };
+        case "dynamite": return { stage: dynamiteStageFromProgress(progress), desc: describeDynamiteStage(progress) };
+        case "coffee": return { stage: coffeeStageFromProgress(progress), desc: describeCoffeeStage(progress) };
+        case "battery": return { stage: batteryStageFromProgress(progress), desc: describeBatteryStage(progress) };
+        case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
+        case "animal-puzzle": return { stage: animalPuzzleStageFromProgress(progress), desc: describeAnimalPuzzleStage(progress) };
+        case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
+        case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
+        default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
+      }
+    }
+    const themePair = plantVisible ? themeStage(visualTheme, oneActiveState.progress) : { stage: null, desc: null };
+    const activeStage = themePair.stage;
+    const activeDesc = themePair.desc;
+
+    const isPlant = visualTheme === "plant";
+    const allVisuals = [
+      [personalGumballVisual, "gumball"],
+      [personalConstellationVisual, "constellation"],
+      [personalMountainVisual, "mountain"],
+      [personalDynamiteVisual, "dynamite"],
+      [personalCoffeeVisual, "coffee"],
+      [personalBatteryVisual, "battery"],
+      [personalAquariumVisual, "aquarium"],
+      [personalAnimalPuzzleVisual, "animal-puzzle"],
+      [personalRocketVisual, "rocket"],
+      [personalZenTerrariumVisual, "zen-terrarium"],
+    ];
+    const allEntryVisuals = [
+      [personalGumballVisualEntry, "gumball"],
+      [personalConstellationVisualEntry, "constellation"],
+      [personalMountainVisualEntry, "mountain"],
+      [personalDynamiteVisualEntry, "dynamite"],
+      [personalCoffeeVisualEntry, "coffee"],
+      [personalBatteryVisualEntry, "battery"],
+      [personalAquariumVisualEntry, "aquarium"],
+      [personalAnimalPuzzleVisualEntry, "animal-puzzle"],
+      [personalRocketVisualEntry, "rocket"],
+      [personalZenTerrariumVisualEntry, "zen-terrarium"],
+    ];
+    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalAnimalPuzzleVisual, "animal-puzzle"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
+    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalAnimalPuzzleVisualEntry, "animal-puzzle"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+    personalPlant.hidden = !plantVisible || activeStage == null || !oneActive;
+    if (plantVisible && activeStage != null && activeDesc && oneActive) {
+      personalPlant.dataset.visualTheme = visualTheme;
+      for (const [el, key] of flatAllVisuals) if (el) { el.hidden = key !== visualTheme; if (key === visualTheme) { el.dataset.stage = String(activeStage); el.setAttribute("aria-label", activeDesc.accessibleText); if (key === "plant") el.dataset.bloom = activeStage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
+      personalPlantStatus.textContent = activeDesc.accessibleText;
+    } else {
+      for (const [el] of flatAllVisuals) if (el) { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); el.hidden = el === personalPlantVisual ? false : true; }
+      personalPlantStatus.textContent = "";
+      personalPlantVisual.hidden = false;
+      for (const [el,key] of flatAllVisuals) if (el && key!=="plant") el.hidden = true;
+    }
+
+    const shouldHideForEntry = !oneActive && plantVisible && activeStage != null && entryOpen;
+    const entryPlantVisible = !oneActive && plantVisible && !shouldHideForEntry;
+    personalPlantEntry.hidden = !entryPlantVisible || activeStage == null;
+    // Suppress completion animation when graphic reappears after entry form
+    if (shouldHideForEntry) {
+      previousEntryHiddenDueToEntry = true;
+      personalPlantEntry.classList.remove("suppress-animations");
+    } else if (previousEntryHiddenDueToEntry && entryPlantVisible && activeStage != null) {
+      suppressNextEntryVisual = true;
+      previousEntryHiddenDueToEntry = false;
+      personalPlantEntry.classList.add("suppress-animations");
+      const entryEl = personalPlantEntry;
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        globalThis.requestAnimationFrame(() => {
+          globalThis.requestAnimationFrame(() => {
+            entryEl.classList.remove("suppress-animations");
+            suppressNextEntryVisual = false;
+          });
+        });
+      } else {
+        // Fallback: keep suppressed for this render only, clear next tick
+        suppressNextEntryVisual = false;
+        entryEl.classList.remove("suppress-animations");
+      }
+    } else {
+      previousEntryHiddenDueToEntry = shouldHideForEntry;
+      if (!shouldHideForEntry) {
+        personalPlantEntry.classList.remove("suppress-animations");
+      }
+    }
+    if (entryPlantVisible && activeStage != null && activeDesc) {
+      personalPlantEntry.dataset.visualTheme = visualTheme;
+      for (const [el, key] of flatEntryVisuals) if (el) { el.hidden = key !== visualTheme; if (key === visualTheme) { el.dataset.stage = String(activeStage); el.setAttribute("aria-label", activeDesc.accessibleText); if (key === "plant") el.dataset.bloom = activeStage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
+      personalPlantStatusEntry.textContent = activeDesc.accessibleText;
+    } else {
+      for (const [el] of flatEntryVisuals) if (el) { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); el.hidden = el === personalPlantVisualEntry ? false : true; }
+      personalPlantStatusEntry.textContent = "";
+      if (personalPlantVisualEntry) personalPlantVisualEntry.hidden = false;
+      for (const [el,key] of flatEntryVisuals) if (el && key!=="plant") el.hidden = true;
+    }
+
+    // --- Gumball: classic machine — one ball per completed task, final dispense ---
+    const gumballProgress = oneActiveState.progress;
+    const isGumballTheme = visualTheme === "gumball";
+    const gumballActive = plantVisible && activeStage != null;
+    if (gumballActive && isGumballTheme) {
+      if (oneActive) syncGumballVisual(personalGumballVisual, gumballProgress, isFirstGumballRender);
+      if (entryPlantVisible) syncGumballVisual(personalGumballVisualEntry, gumballProgress, isFirstGumballRender);
+    } else {
+      for (const el of [personalGumballVisual, personalGumballVisualEntry]) {
+        if (!el) continue;
+        const wrap = el.querySelector(".gumball-balls");
+        if (wrap) wrap.replaceChildren();
+        el.classList.remove("is-final");
+      }
+    }
+    if (gumballActive) {
+      previousGumballComplete = Number(gumballProgress.complete) || 0;
+      previousGumballWasFinal = gumballProgress.total > 0 && gumballProgress.complete >= gumballProgress.total;
+      if (isGumballTheme) isFirstGumballRender = false;
+    } else if (activeStage == null) {
+      previousGumballComplete = 0;
+      previousGumballWasFinal = false;
+    }
+
+    // --- Dynamite: continuous fuse proportional to completed/total, bundle shake + burst on final ---
+    const isDynamiteTheme = visualTheme === "dynamite";
+    const dynamiteActive = plantVisible && activeStage != null;
+    if (isDynamiteTheme && dynamiteActive) {
+      if (oneActive) syncDynamiteVisual(personalDynamiteVisual, oneActiveState.progress);
+      if (entryPlantVisible) syncDynamiteVisual(personalDynamiteVisualEntry, oneActiveState.progress);
+    }
+    const dynamiteIsFinal = dynamiteActive && activeStage === 4;
+    const shouldBurst = isDynamiteTheme && dynamiteActive && dynamiteIsFinal && !isFirstDynamiteRender && previousDynamiteStage !== 4 && !prefersReducedMotion();
+    if (isDynamiteTheme && dynamiteActive) {
+      for (const el of [personalDynamiteVisual, personalDynamiteVisualEntry]) {
+        if (!el) continue;
+        if (shouldBurst) {
+          el.classList.remove("is-burst");
+          void el.offsetWidth;
+          el.classList.add("is-burst");
+        } else if (!dynamiteIsFinal) {
+          el.classList.remove("is-burst");
+        }
+      }
+    } else {
+      for (const el of [personalDynamiteVisual, personalDynamiteVisualEntry]) el?.classList.remove("is-burst");
+    }
+    if (dynamiteActive) {
+      previousDynamiteStage = activeStage;
+      if (isDynamiteTheme) isFirstDynamiteRender = false;
+    } else if (activeStage == null) {
+      previousDynamiteStage = null;
+      isFirstDynamiteRender = true;
+      for (const el of [personalDynamiteVisual, personalDynamiteVisualEntry]) el?.classList.remove("is-burst");
+    } else if (!isDynamiteTheme) {
+      previousDynamiteStage = activeStage;
+    }
+
+    // --- Coffee: continuous carafe/mug levels, no machine/button ---
+    const isCoffeeTheme = visualTheme === "coffee";
+    const coffeeActive = plantVisible && activeStage != null;
+    if (isCoffeeTheme && coffeeActive) {
+      if (oneActive) syncCoffeeVisual(personalCoffeeVisual, oneActiveState.progress);
+      if (entryPlantVisible) syncCoffeeVisual(personalCoffeeVisualEntry, oneActiveState.progress);
+    } else {
+      // Ensure no stale pouring/steaming when hidden or other theme
+      for (const el of [personalCoffeeVisual, personalCoffeeVisualEntry]) {
+        if (!el) continue;
+        el.classList.remove("is-steaming");
+        const s = el.querySelector(".pour-stream");
+        if (s) s.classList.remove("is-pouring");
+      }
+    }
+
     renderedTasks.forEach((task) => {
       const index = shown.findIndex((item) => item.id === task.id);
       const item = document.createElement("li");
@@ -2464,10 +3249,75 @@ export async function mountTaskList(root) {
         value: action,
         apply: (value) => {
           applyPersonalTaskLayout(value);
+          updatePersonalChrome();
           render();
         },
         restore: () => {
           applyPersonalTaskLayout(previous);
+          updatePersonalChrome();
+          render();
+        },
+      });
+    });
+  }
+
+  for (const button of personalPlantThemeButtons) {
+    button.addEventListener("click", () => {
+      if (
+        !personalPrivateFeaturesAllowed(
+          document.body.dataset.presentation,
+          personalPresentation
+        )
+      ) {
+        return;
+      }
+
+      const next = normalizePlantTheme(
+        button.dataset.personalPlantTheme
+      );
+      if (!next || next === personalPlantTheme) {
+        paintPersonalPlantTheme(personalPlantTheme);
+        return;
+      }
+
+      const previous = personalPlantTheme;
+      void saveSetting({
+        save: savePersonalPlantTheme,
+        load: loadPersonalPlantTheme,
+        value: next,
+        apply: (value) => {
+          applyPersonalPlantTheme(value);
+          updatePersonalChrome();
+          render();
+        },
+        restore: () => {
+          applyPersonalPlantTheme(previous);
+          updatePersonalChrome();
+          render();
+        },
+      });
+    });
+  }
+
+  if (personalVisualThemeSelect) {
+    personalVisualThemeSelect.addEventListener("change", () => {
+      const next = normalizeVisualTheme(personalVisualThemeSelect.value);
+      if (next === personalVisualTheme) {
+        paintPersonalVisualTheme(next);
+        return;
+      }
+
+      const previous = personalVisualTheme;
+      void saveSetting({
+        save: savePersonalVisualTheme,
+        load: loadPersonalVisualTheme,
+        value: next,
+        apply: (value) => {
+          applyPersonalVisualTheme(value);
+          render();
+        },
+        restore: () => {
+          applyPersonalVisualTheme(previous);
           render();
         },
       });
@@ -2560,6 +3410,18 @@ export async function mountTaskList(root) {
 
   onPersonalTaskLayoutChanged((value) => {
     applyPersonalTaskLayout(value);
+    updatePersonalChrome();
+    render();
+  });
+
+  onPersonalPlantThemeChanged((value) => {
+    applyPersonalPlantTheme(value);
+    updatePersonalChrome();
+    render();
+  });
+
+  onPersonalVisualThemeChanged((value) => {
+    applyPersonalVisualTheme(value);
     render();
   });
 
@@ -3133,6 +3995,8 @@ export async function mountTaskList(root) {
   applyPersonalPresentation(personalPresentation);
   applyPresentationMode(await loadPresentationMode());
   applyPersonalTaskLayout(await loadPersonalTaskLayout());
+  applyPersonalPlantTheme(await loadPersonalPlantTheme());
+  applyPersonalVisualTheme(await loadPersonalVisualTheme());
   applyCompletionStyle(await loadCompletionStyle());
   applyCompletionSound(await loadCompletionSound());
   applyFinalSound(await loadFinalSound());
