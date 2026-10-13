@@ -1095,6 +1095,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
   .battery-fill,
   .battery-bolt,
   .aquarium-fish,
+  .aquarium-ripple,
   .puzzle-full,
   .rocket-body,
   .rocket-flame,
@@ -1539,29 +1540,46 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .battery-bolt--bottom { --bolt-y:8%; }
 @keyframes battery-full { 0%{filter:brightness(1)} 50%{filter:brightness(1.18) saturate(1.08)} 100%{filter:brightness(1)} }
 
-.aquarium-scene { width:148px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; background:linear-gradient(to bottom,#eef6ff 0%,#bfe6ff 55%,#e6f3ff 100%); border-radius:10px; border:1px solid #a8d0ea; overflow:hidden; }
-.aquarium-tank { width:92px; height:52px; border:2px solid #7fb8d8; border-radius:28px 28px 18px 18px / 28px 28px 14px 14px; background:linear-gradient(to bottom,rgba(255,255,255,0.55) 0%,rgba(178,225,255,0.55) 36%,rgba(100,190,230,0.55) 100%); position:relative; overflow:hidden; box-shadow:inset 0 4px 10px rgba(255,255,255,0.65); }
-.aquarium-tank::before { content:""; position:absolute; left:6px; right:6px; bottom:0; height:10px; background:linear-gradient(to bottom,#d8b98a,#a08050); border-radius:0 0 10px 10px; }
-.aquarium-tank::after { content:""; position:absolute; left:10px; top:8px; width:2px; height:18px; background:rgba(255,255,255,0.45); border-radius:2px; }
-.aquarium-fish { position:absolute; width:18px; height:11px; border-radius:9px 9px 8px 8px; opacity:0; border:1.2px solid #1a1a1a; }
-.aquarium-fish::after { content:""; position:absolute; right:-6px; top:2px; width:0; height:0; border-left:7px solid currentColor; border-top:4px solid transparent; border-bottom:4px solid transparent; }
-.aquarium-fish::before { content:""; position:absolute; left:3px; top:3px; width:3px; height:3px; background:#fff; border-radius:50%; opacity:0.9; }
-.aquarium-fish.f1 { left:12px; top:14px; background:#ff7043; color:#ff7043; }
-.aquarium-fish.f2 { left:38px; top:26px; background:#ffeb3b; color:#ffeb3b; }
-.aquarium-fish.f3 { left:58px; top:12px; background:#66bb6a; color:#66bb6a; }
-.aquarium-fish.f4 { left:20px; top:30px; background:#42a5f5; color:#42a5f5; }
-.aquarium-bag { position:absolute; left:36px; top:-4px; width:24px; height:18px; border:1.5px solid rgba(255,255,255,0.85); border-radius:5px; background:rgba(255,255,255,0.5); opacity:0; z-index:2; }
-.personal-aquarium-visual[data-stage="1"] .f1 { opacity:1; animation:fish-swim 700ms ease both, fish-shimmer 900ms 700ms ease 1; }
-.personal-aquarium-visual[data-stage="1"] .aquarium-bag { opacity:1; animation:bag-drop 500ms ease both; }
+.aquarium-scene { width:148px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; background:#fffdf8; border-radius:11px; border:1.8px solid #c9d8e8; overflow:hidden; box-sizing:border-box; }
+.aquarium-tank { width:140px; height:58px; border:2.1px solid #4a7aa5; border-radius:32px 32px 22px 22px / 36px 36px 18px 18px; background:linear-gradient(to bottom,#e6f5ff 0%,#c2e6ff 34%,#8ec9ec 68%,#6db3df 100%); position:relative; overflow:hidden; box-shadow:inset 0 5px 14px rgba(255,255,255,0.82), inset 0 -3px 8px rgba(42,88,124,0.22); flex-shrink:0; }
+.aquarium-tank::before { content:""; position:absolute; left:6px; right:6px; bottom:0; height:12px; background:linear-gradient(to bottom,#e0c8a0 0%,#d0b48a 28%,#a08050 100%); border-radius:0 0 14px 14px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.42); }
+.aquarium-tank::after { content:""; position:absolute; left:10px; top:6px; width:2.4px; height:24px; background:linear-gradient(to bottom, rgba(255,255,255,0.62), rgba(255,255,255,0.1)); border-radius:2px; }
+.aquarium-fish { position:absolute; width:26px; height:15px; border-radius:11px 11px 10px 10px / 8px 8px 7px 7px; opacity:0; border:1.25px solid #1a1a1a; box-sizing:border-box; will-change: transform, filter; }
+.aquarium-fish::after { content:""; position:absolute; right:-9px; top:1.5px; width:11px; height:11px; background:currentColor; border:1.15px solid #1a1a1a; border-left:0; clip-path:polygon(0 50%, 18% 0, 100% 22%, 100% 78%, 18% 100%); border-radius:0 2px 2px 0; transform-origin:left center; }
+.aquarium-fish::before { content:""; position:absolute; left:5px; top:3.8px; width:5px; height:5px; background:radial-gradient(circle at 62% 48%, #1a1a1a 0 1.35px, #fff 1.35px 100%); border-radius:50%; border:0.7px solid #1a1a1a; box-sizing:border-box; }
+.aquarium-fish.f1 { left:10px; top:9px; background:linear-gradient(to bottom, #ff8a5e 0%, #ff7043 52%, #e85a2e 100%); color:#ff7043; }
+.aquarium-fish.f2 { left:60px; top:26px; background:linear-gradient(to bottom, #fff176 0%, #ffeb3b 55%, #f9c400 100%); color:#ffeb3b; }
+.aquarium-fish.f3 { left:96px; top:7px; background:linear-gradient(to bottom, #81c784 0%, #66bb6a 55%, #3d8b40 100%); color:#66bb6a; }
+.aquarium-fish.f4 { left:22px; top:31px; background:linear-gradient(to bottom, #64b5f6 0%, #42a5f5 55%, #1e78c2 100%); color:#42a5f5; }
+.aquarium-bag { position:absolute; left:48px; top:-3px; width:24px; height:17px; border:1.4px solid rgba(255,255,255,0.88); border-radius:5px; background:rgba(255,255,255,0.52); opacity:0; z-index:2; pointer-events:none; }
+.aquarium-ripple { position:absolute; left:9px; top:16px; width:32px; height:11px; border:2px solid rgba(255,255,255,0.95); border-radius:50%; background:radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.42) 38%, rgba(255,255,255,0) 70%); opacity:0; transform:scale(0.35); pointer-events:none; z-index:2; box-shadow:0 0 6px rgba(255,255,255,0.6); }
+.personal-aquarium-visual[data-stage="1"] .f1 { opacity:1; animation:fish-enter 520ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 520ms ease 1, fish-shimmer 1050ms 520ms ease 1; }
+.personal-aquarium-visual[data-stage="1"] .f1::after { animation:fish-tail-wag 420ms 520ms ease 1; }
+.personal-aquarium-visual[data-stage="1"] .aquarium-bag { opacity:0; animation:bag-drop 420ms ease both; }
 .personal-aquarium-visual[data-stage="2"] .f1,.personal-aquarium-visual[data-stage="2"] .f2 { opacity:1; }
-.personal-aquarium-visual[data-stage="2"] .f2 { animation:fish-swim 700ms 120ms both, fish-shimmer 900ms 820ms ease 1; }
+.personal-aquarium-visual[data-stage="2"] .f2 { animation:fish-enter 520ms 80ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 600ms ease 1, fish-shimmer 1050ms 600ms ease 1; }
+.personal-aquarium-visual[data-stage="2"] .f2::after { animation:fish-tail-wag 420ms 600ms ease 1; }
 .personal-aquarium-visual[data-stage="3"] .f1,.personal-aquarium-visual[data-stage="3"] .f2,.personal-aquarium-visual[data-stage="3"] .f3 { opacity:1; }
-.personal-aquarium-visual[data-stage="3"] .f3 { animation:fish-swim 700ms 180ms both, fish-shimmer 900ms 880ms ease 1; }
-.personal-aquarium-visual[data-stage="4"] .aquarium-fish { opacity:1; animation:fish-swim 700ms both, fish-shimmer 900ms 700ms ease infinite; }
-.personal-aquarium-visual[data-stage="4"] .f2{animation-delay:100ms, 800ms} .personal-aquarium-visual[data-stage="4"] .f3{animation-delay:200ms, 900ms} .personal-aquarium-visual[data-stage="4"] .f4{animation-delay:300ms, 1000ms}
-@keyframes fish-swim { 0%{transform:translateX(-10px) scale(0.8);opacity:0} 60%{transform:translateX(3px) scale(1.05);opacity:1} 100%{transform:none;opacity:1} }
-@keyframes fish-shimmer { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.35) saturate(1.2)} }
-@keyframes bag-drop { 0%{transform:translateY(-10px);opacity:0} 100%{transform:none;opacity:1} }
+.personal-aquarium-visual[data-stage="3"] .f3 { animation:fish-enter 520ms 80ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 600ms ease 1, fish-shimmer 1050ms 600ms ease 1; }
+.personal-aquarium-visual[data-stage="3"] .f3::after { animation:fish-tail-wag 420ms 600ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .aquarium-fish { opacity:1; }
+.personal-aquarium-visual[data-stage="4"] .aquarium-tank { overflow: visible; }
+.personal-aquarium-visual[data-stage="4"] .f1 { z-index:3; animation:fish-enter 480ms cubic-bezier(0.22,1,0.36,1) both, fish-jump-flip 700ms 580ms cubic-bezier(0.34,0,0.66,1) both, fish-shimmer 1100ms 1420ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f1::after { animation:fish-tail-wag 420ms 600ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f2 { animation:fish-enter 480ms 90ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 560ms ease 1, fish-shimmer 1100ms 1450ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f2::after { animation:fish-tail-wag 420ms 560ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f3 { animation:fish-enter 480ms 180ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 580ms ease 1, fish-shimmer 1100ms 1480ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f3::after { animation:fish-tail-wag 420ms 580ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f4 { animation:fish-enter 480ms 270ms cubic-bezier(0.22,1,0.36,1) both, fish-tail-flick 420ms 600ms ease 1, fish-shimmer 1100ms 1510ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .f4::after { animation:fish-tail-wag 420ms 600ms ease 1; }
+.personal-aquarium-visual[data-stage="4"] .aquarium-ripple { animation:ripple 520ms 1320ms ease-out forwards; }
+@keyframes fish-enter { 0%{transform:translateX(-8px) scale(0.86);opacity:0} 58%{transform:translateX(2px) scale(1.04);opacity:1} 100%{transform:none;opacity:1} }
+@keyframes fish-shimmer { 0%,100%{filter:brightness(1) saturate(1)} 42%{filter:brightness(1.22) saturate(1.14)} 58%{filter:brightness(1.14) saturate(1.1)} }
+@keyframes fish-tail-flick { 0%,100%{transform:rotate(0)} 28%{transform:rotate(-3deg) translateX(0.6px)} 62%{transform:rotate(2.4deg)} 84%{transform:rotate(-1.2deg)} }
+@keyframes fish-tail-wag { 0%,100%{transform:rotate(0) scaleY(1)} 25%{transform:rotate(-12deg) scaleY(0.88)} 55%{transform:rotate(10deg) scaleY(1.06)} 80%{transform:rotate(-6deg) scaleY(0.92)} }
+@keyframes fish-jump-flip { 0%{transform:translateY(0) translateX(0) rotate(0) scale(1)} 22%{transform:translateY(-11px) translateX(6px) rotate(-70deg) scale(1.02)} 46%{transform:translateY(-14px) translateX(10px) rotate(-185deg) scale(1)} 72%{transform:translateY(-4px) translateX(4px) rotate(-285deg) scale(0.98)} 100%{transform:translateY(0) translateX(0) rotate(-360deg) scale(1)} }
+@keyframes ripple { 0%{transform:scale(0.35);opacity:0} 22%{opacity:0.82} 58%{opacity:0.55} 100%{transform:scale(1.85);opacity:0} }
+@keyframes bag-drop { 0%{transform:translateY(-8px);opacity:0} 100%{transform:none;opacity:0} }
 
 .animal-puzzle-scene { width:148px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; background:#eef6ff; border-radius:10px; border:1px solid #c9d9ea; overflow:hidden; }
 .puzzle-piece { width:32px; height:28px; background:#1a1a1a; border-radius:6px; position:relative; opacity:1; transition:background 320ms ease, opacity 320ms ease; overflow:hidden; }
