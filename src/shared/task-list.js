@@ -189,7 +189,8 @@ import { describeDynamiteStage, dynamiteStageFromProgress } from "./dynamite-the
 import { describeCoffeeStage, coffeeStageFromProgress, coffeeLevels, isPouring, isSteaming } from "./coffee-theme.js";
 import { describeBatteryStage, batteryStageFromProgress } from "./battery-theme.js";
 import { describeAquariumStage, aquariumStageFromProgress } from "./aquarium-theme.js";
-import { describeAnimalPuzzleStage, animalPuzzleStageFromProgress } from "./animal-puzzle-theme.js";
+import { describeKiteStage, kiteStageFromProgress, kiteSceneMarkup } from "./kite-theme.js";
+import { describeAnimalPuzzleStage as describeAnimalPuzzleStageAlias, animalPuzzleStageFromProgress as animalPuzzleStageFromProgressAlias } from "./animal-puzzle-theme.js";
 import { describeRocketStage, rocketStageFromProgress } from "./rocket-theme.js";
 import { describeZenTerrariumStage, zenTerrariumStageFromProgress } from "./zen-terrarium-theme.js";
 import {
@@ -357,7 +358,8 @@ export async function mountTaskList(root) {
       case "coffee": return { stage: coffeeStageFromProgress(progress), desc: describeCoffeeStage(progress) };
       case "battery": return { stage: batteryStageFromProgress(progress), desc: describeBatteryStage(progress) };
       case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
-      case "animal-puzzle": return { stage: animalPuzzleStageFromProgress(progress), desc: describeAnimalPuzzleStage(progress) };
+      case "kite":
+      case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
       case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
       case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
       default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
@@ -569,8 +571,8 @@ export async function mountTaskList(root) {
         <div class="personal-aquarium-visual personal-aquarium-visual--entry" role="img" aria-label="" hidden>
           <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-ripple" aria-hidden="true"></span><span class="aquarium-bag"></span></span></div>
         </div>
-        <div class="personal-animal-puzzle-visual personal-animal-puzzle-visual--entry" role="img" aria-label="" hidden>
-          <div class="animal-puzzle-scene" aria-hidden="true"><span class="puzzle-piece p1"></span><span class="puzzle-piece p2"></span><span class="puzzle-piece p3"></span><span class="puzzle-piece p4"></span><span class="puzzle-full"></span></div>
+        <div class="personal-kite-visual personal-kite-visual--entry" role="img" aria-label="" hidden>
+          ${kiteSceneMarkup()}
         </div>
         <div class="personal-rocket-visual personal-rocket-visual--entry" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
@@ -693,7 +695,7 @@ export async function mountTaskList(root) {
               <option value="coffee">Coffee Pour</option>
               <option value="battery">Battery</option>
               <option value="aquarium">Aquarium</option>
-              <option value="animal-puzzle">Animal Puzzle</option>
+              <option value="kite">Kite</option>
               <option value="rocket">Rocket</option>
               <option value="zen-terrarium">Zen Terrarium</option>
             </select>
@@ -1213,8 +1215,8 @@ export async function mountTaskList(root) {
         <div class="personal-aquarium-visual" role="img" aria-label="" hidden>
           <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-ripple" aria-hidden="true"></span><span class="aquarium-bag"></span></span></div>
         </div>
-        <div class="personal-animal-puzzle-visual" role="img" aria-label="" hidden>
-          <div class="animal-puzzle-scene" aria-hidden="true"><span class="puzzle-piece p1"></span><span class="puzzle-piece p2"></span><span class="puzzle-piece p3"></span><span class="puzzle-piece p4"></span><span class="puzzle-full"></span></div>
+        <div class="personal-kite-visual" role="img" aria-label="" hidden>
+          ${kiteSceneMarkup()}
         </div>
         <div class="personal-rocket-visual" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
@@ -1480,14 +1482,16 @@ export async function mountTaskList(root) {
   const personalBatteryVisualEntry = root.querySelector(".personal-battery-visual--entry");
   const personalAquariumVisual = root.querySelector(".personal-aquarium-visual:not(.personal-aquarium-visual--entry)");
   const personalAquariumVisualEntry = root.querySelector(".personal-aquarium-visual--entry");
-  const personalAnimalPuzzleVisual = root.querySelector(".personal-animal-puzzle-visual:not(.personal-animal-puzzle-visual--entry)");
-  const personalAnimalPuzzleVisualEntry = root.querySelector(".personal-animal-puzzle-visual--entry");
+  const personalKiteVisual = root.querySelector(".personal-kite-visual:not(.personal-kite-visual--entry)");
+  const personalKiteVisualEntry = root.querySelector(".personal-kite-visual--entry");
+  const personalAnimalPuzzleVisual = personalKiteVisual;
+  const personalAnimalPuzzleVisualEntry = personalKiteVisualEntry;
   const personalRocketVisual = root.querySelector(".personal-rocket-visual:not(.personal-rocket-visual--entry)");
   const personalRocketVisualEntry = root.querySelector(".personal-rocket-visual--entry");
   const personalZenTerrariumVisual = root.querySelector(".personal-zen-terrarium-visual:not(.personal-zen-terrarium-visual--entry)");
   const personalZenTerrariumVisualEntry = root.querySelector(".personal-zen-terrarium-visual--entry");
-  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalAnimalPuzzleVisualEntry, "animal-puzzle"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
-  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalAnimalPuzzleVisual, "animal-puzzle"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
+  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
   const personalFullListToggle = root.querySelector(
     ".personal-full-list-toggle"
   );
@@ -2596,7 +2600,8 @@ export async function mountTaskList(root) {
         case "coffee": return { stage: coffeeStageFromProgress(progress), desc: describeCoffeeStage(progress) };
         case "battery": return { stage: batteryStageFromProgress(progress), desc: describeBatteryStage(progress) };
         case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
-        case "animal-puzzle": return { stage: animalPuzzleStageFromProgress(progress), desc: describeAnimalPuzzleStage(progress) };
+        case "kite":
+        case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
         case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
         case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
         default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
@@ -2615,7 +2620,7 @@ export async function mountTaskList(root) {
       [personalCoffeeVisual, "coffee"],
       [personalBatteryVisual, "battery"],
       [personalAquariumVisual, "aquarium"],
-      [personalAnimalPuzzleVisual, "animal-puzzle"],
+      [personalKiteVisual, "kite"],
       [personalRocketVisual, "rocket"],
       [personalZenTerrariumVisual, "zen-terrarium"],
     ];
@@ -2627,12 +2632,12 @@ export async function mountTaskList(root) {
       [personalCoffeeVisualEntry, "coffee"],
       [personalBatteryVisualEntry, "battery"],
       [personalAquariumVisualEntry, "aquarium"],
-      [personalAnimalPuzzleVisualEntry, "animal-puzzle"],
+      [personalKiteVisualEntry, "kite"],
       [personalRocketVisualEntry, "rocket"],
       [personalZenTerrariumVisualEntry, "zen-terrarium"],
     ];
-    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalAnimalPuzzleVisual, "animal-puzzle"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
-    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalAnimalPuzzleVisualEntry, "animal-puzzle"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
+    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
     personalPlant.hidden = !plantVisible || activeStage == null || !oneActive;
     if (plantVisible && activeStage != null && activeDesc && oneActive) {
       personalPlant.dataset.visualTheme = visualTheme;
