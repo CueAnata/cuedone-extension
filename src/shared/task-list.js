@@ -575,7 +575,7 @@ export async function mountTaskList(root) {
           ${kiteSceneMarkup()}
         </div>
         <div class="personal-rocket-visual personal-rocket-visual--entry" role="img" aria-label="" hidden>
-          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
+          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
         </div>
         <div class="personal-zen-terrarium-visual personal-zen-terrarium-visual--entry" role="img" aria-label="" hidden>
           <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
@@ -1219,7 +1219,7 @@ export async function mountTaskList(root) {
           ${kiteSceneMarkup()}
         </div>
         <div class="personal-rocket-visual" role="img" aria-label="" hidden>
-          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span></div>
+          <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
         </div>
         <div class="personal-zen-terrarium-visual" role="img" aria-label="" hidden>
           <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
