@@ -1,6 +1,6 @@
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
-export const ROCKET_STAGE_COUNT = 5;
-const LABELS = ["on stand", "fueling", "engines warm", "ignition", "liftoff"];
+export const ROCKET_STAGE_COUNT = 6;
+const LABELS = ["on stand", "fueling", "engines warm", "ignition", "approach", "landed"];
 export function rocketStageFromProgress(p){
   const n=p&&typeof p==="object"?p:normalizeProgress([]); const t=Number(n.total)||0; const c=Number(n.complete)||0;
   if(t===0) return null; if(c>=t) return ROCKET_STAGE_COUNT-1; if(c<=0) return 0;
