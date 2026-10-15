@@ -100,33 +100,31 @@ export function fishermanSceneMarkup(progress) {
         <ellipse cx="28" cy="14" rx="11" ry="3" fill="#bcaaa4" stroke="#6d4c41" stroke-width="0.8" />
       </g>
       <!-- Unified articulated arm & cane rig — SINGLE rigid group welded at shoulder 24,32 — zero independent sub-transforms -->
-      <g id="fisherman-arms-rig" class="fisherman-arms-rig">
-        <!-- Arm sleeve starting at shoulder joint (x=24, y=32) extending to wrists -->
-        <path class="fisherman-arm-sleeve" d="M 24 32 L 35 36" stroke="#0d47a1" stroke-width="4.5" stroke-linecap="round" fill="none" />
-        <!-- Cane pole: runs straight through the clasped hands out over water -->
-        <path class="fisherman-cane" d="M 30 38 L 78 12" stroke="#5d4037" stroke-width="2.4" stroke-linecap="round" fill="none" />
-        <!-- Clasped hands permanently welded over the pole at x=34-37, y=35-37 -->
+      <g id="fisherman-arms-rig">
+        <!-- Arm Sleeve: anchored at shoulder (24, 32), reaching to wrist (35, 36) -->
+        <path d="M 24 32 L 35 36" stroke="#0d47a1" stroke-width="4.5" stroke-linecap="round" fill="none" />
+        <!-- Cane Pole: handle rests at (30, 38) and extends forward to tip (78, 12) -->
+        <path d="M 30 38 L 78 12" stroke="#5d4037" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        <!-- Hands: clasped securely over the cane handle -->
         <circle cx="34" cy="36.5" r="2.2" fill="#ffcc80" />
         <circle cx="36.5" cy="35.5" r="2.0" fill="#ffe0b2" />
-        <!-- Fishing line running from pole tip (78, 12) down to water -->
-        <path class="fisherman-line" d="M 78 12 L 78 54" stroke="#ffffff" stroke-width="0.75" stroke-dasharray="1.2,1.2" opacity="0.85" fill="none" />
+        <!-- Line: anchored at tip (78, 12) dropping straight to water (78, 54) -->
+        <path d="M 78 12 L 78 54" stroke="#ffffff" stroke-width="0.75" stroke-dasharray="1.2,1.2" opacity="0.85" fill="none" />
       </g>
       <!-- placeholder rig — no duplicate cane/line; kept for legacy querySelector compat -->
       <g id="fisherman-rig" class="fisherman-rig" style="display:none"></g>
       </g>
-      <!-- finale fish — enlarged 32px bass, root level directly under HUD -->
+      <!-- finale fish — single clean bass, no nested fish -->
       <g id="finale-fish" class="finale-fish" style="opacity: 0; pointer-events: none;">
-        <!-- Main Body: Vibrant Royal Blue with bold dark outline -->
-        <path d="M 0 0 C 8 -16 28 -18 42 -8 C 42 -2 30 10 20 14 Q 8 16 0 0 Z" fill="#1976d2" stroke="#0d47a1" stroke-width="1.4" />
-        <!-- White/Silver Belly -->
-        <path d="M 4 2 C 12 -4 24 -4 34 0 C 24 5 14 7 4 2 Z" fill="#ffffff" opacity="0.9" />
-        <!-- Tail Fin (Fluke) -->
-        <polygon points="40,-8 52,-18 47,-6 53,2 41,-1" fill="#1565c0" stroke="#0d47a1" stroke-width="1.2" />
-        <!-- Dorsal Fin -->
-        <path d="M 16 -12 Q 24 -18 30 -11 Z" fill="#1565c0" />
-        <!-- Big Eye -->
-        <circle cx="9" cy="-4" r="2.4" fill="#ffffff" />
-        <circle cx="8" cy="-4" r="1.1" fill="#000000" />
+        <!-- Single solid fish body -->
+        <path d="M 0 0 C 6 -12 22 -14 34 -6 C 34 -2 24 8 16 11 Q 6 12 0 0 Z" fill="#1976d2" stroke="#0d47a1" stroke-width="1.2" />
+        <!-- Clean belly highlight -->
+        <path d="M 3 2 C 10 -3 20 -3 28 0 C 20 4 12 5 3 2 Z" fill="#e3f2fd" opacity="0.85" />
+        <!-- Tail fluke -->
+        <polygon points="32,-6 42,-14 38,-4 43,3 33,0" fill="#1565c0" stroke="#0d47a1" stroke-width="1.0" />
+        <!-- Eye -->
+        <circle cx="7" cy="-3" r="2" fill="#ffffff" />
+        <circle cx="6.5" cy="-3" r="0.9" fill="#000000" />
       </g>
       <!-- finale splash — water plume erupting at dock edge, root level next to finale fish -->
       <g id="finale-splash" class="finale-splash" style="opacity: 0; pointer-events: none;">

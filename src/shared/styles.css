@@ -1784,14 +1784,13 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
   transform-origin: 24px 32px;
   transform-box: fill-box;
 }
-.pole-yanking #fisherman-arms-rig,
 #fisherman-arms-rig.is-yanking {
-  animation: unified-arm-pull 0.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: clean-shoulder-pull 0.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
-@keyframes unified-arm-pull {
+@keyframes clean-shoulder-pull {
   0%   { transform: rotate(0deg); }
-  30%  { transform: rotate(-20deg); }
-  65%  { transform: rotate(-20deg); }
+  30%  { transform: rotate(-22deg); }
+  65%  { transform: rotate(-22deg); }
   100% { transform: rotate(0deg); }
 }
 .hooked-fish { opacity:0; }
@@ -1852,49 +1851,48 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 /* Grand finale belly flop & dock splash — Frame 2-4 sequence 0.2s-1.4s */
 @keyframes giant-breach-leap {
   0% {
-    transform: translate(114px, 86px) rotate(-15deg) scale(0.2);
+    transform: translate(112px, 86px) rotate(-15deg) scale(0);
     opacity: 0;
   }
   15% {
-    transform: translate(104px, 58px) rotate(-35deg) scale(0.9);
+    transform: translate(102px, 58px) rotate(-30deg) scale(0.95);
     opacity: 1;
   }
   45% {
-    transform: translate(78px, 34px) rotate(-10deg) scale(1.0);
+    transform: translate(78px, 36px) rotate(-10deg) scale(1.15);
     opacity: 1;
   }
-  68% {
-    transform: translate(62px, 48px) rotate(35deg) scale(1.0);
+  72% {
+    transform: translate(64px, 50px) rotate(35deg) scale(1.1);
     opacity: 1;
   }
-  84% {
-    transform: translate(52px, 66px) rotate(65deg) scale(0.95);
+  85% {
+    transform: translate(58px, 66px) rotate(55deg) scale(1.0);
     opacity: 1;
   }
   92% {
-    transform: translate(48px, 78px) rotate(70deg) scale(0.5);
+    transform: translate(54px, 78px) rotate(60deg) scale(0.6);
     opacity: 0;
   }
   100% {
-    transform: translate(48px, 86px) scale(0);
+    transform: translate(54px, 86px) scale(0);
     opacity: 0;
   }
 }
 .finale-fish-active.giant-active {
-  animation: giant-breach-leap 1.4s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  animation: giant-breach-leap 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
 }
 /* Alias for spec: plain finale-fish-active should also drive giant breach (overrides legacy) */
 .finale-fish-active {
-  animation: giant-breach-leap 1.4s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+  animation: giant-breach-leap 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
 }
 @keyframes splash-burst {
-  0%   { transform: translate(52px, 66px) scale(0.2); opacity: 0; }
-  30%  { transform: translate(52px, 66px) scale(1.3); opacity: 1; }
-  80%  { transform: translate(52px, 66px) scale(1.4); opacity: 0.8; }
-  100% { transform: translate(52px, 66px) scale(1.5); opacity: 0; }
+  0%   { transform: translate(58px, 65px) scale(0.2); opacity: 0; }
+  35%  { transform: translate(58px, 65px) scale(1.3); opacity: 1; }
+  100% { transform: translate(58px, 65px) scale(1.5); opacity: 0; }
 }
 .finale-splash-active {
-  animation: splash-burst 0.5s 1.15s ease-out forwards !important;
+  animation: splash-burst 0.45s 1.15s ease-out forwards !important;
 }
 @keyframes fisherman-startle {
   0%, 100% { transform: translate(0, 24px) scale(1.4); }
@@ -1904,8 +1902,8 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .fisherman-startled {
   animation: fisherman-startle 0.4s 1.18s ease-in-out;
 }
-#finale-splash.finale-splash-active {
-  animation: splash-burst 0.5s 1.15s ease-out forwards !important;
+`#finale-splash.finale-splash-active {
+  animation: splash-burst 0.45s 1.15s ease-out forwards !important;
 }
 #fisherman-figure.fisherman-startled {
   animation: fisherman-startle 0.4s 1.18s ease-in-out;
