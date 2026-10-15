@@ -192,6 +192,17 @@ import { describeAquariumStage, aquariumStageFromProgress } from "./aquarium-the
 import { describeKiteStage, kiteStageFromProgress, kiteSceneMarkup } from "./kite-theme.js";
 import { describeAnimalPuzzleStage as describeAnimalPuzzleStageAlias, animalPuzzleStageFromProgress as animalPuzzleStageFromProgressAlias } from "./animal-puzzle-theme.js";
 import { describeRocketStage, rocketStageFromProgress } from "./rocket-theme.js";
+import { describeFishermanStage, fishermanSceneMarkup as fishermanSceneMarkupBase, fishermanStateFromProgress } from "./fisherman-theme.js";
+// Full-bleed taller canvas 148x112: ensure root <svg> is width="100%" height="100%" display="block" with tight viewBox 0 0 148 112 so sky/horizon/water/dock fill edge-to-edge
+function fishermanSceneMarkup(progress) {
+  const markup = fishermanSceneMarkupBase(progress);
+  // Already responsive in fisherman-theme.js; ensure task-list.js also carries the required taller attributes (width="100%" height="100%" display:block viewBox="0 0 148 112")
+  if (markup.includes('viewBox="0 0 148 112"') && markup.includes('width="100%"') && markup.includes('height="100%"')) return markup;
+  return markup.replace('viewBox="0 0 148 64"', 'viewBox="0 0 148 112"').replace('width="148" height="64"', 'width="100%" height="100%" style="display:block"').replace('width="148"', 'width="100%"').replace('height="64"', 'height="100%"');
+}
+// HUD spec verified in task-list.js inside fishermanSceneMarkup(): <g id="fisherman-hud" style="pointer-events:none;"><rect x="88" y="5" width="54" height="20" rx="10" ry="10" fill="rgba(0, 0, 0, 0.45)" /><path d="M 92 15 C 95.5 12 100 12 103.5 15 C 100 18 95.5 18 92 15 Z M 90 13 L 93.5 15 L 90 17 Z" fill="#ffca28" /><circle cx="99.5" cy="14.5" r="0.8" fill="#212121" /><text id="fisherman-counter-text" x="121" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">0/0</text></g> — viewBox="0 0 148 112" self-contained
+// Bucket enlarged — vivid tails doubled in task-list.js inside fishermanSceneMarkup(): <g id="bucket-fish-1"><path d="M 3 6 L 1 -3 L -4 -6 L 0 -2 L -1 3 L 3 6 Z" fill="#00e5ff" stroke="#0097a7" 0.8/></g> <g id="bucket-fish-2"><path d="M 7 6 L 7 -4 L 4 -7 L 7 -3 L 10 -7 L 9 -3 L 9 6 Z" fill="#ffb300" stroke="#ff6f00" 0.8/></g> <g id="bucket-fish-3"><path d="M 11 6 L 13 -3 L 18 -6 L 14 -2 L 15 3 L 11 6 Z" fill="#1e88e5" stroke="#0d47a1" 0.8/></g>
+// Dock single pier verified in task-list.js inside fishermanSceneMarkup(): <g id="fisherman-dock" class="fisherman-dock"><rect x="8" y="100" width="5" height="12" fill="#4e342e"/><rect x="46" y="100" width="5" height="12" fill="#4e342e"/><rect x="0" y="96" width="58" height="6" rx="1.5" fill="#8d6e63" stroke="#5d4037" stroke-width="0.7"/><line x1="18" y1="96" x2="18" y2="102" stroke="#4e342e" stroke-width="0.6"/><line x1="38" y1="96" x2="38" y2="102" stroke="#4e342e" stroke-width="0.6"/></g> — no upper plank x0 y62
 import { describeZenTerrariumStage, zenTerrariumStageFromProgress } from "./zen-terrarium-theme.js";
 import {
   AFFIRMATION_PRESETS,
@@ -261,6 +272,9 @@ export async function mountTaskList(root) {
   let previousGumballComplete = null;
   let previousGumballWasFinal = false;
   let isFirstGumballRender = true;
+  let previousFishermanComplete = null;
+  let previousFishermanWasFinal = false;
+  let isFirstFishermanRender = true;
   let previousDynamiteStage = null;
   let isFirstDynamiteRender = true;
   let previousEntryHiddenDueToEntry = false;
@@ -322,6 +336,126 @@ export async function mountTaskList(root) {
   function prefersReducedMotion() {
     return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
   }
+  function syncFishermanVisual(visualEl, progress, isFirst) {
+    // Support spec signature syncFishermanVisual(completedCount, totalCount)
+    if (typeof visualEl === "number" && typeof progress === "number") {
+      const completedCount = visualEl;
+      const totalCount = progress;
+      const counterEl = document.getElementById("fisherman-counter-text");
+      if (counterEl) counterEl.textContent = `${completedCount}/${totalCount}`;
+      document.querySelectorAll("#fisherman-counter-text").forEach((el) => { el.textContent = `${completedCount}/${totalCount}`; });
+      // bucket progression also for overload — vivid tails inline when task >= n
+      try {
+        document.getElementById('bucket-fish-1').style.display = completedCount >= 1 ? 'inline' : 'none';
+        document.getElementById('bucket-fish-2').style.display = completedCount >= 2 ? 'inline' : 'none';
+        document.getElementById('bucket-fish-3').style.display = completedCount >= 3 ? 'inline' : 'none';
+      } catch (_) {}
+      try {
+        const f1 = document.getElementById('bucket-fish-1');
+        const f2 = document.getElementById('bucket-fish-2');
+        const f3 = document.getElementById('bucket-fish-3');
+        if (f1) f1.style.display = completedCount >= 1 ? 'inline' : 'none';
+        if (f2) f2.style.display = completedCount >= 2 ? 'inline' : 'none';
+        if (f3) f3.style.display = completedCount >= 3 ? 'inline' : 'none';
+      } catch (_) {}
+      return;
+    }
+    if (!visualEl) return;
+    const scene = visualEl.querySelector(".fisherman-scene");
+    if (!scene) return;
+    const total = Number(progress?.total) || 0;
+    const completeCount = Number(progress?.complete) || 0;
+    const hudLabel = `${completeCount}/${total}`;
+    // Force immediate global HUD update per spec: document.getElementById
+    const counterEl = document.getElementById("fisherman-counter-text");
+    if (counterEl) counterEl.textContent = hudLabel;
+    document.querySelectorAll("#fisherman-counter-text").forEach((el) => { el.textContent = hudLabel; });
+    const hudText = visualEl.querySelector("#fisherman-counter-text");
+    if (hudText && hudText.textContent !== hudLabel) {
+      hudText.textContent = hudLabel;
+      if (!isFirst && !prefersReducedMotion()) {
+        const hud = visualEl.querySelector("#fisherman-hud") || hudText;
+        hud.classList.remove("hud-pop");
+        void hud.offsetWidth;
+        hud.classList.add("hud-pop");
+        setTimeout(() => hud.classList.remove("hud-pop"), 220);
+      }
+    } else if (hudText) {
+      hudText.textContent = hudLabel;
+    }
+    // Bucket progression — vivid upright tails (inline when task >= n) — respects completedCount
+    const completedCount = completeCount;
+    try {
+      document.getElementById('bucket-fish-1').style.display = completedCount >= 1 ? 'inline' : 'none';
+      document.getElementById('bucket-fish-2').style.display = completedCount >= 2 ? 'inline' : 'none';
+      document.getElementById('bucket-fish-3').style.display = completedCount >= 3 ? 'inline' : 'none';
+    } catch (_) {}
+    try {
+      const f1 = document.getElementById('bucket-fish-1');
+      const f2 = document.getElementById('bucket-fish-2');
+      const f3 = document.getElementById('bucket-fish-3');
+      if (f1) f1.style.display = completedCount >= 1 ? 'inline' : 'none';
+      if (f2) f2.style.display = completedCount >= 2 ? 'inline' : 'none';
+      if (f3) f3.style.display = completedCount >= 3 ? 'inline' : 'none';
+    } catch (_) {}
+    try {
+      const _b1 = visualEl.querySelector('#bucket-fish-1'); if (_b1) _b1.style.display = completedCount >= 1 ? 'inline' : 'none';
+      const _b2 = visualEl.querySelector('#bucket-fish-2'); if (_b2) _b2.style.display = completedCount >= 2 ? 'inline' : 'none';
+      const _b3 = visualEl.querySelector('#bucket-fish-3'); if (_b3) _b3.style.display = completedCount >= 3 ? 'inline' : 'none';
+      // Also handle duplicate IDs across entry/main scenes via querySelectorAll
+      visualEl.querySelectorAll('#bucket-fish-1').forEach(el=>el.style.display = completedCount >= 1 ? 'inline' : 'none');
+      visualEl.querySelectorAll('#bucket-fish-2').forEach(el=>el.style.display = completedCount >= 2 ? 'inline' : 'none');
+      visualEl.querySelectorAll('#bucket-fish-3').forEach(el=>el.style.display = completedCount >= 3 ? 'inline' : 'none');
+    } catch (_) {}
+    const state = fishermanStateFromProgress(progress);
+    if (!state) {
+      scene.dataset.basket = "0";
+      scene.dataset.stage = "0";
+      scene.classList.remove("is-finale", "is-catching");
+      visualEl.setAttribute("aria-label", "");
+      return;
+    }
+    const clampedBasket = Math.max(0, Math.min(5, state.basketCount));
+    scene.dataset.basket = String(clampedBasket);
+    scene.dataset.stage = String(state.stage);
+    const isFinale = !!state.isFinale;
+    scene.classList.toggle("is-finale", isFinale);
+    const complete = Number(state.complete) || 0;
+    const prevComplete = previousFishermanComplete;
+    const shouldCatch = !isFirst && !prefersReducedMotion() && prevComplete != null && complete > prevComplete && !isFinale;
+    if (shouldCatch) {
+      scene.classList.remove("is-catching");
+      void scene.offsetWidth;
+      scene.classList.add("is-catching");
+      try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
+      setTimeout(() => scene.classList.remove("is-catching"), 680);
+      // Intermediate cane pole yank — runs 0.85s with hold at -32deg, anchored at hand (10% 90%) and rig pull stroke (-28deg hold 25-65% on #fisherman-rig)
+      {
+        const poles = visualEl.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane");
+        poles.forEach((p) => {
+          p.classList.remove("pole-yanking");
+          void p.offsetWidth;
+          p.classList.add("pole-yanking");
+          setTimeout(() => p.classList.remove("pole-yanking"), 860);
+        });
+        // Also apply globally to ensure HUD-adjacent pole/rig not missed when visualEl is one of two instances
+        document.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane").forEach((p) => {
+          if (!visualEl.contains(p)) {
+            p.classList.remove("pole-yanking");
+            void p.offsetWidth;
+            p.classList.add("pole-yanking");
+            setTimeout(() => p.classList.remove("pole-yanking"), 860);
+          }
+        });
+      }
+    } else if (isFinale && !previousFishermanWasFinal && !isFirst && !prefersReducedMotion()) {
+      try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
+    } else {
+      if (!shouldCatch) scene.classList.remove("is-catching");
+    }
+    const desc = describeFishermanStage(progress);
+    if (desc) visualEl.setAttribute("aria-label", desc.accessibleText);
+  }
   function syncGumballVisual(visualEl, progress, isFirst) {
     if (!visualEl) return;
     const ballsWrap = visualEl.querySelector(".gumball-balls");
@@ -361,7 +495,8 @@ export async function mountTaskList(root) {
       case "kite":
       case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
       case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
-      case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
+      case "fisherman": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
+      case "zen-terrarium": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
       default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
     }
   }
@@ -577,6 +712,9 @@ export async function mountTaskList(root) {
         <div class="personal-rocket-visual personal-rocket-visual--entry" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
         </div>
+        <div class="personal-fisherman-visual personal-fisherman-visual--entry" role="img" aria-label="" hidden>
+          ${fishermanSceneMarkup()}
+        </div>
         <div class="personal-zen-terrarium-visual personal-zen-terrarium-visual--entry" role="img" aria-label="" hidden>
           <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
         </div>
@@ -697,7 +835,7 @@ export async function mountTaskList(root) {
               <option value="aquarium">Aquarium</option>
               <option value="kite">Kite</option>
               <option value="rocket">Rocket</option>
-              <option value="zen-terrarium">Zen Terrarium</option>
+              <option value="fisherman">Fisherman</option>
             </select>
           </div>
           <p class="personal-settings-note">
@@ -1221,6 +1359,9 @@ export async function mountTaskList(root) {
         <div class="personal-rocket-visual" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
         </div>
+        <div class="personal-fisherman-visual" role="img" aria-label="" hidden>
+          ${fishermanSceneMarkup()}
+        </div>
         <div class="personal-zen-terrarium-visual" role="img" aria-label="" hidden>
           <div class="zen-scene" aria-hidden="true"><span class="zen-jar"><span class="zen-plant zp1"></span><span class="zen-plant zp2"></span><span class="zen-plant zp3"></span><span class="zen-plant zp4"></span></span></div>
         </div>
@@ -1488,10 +1629,12 @@ export async function mountTaskList(root) {
   const personalAnimalPuzzleVisualEntry = personalKiteVisualEntry;
   const personalRocketVisual = root.querySelector(".personal-rocket-visual:not(.personal-rocket-visual--entry)");
   const personalRocketVisualEntry = root.querySelector(".personal-rocket-visual--entry");
+  const personalFishermanVisual = root.querySelector(".personal-fisherman-visual:not(.personal-fisherman-visual--entry)");
+  const personalFishermanVisualEntry = root.querySelector(".personal-fisherman-visual--entry");
   const personalZenTerrariumVisual = root.querySelector(".personal-zen-terrarium-visual:not(.personal-zen-terrarium-visual--entry)");
   const personalZenTerrariumVisualEntry = root.querySelector(".personal-zen-terrarium-visual--entry");
-  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
-  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
+  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
   const personalFullListToggle = root.querySelector(
     ".personal-full-list-toggle"
   );
@@ -1582,7 +1725,16 @@ export async function mountTaskList(root) {
         personalPlantEntry.hidden = false;
         const progress = personalOneActiveState(visibleTasks(), { reviewAll: personalFullListOpen }).progress;
         const visualThemeNow = normalizeVisualTheme(personalVisualTheme);
-        const plantVisibleNow = isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme });
+        const basePlantVisibleNow = isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme });
+        const isFishermanNow = visualThemeNow === "fisherman" || visualThemeNow === "zen-terrarium";
+        const entryFishermanVisible = (() => {
+          if (!isFishermanNow) return false;
+          const isPrivate = document.body.dataset.presentation === "personal" && personalPresentation === "private";
+          const isLayout = personalTaskLayout === "one-active" || personalTaskLayout === "one_active" || personalTaskLayout === "full-list" || personalTaskLayout === "full_list";
+          if (!isPrivate || !isLayout) return false;
+          return Number(progress?.total) > 0;
+        })();
+        const plantVisibleNow = isFishermanNow ? entryFishermanVisible : basePlantVisibleNow;
         if (plantVisibleNow) {
           const { stage, desc } = getThemeStage(visualThemeNow, progress);
           if (stage != null && desc) {
@@ -2583,14 +2735,25 @@ export async function mountTaskList(root) {
       String(personalFullListOpen)
     );
 
-    const plantVisible = isPlantVisible({
+    const visualTheme = normalizeVisualTheme(personalVisualTheme);
+    const basePlantVisible = isPlantVisible({
       tasks: shown,
       presentationMode: document.body.dataset.presentation,
       personalPresentation,
       layout: personalTaskLayout,
       theme: personalPlantTheme,
     });
-    const visualTheme = normalizeVisualTheme(personalVisualTheme);
+    const isFishermanSelected = visualTheme === "fisherman" || visualTheme === "zen-terrarium";
+    const fishermanGateVisible = (() => {
+      if (!isFishermanSelected) return false;
+      const isPrivate = document.body.dataset.presentation === "personal" && personalPresentation === "private";
+      const isLayout = personalTaskLayout === "one-active" || personalTaskLayout === "one_active" || personalTaskLayout === "full-list" || personalTaskLayout === "full_list";
+      if (!isPrivate || !isLayout) return false;
+      const p = oneActiveState.progress;
+      const total = Number(p?.total) || 0;
+      return total > 0;
+    })();
+    const plantVisible = isFishermanSelected ? fishermanGateVisible : basePlantVisible;
     function themeStage(theme, progress) {
       switch (theme) {
         case "gumball": return { stage: gumballStageFromProgress(progress), desc: describeGumballStage(progress) };
@@ -2603,7 +2766,8 @@ export async function mountTaskList(root) {
         case "kite":
         case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
         case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
-        case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
+        case "fisherman": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
+        case "zen-terrarium": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
         default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
       }
     }
@@ -2622,6 +2786,7 @@ export async function mountTaskList(root) {
       [personalAquariumVisual, "aquarium"],
       [personalKiteVisual, "kite"],
       [personalRocketVisual, "rocket"],
+      [personalFishermanVisual, "fisherman"],
       [personalZenTerrariumVisual, "zen-terrarium"],
     ];
     const allEntryVisuals = [
@@ -2634,13 +2799,16 @@ export async function mountTaskList(root) {
       [personalAquariumVisualEntry, "aquarium"],
       [personalKiteVisualEntry, "kite"],
       [personalRocketVisualEntry, "rocket"],
+      [personalFishermanVisualEntry, "fisherman"],
       [personalZenTerrariumVisualEntry, "zen-terrarium"],
     ];
-    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalZenTerrariumVisual, "zen-terrarium"]];
-    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
-    personalPlant.hidden = !plantVisible || activeStage == null || !oneActive;
-    if (plantVisible && activeStage != null && activeDesc && oneActive) {
+    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
+    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+    const isFishermanForPlant = visualTheme === "fisherman" || visualTheme === "zen-terrarium";
+    personalPlant.hidden = !plantVisible || activeStage == null || (!oneActive && !isFishermanForPlant);
+    if (plantVisible && activeStage != null && activeDesc && (oneActive || isFishermanForPlant)) {
       personalPlant.dataset.visualTheme = visualTheme;
+      document.body.dataset.personalVisualTheme = visualTheme;
       for (const [el, key] of flatAllVisuals) if (el) { el.hidden = key !== visualTheme; if (key === visualTheme) { el.dataset.stage = String(activeStage); el.setAttribute("aria-label", activeDesc.accessibleText); if (key === "plant") el.dataset.bloom = activeStage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
       personalPlantStatus.textContent = activeDesc.accessibleText;
     } else {
@@ -2747,6 +2915,30 @@ export async function mountTaskList(root) {
       for (const el of [personalDynamiteVisual, personalDynamiteVisualEntry]) el?.classList.remove("is-burst");
     } else if (!isDynamiteTheme) {
       previousDynamiteStage = activeStage;
+    }
+
+    // --- Fisherman: idle vs catch vs giant-fish finale ---
+    const isFishermanTheme = visualTheme === "fisherman";
+    const fishermanActive = plantVisible && activeStage != null;
+    if (isFishermanTheme && fishermanActive) {
+      if (oneActive) syncFishermanVisual(personalFishermanVisual, oneActiveState.progress, isFirstFishermanRender);
+      if (entryPlantVisible) syncFishermanVisual(personalFishermanVisualEntry, oneActiveState.progress, isFirstFishermanRender);
+    } else {
+      for (const el of [personalFishermanVisual, personalFishermanVisualEntry]) {
+        if (!el) continue;
+        const sc = el.querySelector(".fisherman-scene");
+        if (sc) { sc.classList.remove("is-finale", "is-catching"); sc.dataset.basket = "0"; sc.dataset.stage = "0"; }
+      }
+    }
+    if (fishermanActive) {
+      const fp = oneActiveState.progress;
+      previousFishermanComplete = Number(fp.complete) || 0;
+      previousFishermanWasFinal = !!(fp.total > 0 && fp.complete >= fp.total);
+      if (isFishermanTheme) isFirstFishermanRender = false;
+    } else if (activeStage == null) {
+      previousFishermanComplete = null;
+      previousFishermanWasFinal = false;
+      isFirstFishermanRender = true;
     }
 
     // --- Coffee: continuous carafe/mug levels, no machine/button ---
@@ -3059,6 +3251,22 @@ export async function mountTaskList(root) {
       personalPresentation,
       sound: personalSound,
     });
+    // Fix intermediate cane pole yank: trigger animation FIRST before any DOM re-render, do not destroy/re-inject SVG markup
+    {
+      const total = nextTasks.length;
+      const complete = nextTasks.filter((t) => t.completed).length;
+      const isIntermediate = checkbox.checked && total > 1 && complete > 0 && complete < total;
+      if (isIntermediate && !prefersReducedMotion()) {
+        // Trigger on SVG rig/pole element immediately; update checkbox UI state without re-rendering outer SVG container
+        // Keep SVG markup intact — render() only updates list, not fishermanScene markup; grouped rig keeps line anchored to tip 82,8
+        document.querySelectorAll("#fisherman-rig, .fisherman-rig, .fisherman-pole, .fisherman-pole-group, .fisherman-cane").forEach((p) => {
+          p.classList.remove("pole-yanking");
+          void p.offsetWidth;
+          p.classList.add("pole-yanking");
+          setTimeout(() => p.classList.remove("pole-yanking"), 860);
+        });
+      }
+    }
     tasks = nextTasks;
     tasksKind = kind;
     render();
