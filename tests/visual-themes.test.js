@@ -44,8 +44,9 @@ test("visual theme normalize defaults and values", () => {
   assert.equal(normalizeVisualTheme("animal-puzzle"), "kite");
   assert.equal(normalizeVisualTheme("rocket"), "rocket");
   assert.equal(normalizeVisualTheme("zen-terrarium"), "zen-terrarium");
+  assert.equal(normalizeVisualTheme("fisherman"), "fisherman");
   assert.equal(normalizeVisualTheme("unknown"), "plant");
-  assert.deepEqual(VISUAL_THEME_VALUES, ["plant", "gumball", "constellation", "mountain", "dynamite", "coffee", "battery", "aquarium", "kite", "rocket", "zen-terrarium"]);
+  assert.deepEqual(VISUAL_THEME_VALUES, ["plant", "gumball", "constellation", "mountain", "dynamite", "coffee", "battery", "aquarium", "kite", "rocket", "zen-terrarium", "fisherman"]);
 });
 
 test("gumball stage derives from completed/total, empty hidden", () => {
@@ -79,7 +80,7 @@ test("constellation stage derives from completed/total, empty hidden", () => {
 });
 
 test("gumball and constellation modules stay pure", () => {
-  for (const file of ["src/shared/gumball-theme.js", "src/shared/constellation-theme.js", "src/shared/mountain-theme.js", "src/shared/dynamite-theme.js", "src/shared/coffee-theme.js", "src/shared/battery-theme.js", "src/shared/aquarium-theme.js", "src/shared/kite-theme.js", "src/shared/animal-puzzle-theme.js", "src/shared/rocket-theme.js", "src/shared/zen-terrarium-theme.js"]) {
+  for (const file of ["src/shared/gumball-theme.js", "src/shared/constellation-theme.js", "src/shared/mountain-theme.js", "src/shared/dynamite-theme.js", "src/shared/coffee-theme.js", "src/shared/battery-theme.js", "src/shared/aquarium-theme.js", "src/shared/kite-theme.js", "src/shared/animal-puzzle-theme.js", "src/shared/rocket-theme.js", "src/shared/zen-terrarium-theme.js", "src/shared/fisherman-theme.js"]) {
     const src = readFileSync(file, "utf8");
     assert.doesNotMatch(src, /chrome\.|document\./);
     assert.doesNotMatch(src, /platform\/browser/);
@@ -106,6 +107,7 @@ test("task-list wires Off/Plant toggle and visual theme dropdown", () => {
   assert.match(ui, /kiteStageFromProgress/);
   assert.match(ui, /rocketStageFromProgress/);
   assert.match(ui, /zenTerrariumStageFromProgress/);
+  assert.match(ui, /fishermanStateFromProgress/);
 });
 
 test("gumball and constellation CSS exists, no external assets, reduced-motion", () => {
@@ -135,6 +137,8 @@ test("gumball and constellation CSS exists, no external assets, reduced-motion",
   assert.doesNotMatch(css, /\.puzzle-full/);
   assert.match(css, /\.rocket-scene/);
   assert.match(css, /\.zen-scene/);
+  assert.match(css, /\.fisherman-scene/);
+  assert.match(css, /\.fisherman-svg/);
   assert.doesNotMatch(css, /url\(.*\.(png|jpg|gif|mp4)\)/);
   assert.doesNotMatch(css, /\.mountain-range|\.mountain-flag/);
   assert.match(css, /@media\s*\(prefers-reduced-motion/);

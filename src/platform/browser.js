@@ -9,6 +9,9 @@
  * `await` (top-level or otherwise). Return promises instead.
  */
 export const POPUP_PATH = "src/popup/popup.html";
+globalThis.browser = globalThis.browser;
+globalThis.chrome = globalThis.chrome;
+const extensionAPI = typeof browser !== 'undefined' ? browser : chrome;
 const CLOSE_SIDE_VIEW = "cuedone.closeSideView";
 export const BREAK_NOTIFICATION_ALARM = "cuedone.breakNotification";
 export const BREAK_NOTIFICATION_ID = "cuedone.breakReady";

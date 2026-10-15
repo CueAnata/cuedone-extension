@@ -201,8 +201,10 @@ function fishermanSceneMarkup(progress) {
   return markup.replace('viewBox="0 0 148 64"', 'viewBox="0 0 148 112"').replace('width="148" height="64"', 'width="100%" height="100%" style="display:block"').replace('width="148"', 'width="100%"').replace('height="64"', 'height="100%"');
 }
 // HUD spec verified in task-list.js inside fishermanSceneMarkup(): <g id="fisherman-hud" style="pointer-events:none;"><rect x="88" y="5" width="54" height="20" rx="10" ry="10" fill="rgba(0, 0, 0, 0.45)" /><path d="M 92 15 C 95.5 12 100 12 103.5 15 C 100 18 95.5 18 92 15 Z M 90 13 L 93.5 15 L 90 17 Z" fill="#ffca28" /><circle cx="99.5" cy="14.5" r="0.8" fill="#212121" /><text id="fisherman-counter-text" x="121" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">0/0</text></g> — viewBox="0 0 148 112" self-contained
-// Bucket enlarged — vivid tails doubled in task-list.js inside fishermanSceneMarkup(): <g id="bucket-fish-1"><path d="M 3 6 L 1 -3 L -4 -6 L 0 -2 L -1 3 L 3 6 Z" fill="#00e5ff" stroke="#0097a7" 0.8/></g> <g id="bucket-fish-2"><path d="M 7 6 L 7 -4 L 4 -7 L 7 -3 L 10 -7 L 9 -3 L 9 6 Z" fill="#ffb300" stroke="#ff6f00" 0.8/></g> <g id="bucket-fish-3"><path d="M 11 6 L 13 -3 L 18 -6 L 14 -2 L 15 3 L 11 6 Z" fill="#1e88e5" stroke="#0d47a1" 0.8/></g>
-// Dock single pier verified in task-list.js inside fishermanSceneMarkup(): <g id="fisherman-dock" class="fisherman-dock"><rect x="8" y="100" width="5" height="12" fill="#4e342e"/><rect x="46" y="100" width="5" height="12" fill="#4e342e"/><rect x="0" y="96" width="58" height="6" rx="1.5" fill="#8d6e63" stroke="#5d4037" stroke-width="0.7"/><line x1="18" y1="96" x2="18" y2="102" stroke="#4e342e" stroke-width="0.6"/><line x1="38" y1="96" x2="38" y2="102" stroke="#4e342e" stroke-width="0.6"/></g> — no upper plank x0 y62
+// Bucket high-contrast white outline in task-list.js inside fishermanSceneMarkup(): <g id="bucket-fish-1" class="bucket-fish" style="display: none;"><path d="M 4 6 L 5 -5 L 8 -8 L 5 -3 L 5 3 L 4 6 Z" fill="#00c853" stroke="#ffffff" stroke-width="0.9" paint-order="stroke fill"/></g> <g id="bucket-fish-2" class="bucket-fish" style="display: none;"><path d="M 7 6 L 7 -5 L 4 -8 L 7 -4 L 10 -8 L 9 -4 L 9 6 Z" fill="#ffab00" stroke="#ffffff" stroke-width="0.9" paint-order="stroke fill"/></g> <g id="bucket-fish-3" class="bucket-fish" style="display: none;"><path d="M 11 6 L 13 -4 L 18 -8 L 14 -3 L 15 3 L 11 6 Z" fill="#00b0ff" stroke="#ffffff" stroke-width="0.9" paint-order="stroke fill"/></g>
+ // Dock single pier verified in task-list.js inside fishermanSceneMarkup(): <g id="fisherman-dock" class="fisherman-dock"><rect x="8" y="100" width="5" height="12" fill="#4e342e"/><rect x="46" y="100" width="5" height="12" fill="#4e342e"/><rect x="0" y="96" width="58" height="6" rx="1.5" fill="#8d6e63" stroke="#5d4037" stroke-width="0.7"/><line x1="18" y1="96" x2="18" y2="102" stroke="#4e342e" stroke-width="0.6"/><line x1="38" y1="96" x2="38" y2="102" stroke="#4e342e" stroke-width="0.6"/></g> — no upper plank x0 y62
+ // Arms rig bound — inside fishermanSceneMarkup(): <g id="fisherman-arms-rig" class="fisherman-arms-rig"><path d="M 28 32 L 36 36" stroke="#1565c0" 4/><path class="fisherman-cane" d="M 26 38 C 42 32, 60 22, 74 12" stroke="#6d4c41" 2.2/><path d="M 32 34 L 38 34" stroke="#1565c0" 4.5/><circle cx="36" cy="34" r="2.2" fill="#ffcc80"/><circle cx="39" cy="33" r="2.2" fill="#ffcc80"/><path class="fisherman-line" d="M 74 12 L 74 54" stroke="#ffffff" 0.7 dasharray="1,1"/></g> — transform-origin 28px 32px
+// Arms rig bound — inside fishermanSceneMarkup(): <g id="fisherman-arms-rig" class="fisherman-arms-rig"><path d="M 28 32 L 36 36" stroke="#1565c0" 4/><path class="fisherman-cane" d="M 26 38 C 42 32, 60 22, 74 12" stroke="#6d4c41" 2.2/><path d="M 32 34 L 38 34" stroke="#1565c0" 4.5/><circle cx="36" cy="34" r="2.2" fill="#ffcc80"/><circle cx="39" cy="33" r="2.2" fill="#ffcc80"/><path class="fisherman-line" d="M 74 12 L 74 54" stroke="#ffffff" 0.7 dasharray="1,1"/></g> — transform-origin 28px 32px
 import { describeZenTerrariumStage, zenTerrariumStageFromProgress } from "./zen-terrarium-theme.js";
 import {
   AFFIRMATION_PRESETS,
@@ -429,27 +431,79 @@ export async function mountTaskList(root) {
       scene.classList.add("is-catching");
       try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
       setTimeout(() => scene.classList.remove("is-catching"), 680);
-      // Intermediate cane pole yank — runs 0.85s with hold at -32deg, anchored at hand (10% 90%) and rig pull stroke (-28deg hold 25-65% on #fisherman-rig)
+      // Intermediate cane pole yank — runs 1.1s with bounce overshoot 1.28, anchored at hand (10% 90%) and rig pull stroke (-28deg hold 25-65% on #fisherman-rig); unified articulated arm rig #fisherman-arms-rig
       {
-        const poles = visualEl.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane");
+        const poles = visualEl.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane, #fisherman-arms-rig, .fisherman-arms-rig");
         poles.forEach((p) => {
           p.classList.remove("pole-yanking");
           void p.offsetWidth;
           p.classList.add("pole-yanking");
-          setTimeout(() => p.classList.remove("pole-yanking"), 860);
+          setTimeout(() => p.classList.remove("pole-yanking"), 1100);
         });
         // Also apply globally to ensure HUD-adjacent pole/rig not missed when visualEl is one of two instances
-        document.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane").forEach((p) => {
+        document.querySelectorAll(".fisherman-pole, .fisherman-pole-group, #fisherman-rig, .fisherman-rig, .fisherman-cane, #fisherman-arms-rig, .fisherman-arms-rig").forEach((p) => {
           if (!visualEl.contains(p)) {
             p.classList.remove("pole-yanking");
             void p.offsetWidth;
             p.classList.add("pole-yanking");
-            setTimeout(() => p.classList.remove("pole-yanking"), 860);
+            setTimeout(() => p.classList.remove("pole-yanking"), 1100);
           }
         });
+        // Unified articulated arm & cane rig — trigger reflow on #fisherman-arms-rig for every intermediate click
+        {
+          const armsRig = visualEl.querySelector("#fisherman-arms-rig");
+          if (armsRig) {
+            armsRig.classList.remove("is-yanking");
+            void armsRig.offsetWidth;
+            armsRig.classList.add("is-yanking");
+            setTimeout(() => armsRig.classList.remove("is-yanking"), 850);
+          }
+          const globalArms = document.getElementById("fisherman-arms-rig");
+          if (globalArms && globalArms !== armsRig) {
+            globalArms.classList.remove("is-yanking");
+            void globalArms.offsetWidth;
+            globalArms.classList.add("is-yanking");
+            setTimeout(() => globalArms.classList.remove("is-yanking"), 850);
+          }
+        }
       }
     } else if (isFinale && !previousFishermanWasFinal && !isFirst && !prefersReducedMotion()) {
       try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
+      // Grand finale belly flop & dock splash — Frame 2-4 sequence
+      try {
+        const fish = visualEl.querySelector("#finale-fish");
+        if (fish) {
+          fish.classList.remove("finale-fish-active");
+          void fish.offsetWidth;
+          fish.classList.add("finale-fish-active");
+        }
+        document.querySelectorAll("#finale-fish").forEach((el) => {
+          if (!visualEl.contains(el)) { el.classList.remove("finale-fish-active"); void el.offsetWidth; el.classList.add("finale-fish-active"); }
+        });
+        const splash = visualEl.querySelector("#finale-splash");
+        if (splash) {
+          splash.classList.remove("finale-splash-active");
+          void splash.offsetWidth;
+          splash.classList.add("finale-splash-active");
+        }
+        document.querySelectorAll("#finale-splash").forEach((el) => {
+          if (!visualEl.contains(el)) { el.classList.remove("finale-splash-active"); void el.offsetWidth; el.classList.add("finale-splash-active"); }
+        });
+        const fig = visualEl.querySelector("#fisherman-figure");
+        if (fig) {
+          fig.classList.remove("fisherman-startled");
+          void fig.offsetWidth;
+          fig.classList.add("fisherman-startled");
+          setTimeout(() => fig.classList.remove("fisherman-startled"), 1800);
+        }
+        const globalFig = document.getElementById("fisherman-figure");
+        if (globalFig && globalFig !== fig) {
+          globalFig.classList.remove("fisherman-startled");
+          void globalFig.offsetWidth;
+          globalFig.classList.add("fisherman-startled");
+          setTimeout(() => globalFig.classList.remove("fisherman-startled"), 1800);
+        }
+      } catch (_) {}
     } else {
       if (!shouldCatch) scene.classList.remove("is-catching");
     }
@@ -1849,10 +1903,43 @@ export async function mountTaskList(root) {
     }
   }
 
+  function personalVisualThemeDescription(theme) {
+    switch (theme) {
+      case "fisherman":
+        return "Fisherman catches fish as tasks complete, with a grand splash finale.";
+      case "gumball":
+        return "Gumball fills as tasks complete.";
+      case "constellation":
+        return "Constellation lights up as tasks complete.";
+      case "mountain":
+        return "Climber ascends as tasks complete.";
+      case "dynamite":
+        return "Dynamite fuse burns as tasks complete.";
+      case "coffee":
+        return "Coffee pours as tasks complete.";
+      case "battery":
+        return "Battery charges as tasks complete.";
+      case "aquarium":
+        return "Aquarium fills as tasks complete.";
+      case "kite":
+      case "animal-puzzle":
+        return "Kite soars as tasks complete.";
+      case "rocket":
+        return "Rocket launches as tasks complete.";
+      case "plant":
+      default:
+        return "Plant grows with your progress. Empty shows no plant and adds no finale.";
+    }
+  }
+
   function paintPersonalVisualTheme(value) {
     const current = normalizeVisualTheme(value);
     if (personalVisualThemeSelect) {
       personalVisualThemeSelect.value = current;
+    }
+    const note = root.querySelector(".personal-visual-theme-row + .personal-settings-note");
+    if (note) {
+      note.textContent = personalVisualThemeDescription(current);
     }
   }
 
@@ -3251,19 +3338,46 @@ export async function mountTaskList(root) {
       personalPresentation,
       sound: personalSound,
     });
-    // Fix intermediate cane pole yank: trigger animation FIRST before any DOM re-render, do not destroy/re-inject SVG markup
+    // Fix intermediate cane pole yank: trigger animation FIRST before any DOM re-render, do not destroy/re-inject SVG markup — keep data state but prevent UI re-render swapping #fisherman-rig until 1100ms
     {
       const total = nextTasks.length;
       const complete = nextTasks.filter((t) => t.completed).length;
       const isIntermediate = checkbox.checked && total > 1 && complete > 0 && complete < total;
       if (isIntermediate && !prefersReducedMotion()) {
         // Trigger on SVG rig/pole element immediately; update checkbox UI state without re-rendering outer SVG container
-        // Keep SVG markup intact — render() only updates list, not fishermanScene markup; grouped rig keeps line anchored to tip 82,8
-        document.querySelectorAll("#fisherman-rig, .fisherman-rig, .fisherman-pole, .fisherman-pole-group, .fisherman-cane").forEach((p) => {
+        // Keep SVG markup intact — render() only updates list, not fishermanScene markup; grouped rig keeps line anchored to tip 82,8; 1100ms bounce overshoot 1.28
+        const rig = document.getElementById('fisherman-rig');
+        if (rig) {
+          rig.classList.remove('pole-yanking');
+          void rig.offsetWidth; // Force DOM reflow so CSS animation restarts from 0%
+          rig.classList.add('pole-yanking');
+        }
+        const armsRig = document.getElementById('fisherman-arms-rig');
+        if (armsRig) {
+          armsRig.classList.remove('is-yanking');
+          void armsRig.offsetWidth; // Force DOM reflow so CSS animation restarts from 0%
+          armsRig.classList.add('is-yanking');
+        }
+        {
+          const rig = document.getElementById('fisherman-arms-rig');
+          if (rig) {
+            rig.classList.remove('is-yanking');
+            void rig.offsetWidth; // Force reflow
+            rig.classList.add('is-yanking');
+          }
+        }
+        document.querySelectorAll("#fisherman-rig, .fisherman-rig, .fisherman-pole, .fisherman-pole-group, .fisherman-cane, #fisherman-arms-rig, .fisherman-arms-rig").forEach((p) => {
           p.classList.remove("pole-yanking");
           void p.offsetWidth;
           p.classList.add("pole-yanking");
-          setTimeout(() => p.classList.remove("pole-yanking"), 860);
+          setTimeout(() => p.classList.remove("pole-yanking"), 1100);
+        });
+        // also handle is-yanking for arms rig via pole-yanking wrapper
+        document.querySelectorAll("#fisherman-arms-rig").forEach((p) => {
+          p.classList.remove('is-yanking');
+          void p.offsetWidth;
+          p.classList.add('is-yanking');
+          setTimeout(() => p.classList.remove('is-yanking'), 850);
         });
       }
     }

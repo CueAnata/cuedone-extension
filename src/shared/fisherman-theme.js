@@ -53,20 +53,6 @@ export function fishermanSceneMarkup(progress) {
         <path d="M 0 67 Q 18 63 36 67 T 72 67 T 108 67 T 148 67" stroke="#ffffff" stroke-width="1.1" fill="none" opacity="0.45" stroke-linecap="round"/>
         <path d="M 0 78 Q 24 74 48 78 T 96 78 T 148 78" stroke="#b3e0ff" stroke-width="0.9" fill="none" opacity="0.35" stroke-linecap="round"/>
       </g>
-      <!-- giant fish for finale — synchronized unhook & reentry at x92 y65 -->
-      <g class="giant-fish" id="finale-fish" opacity="0">
-        <ellipse cx="0" cy="0" rx="13" ry="6.5" fill="#4a7fc0" stroke="#0f2a4a" stroke-width="1.6"/>
-        <ellipse cx="0" cy="0" rx="9" ry="3.8" fill="#d0e6ff" opacity="0.55"/>
-        <circle cx="-8.5" cy="-1.2" r="1.9" fill="#0b1a2a"/><circle cx="-8.5" cy="-1.2" r="0.7" fill="#fff"/>
-        <path d="M 13 0 L 20.5 -7 L 20.5 7 Z" fill="#1e3a5f" stroke="#0f2a4a" stroke-width="1.2" stroke-linejoin="round"/>
-        <path d="M -4 5.5 Q 0 8 4 5.5" stroke="#0f2a4a" stroke-width="0.9" fill="none" stroke-linecap="round"/>
-      </g>
-      <!-- splash — aligned to x90 y65, detonates at fish strike (0.85s delay) -->
-      <g id="finale-splash" x="90" y="65" class="fisherman-splash" opacity="0">
-        <path d="M 90 65 L 86 55 L 88.5 61 L 90 49 L 91.5 61 L 94 55 Z" fill="#b3e0ff" stroke="#4da6ff" stroke-width="0.9" stroke-linejoin="round"/>
-        <ellipse cx="90" cy="67.5" rx="14" ry="4.2" fill="none" stroke="#fff" stroke-width="1.1" opacity="0.9"/>
-        <ellipse cx="90" cy="69" rx="9" ry="2.6" fill="none" stroke="#fff" stroke-width="0.9" opacity="0.6"/>
-      </g>
       <!-- single unified dock under feet — clean pier from left bank to past boots -->
       <g id="fisherman-dock" class="fisherman-dock">
         <rect x="8" y="100" width="5" height="12" fill="#4e342e" />
@@ -75,63 +61,82 @@ export function fishermanSceneMarkup(progress) {
         <line x1="18" y1="96" x2="18" y2="102" stroke="#4e342e" stroke-width="0.6" />
         <line x1="38" y1="96" x2="38" y2="102" stroke="#4e342e" stroke-width="0.6" />
       </g>
-      <!-- enlarged bucket fish tails doubled — vivid, container over tails so only flukes protrude -->
+      <!-- bucket fish tails — prominent white borders stroke 1.1 -->
       <g id="fisherman-caught-bucket" transform="translate(6, 80)">
         <g id="bucket-fish-1" class="bucket-fish" style="display: none;">
-          <path d="M 3 6 L 1 -3 L -4 -6 L 0 -2 L -1 3 L 3 6 Z" fill="#00e5ff" stroke="#0097a7" stroke-width="0.8" />
+          <path d="M 4 6 L 5 -5 L 8 -8 L 5 -3 L 5 3 L 4 6 Z" fill="#00c853" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
         </g>
         <g id="bucket-fish-2" class="bucket-fish" style="display: none;">
-          <path d="M 7 6 L 7 -4 L 4 -7 L 7 -3 L 10 -7 L 9 -3 L 9 6 Z" fill="#ffb300" stroke="#ff6f00" stroke-width="0.8" />
+          <path d="M 8 6 L 8 -6 L 4 -9 L 8 -4 L 11 -9 L 10 -4 L 10 6 Z" fill="#ffab00" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
         </g>
         <g id="bucket-fish-3" class="bucket-fish" style="display: none;">
-          <path d="M 11 6 L 13 -3 L 18 -6 L 14 -2 L 15 3 L 11 6 Z" fill="#1e88e5" stroke="#0d47a1" stroke-width="0.8" />
+          <path d="M 12 6 L 14 -5 L 19 -8 L 15 -3 L 16 3 L 12 6 Z" fill="#00b0ff" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
         </g>
         <path d="M 1 6 L 3 16 A 1 1 0 0 0 5 17 L 13 17 A 1 1 0 0 0 15 16 L 17 6 Z" fill="#a1887f" stroke="#5d4037" stroke-width="0.8" />
         <line x1="2" y1="9" x2="16" y2="9" stroke="#37474f" stroke-width="0.8" />
         <line x1="3" y1="14" x2="15" y2="14" stroke="#37474f" stroke-width="0.8" />
       </g>
-      <!-- scaled fisherman + pole — ~1.4x to occupy taller canvas, grounded bottom-left -->
-      <g transform="translate(0, 24) scale(1.4)">
-      <!-- fisherman group (lean) -->
-      <g class="fisherman-group">
-        <!-- legs / boots -->
-        <path d="M 22 46 L 20 36 L 26 36 L 24 46 Z" fill="#2b5aa0" stroke="#0f2a4a" stroke-width="1.2" stroke-linejoin="round"/>
-        <path d="M 28 46 L 27 36 L 33 36 L 32 46 Z" fill="#2b5aa0" stroke="#0f2a4a" stroke-width="1.2"/>
-        <ellipse cx="21.5" cy="47.2" rx="4" ry="1.8" fill="#3d2816" stroke="#1a140d" stroke-width="0.8"/>
-        <ellipse cx="30.5" cy="47.2" rx="4" ry="1.8" fill="#3d2816" stroke="#1a140d" stroke-width="0.8"/>
-        <!-- torso overalls -->
-        <path d="M 20 36 L 22 22 L 32 22 L 34 36 Z" fill="#2b5aa0" stroke="#0f2a4a" stroke-width="1.2" stroke-linejoin="round"/>
-        <path d="M 22 22 L 20 14 L 34 14 L 32 22 Z" fill="#e05a3a" stroke="#7a2412" stroke-width="1.2"/>
-        <rect x="20" y="14.5" width="14" height="3.2" rx="0.8" fill="#2b5aa0" stroke="#0f2a4a" stroke-width="1"/>
-        <!-- arms -->
-        <path d="M 22 18 L 32 26 L 36 28" stroke="#f0c9a8" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-        <path d="M 32 18 L 34 26" stroke="#f0c9a8" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-        <!-- head -->
-        <circle cx="27" cy="11.5" r="6.2" fill="#f7d6b8" stroke="#7a4a2a" stroke-width="1.2"/>
-        <!-- hat -->
-        <ellipse cx="27" cy="6.2" rx="9.5" ry="4.2" fill="#d9b06a" stroke="#6b4a1a" stroke-width="1.1"/>
-        <path d="M 20 6.2 Q 27 1.5 34 6.2" fill="#c49a52" stroke="#6b4a1a" stroke-width="1"/>
-        <!-- face smile -->
-        <circle cx="25.2" cy="11" r="0.9" fill="#1a1a1a"/><circle cx="28.8" cy="11" r="0.9" fill="#1a1a1a"/>
-        <path d="M 25 13.5 Q 27 15 29 13.5" stroke="#7a2a1a" stroke-width="0.9" fill="none" stroke-linecap="round"/>
+      <!-- scaled fisherman — clean side profile looking right toward water -->
+      <g id="fisherman-figure" transform="translate(0, 24) scale(1.4)">
+      <!-- Static Fisherman Body & Legs (Facing Right) -->
+      <g id="fisherman-body-profile">
+        <!-- Back leg & boot -->
+        <rect x="22" y="44" width="5" height="13" fill="#1565c0" rx="1.5" />
+        <path d="M 21 54 L 29 54 A 3 3 0 0 1 32 57 L 20 57 Z" fill="#3e2723" />
+        <!-- Front leg & boot -->
+        <rect x="27" y="44" width="5.5" height="13" fill="#0d47a1" rx="1.5" />
+        <path d="M 26 54 L 35 54 A 3 3 0 0 1 38 57 L 25 57 Z" fill="#271c19" />
+        <!-- Torso / Blue Overalls & Red Collar facing right -->
+        <path d="M 20 28 L 32 28 L 33 46 L 21 46 Z" fill="#1565c0" rx="2" />
+        <path d="M 24 26 L 31 26 L 31 29 L 24 29 Z" fill="#d32f2f" />
+        <!-- Head in profile facing right -->
+        <ellipse cx="27" cy="20" rx="6" ry="6.5" fill="#ffcc80" />
+        <!-- Profile nose & eye focused right toward line -->
+        <path d="M 32 19 L 34.5 20.5 L 32 22" stroke="#e0a96d" stroke-width="0.8" fill="none" stroke-linecap="round" />
+        <circle cx="30" cy="18.5" r="1" fill="#212121" />
+        <path d="M 28 23 Q 30 24.5 32 23.5" stroke="#b71c1c" stroke-width="0.8" fill="none" stroke-linecap="round" />
+        <!-- Straw hat brim & crown tilted toward water -->
+        <path d="M 23 14 L 32 14 L 31 9 L 24 9 Z" fill="#d7ccc8" stroke="#8d6e63" stroke-width="0.7" />
+        <ellipse cx="28" cy="14" rx="11" ry="3" fill="#bcaaa4" stroke="#6d4c41" stroke-width="0.8" />
       </g>
-      <!-- rig: pole + line + hooked fish grouped to eliminate detachment gap -->
-      <g id="fisherman-rig" class="fisherman-rig">
-        <path class="fisherman-cane" d="M36 28 C52 24, 68 18, 82 8" stroke="#6d4c41" stroke-width="2.5" stroke-linecap="round" fill="none" />
-        <path class="fisherman-line" d="M82 8 L82 65" stroke="#ffffff" stroke-width="0.8" stroke-dasharray="1,1" opacity="0.85" fill="none" />
-        <g class="hooked-small-fish" transform="translate(80, 52)">
-          <ellipse cx="2" cy="5" rx="4" ry="2.5" fill="#42a5f5" />
-          <polygon points="6,5 9,3 9,7" fill="#1e88e5" />
-        </g>
-        <!-- legacy hooked-fish kept for is-catching hook pop -->
-        <g class="hooked-fish" opacity="0">
-          <ellipse cx="82" cy="36" rx="4.8" ry="2.2" fill="#6fb7ff" stroke="#1a3a5a" stroke-width="0.9"/>
-          <circle cx="79.2" cy="35.6" r="0.85" fill="#0b1a2a"/>
-          <path d="M 86.8 36 L 89.6 34.2 L 89.6 37.8 Z" fill="#2a5a9a" stroke="#1a3a5a" stroke-width="0.6"/>
-          <ellipse cx="82" cy="32.8" rx="0.7" ry="0.7" fill="#1a1a1a" opacity="0.9"/>
-          <path d="M 80 65 Q 82 66.5 84 65" stroke="#4da6ff" stroke-width="0.8" fill="none" opacity="0.6"/>
-        </g>
+      <!-- Unified articulated arm & cane rig — SINGLE rigid group welded at shoulder 24,32 — zero independent sub-transforms -->
+      <g id="fisherman-arms-rig" class="fisherman-arms-rig">
+        <!-- Arm sleeve starting at shoulder joint (x=24, y=32) extending to wrists -->
+        <path class="fisherman-arm-sleeve" d="M 24 32 L 35 36" stroke="#0d47a1" stroke-width="4.5" stroke-linecap="round" fill="none" />
+        <!-- Cane pole: runs straight through the clasped hands out over water -->
+        <path class="fisherman-cane" d="M 30 38 L 78 12" stroke="#5d4037" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        <!-- Clasped hands permanently welded over the pole at x=34-37, y=35-37 -->
+        <circle cx="34" cy="36.5" r="2.2" fill="#ffcc80" />
+        <circle cx="36.5" cy="35.5" r="2.0" fill="#ffe0b2" />
+        <!-- Fishing line running from pole tip (78, 12) down to water -->
+        <path class="fisherman-line" d="M 78 12 L 78 54" stroke="#ffffff" stroke-width="0.75" stroke-dasharray="1.2,1.2" opacity="0.85" fill="none" />
       </g>
+      <!-- placeholder rig — no duplicate cane/line; kept for legacy querySelector compat -->
+      <g id="fisherman-rig" class="fisherman-rig" style="display:none"></g>
+      </g>
+      <!-- finale fish — enlarged 32px bass, root level directly under HUD -->
+      <g id="finale-fish" class="finale-fish" style="opacity: 0; pointer-events: none;">
+        <!-- Main Body: Vibrant Royal Blue with bold dark outline -->
+        <path d="M 0 0 C 8 -16 28 -18 42 -8 C 42 -2 30 10 20 14 Q 8 16 0 0 Z" fill="#1976d2" stroke="#0d47a1" stroke-width="1.4" />
+        <!-- White/Silver Belly -->
+        <path d="M 4 2 C 12 -4 24 -4 34 0 C 24 5 14 7 4 2 Z" fill="#ffffff" opacity="0.9" />
+        <!-- Tail Fin (Fluke) -->
+        <polygon points="40,-8 52,-18 47,-6 53,2 41,-1" fill="#1565c0" stroke="#0d47a1" stroke-width="1.2" />
+        <!-- Dorsal Fin -->
+        <path d="M 16 -12 Q 24 -18 30 -11 Z" fill="#1565c0" />
+        <!-- Big Eye -->
+        <circle cx="9" cy="-4" r="2.4" fill="#ffffff" />
+        <circle cx="8" cy="-4" r="1.1" fill="#000000" />
+      </g>
+      <!-- finale splash — water plume erupting at dock edge, root level next to finale fish -->
+      <g id="finale-splash" class="finale-splash" style="opacity: 0; pointer-events: none;">
+        <!-- Water plume erupting up and left toward dock -->
+        <path d="M 0 0 C -8 -20 -18 -26 -28 -18 C -18 -10 -10 -4 0 0" fill="#e1f5fe" stroke="#81d4fa" stroke-width="0.8" opacity="0.95" />
+        <!-- Prominent spray droplets -->
+        <circle cx="-12" cy="-16" r="2.5" fill="#4fc3f7" stroke="#ffffff" stroke-width="0.5" />
+        <circle cx="-20" cy="-12" r="2.0" fill="#29b6f6" stroke="#ffffff" stroke-width="0.5" />
+        <circle cx="-26" cy="-6"  r="1.6" fill="#0288d1" stroke="#ffffff" stroke-width="0.5" />
+        <circle cx="8"   cy="-12" r="2.0" fill="#81d4fa" stroke="#ffffff" stroke-width="0.5" />
       </g>
       <!-- HUD enlarged — VERY LAST -->
       <g id="fisherman-hud" style="pointer-events:none;">

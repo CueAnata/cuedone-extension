@@ -18,6 +18,7 @@ export const VISUAL_THEME_VALUES = [
   "kite",
   "rocket",
   "zen-terrarium",
+  "fisherman",
 ];
 
 export function normalizeVisualTheme(value) {
