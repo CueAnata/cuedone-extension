@@ -908,9 +908,12 @@ async function mountTaskList(root) {
     const stream = visualEl.querySelector(".pour-stream");
     const inner = visualEl.querySelector(".carafe-pour-inner");
     if (!carafeFill || !mugFill) return;
-    const { carafe, mug } = coffeeLevels(progress);
-    const pouring = isPouring(progress);
-    const steaming = isSteaming(progress);
+    const levelsCalc = typeof coffeeLevels === 'function' 
+      ? coffeeLevels 
+      : (p) => ({ carafe: Math.max(0, 100 - p * 100), mug: Math.min(100, p * 100) });
+    const { carafe, mug } = levelsCalc(progress);
+    const pouring = typeof isPouring === 'function' ? isPouring(progress) : false;
+    const steaming = typeof isSteaming === 'function' ? isSteaming(progress) : false;
     const reduced = prefersReducedMotion();
     carafeFill.style.height = `${carafe}%`;
     mugFill.style.height = `${mug}%`;
@@ -3554,6 +3557,90 @@ async function mountTaskList(root) {
     saveTaskEntryOpen(true).catch(() => {});
     input.focus();
   });
+
+  async function performClearAllViaNewListWorkflow() {
+    if (newListSaveInProgress) return;
+    newListError.hidden = true;
+    newListError.textContent = "";
+    newListStatus.textContent = "Saving new list…";
+    setNewListBusy(true);
+    newListSaveInProgress = true;
+    pendingSynchronizedTasks = null;
+    const kind = currentListKind();
+    const resumedBreakClock = breakClockAllowed() ? resumeBreakClock(personalBreakClock) : null;
+    const resumedBreakTimer = resumedBreakClock === null ? null : withBreakClock(personalBreakTimer, resumedBreakClock);
+    const result = await saveNewListFromReview({
+      reviewedTasks: snapshotTasks(visibleTasks()),
+      selectedIds: [],
+      loadTasks: () => loadList(kind),
+      saveTasks: (next) => saveList(kind, next, { clearEnding: true, breakTimer: resumedBreakTimer }),
+    });
+    newListSaveInProgress = false;
+    setNewListBusy(false);
+    if (result.status === "stale") {
+      const synchronized = pendingSynchronizedKind === kind ? pendingSynchronizedTasks : null;
+      pendingSynchronizedTasks = null;
+      pendingSynchronizedKind = null;
+      applySynchronizedTasks(synchronized && !taskListsMatch(synchronized, result.tasks) ? synchronized : result.tasks, "Tasks changed in another view. Review the refreshed list before creating.");
+      return;
+    }
+    if (result.status === "failure") {
+      if (pendingSynchronizedTasks && pendingSynchronizedKind === kind) {
+        const synchronized = pendingSynchronizedTasks;
+        pendingSynchronizedTasks = null;
+        pendingSynchronizedKind = null;
+        applySynchronizedTasks(synchronized, "Tasks changed in another view. Review the refreshed list before trying again.");
+      } else {
+        newListStatus.textContent = "";
+      }
+      newListError.textContent = "CueDone could not save the new list. Your current list is unchanged. Try again.";
+      newListError.hidden = false;
+      return;
+    }
+    const synchronized = pendingSynchronizedKind === kind ? pendingSynchronizedTasks : null;
+    pendingSynchronizedTasks = null;
+    pendingSynchronizedKind = null;
+    const nextTasks = synchronized && !taskListsMatch(synchronized, result.tasks) ? synchronized : result.tasks;
+    clearPreviousCompletionState();
+    closePersonalFullListReview();
+    setCarryoverOpen(false);
+    tasks = nextTasks;
+    tasksKind = kind;
+    restoreFocus = null;
+    if (personalAffirmation.enabled && personalAffirmation.choice === "random") {
+      const nextAffirmation = refreshRandomAffirmation(personalAffirmation);
+      applyPersonalAffirmation(nextAffirmation);
+      savePersonalAffirmation(nextAffirmation).catch(() => {});
+    }
+    clearStaleEnding(kind, true);
+    if (resumedBreakTimer !== null) applyPersonalBreakTimer(resumedBreakTimer);
+    render();
+    applyEntryMode(true);
+    root.classList.remove("is-editing");
+    root.removeAttribute("data-mode");
+    saveTaskEntryOpen(true).catch(() => {});
+    input.focus();
+    try {
+      if (typeof window.renderActiveVisualProgress === "function") {
+        window.renderActiveVisualProgress();
+      }
+    } catch (err) {
+      console.error('[CueDone] Visual theme render failed safely:', err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window._clearAllViaNewList = performClearAllViaNewListWorkflow;
+  }
+
+  const externalClearAllBtn = typeof document !== "undefined" ? document.getElementById("clear-all-btn") : null;
+  if (externalClearAllBtn && !externalClearAllBtn.dataset.wiredViaTaskList) {
+    externalClearAllBtn.dataset.wiredViaTaskList = "true";
+    externalClearAllBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      performClearAllViaNewListWorkflow();
+    });
+  }
 
   doneButton.addEventListener("click", async () => {
     const previous = entryOpen;

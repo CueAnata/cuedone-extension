@@ -50,8 +50,12 @@ if (clearAllBtn) {
       window.dispatchEvent(new Event('storage'));
       document.dispatchEvent(new CustomEvent('cuedone:tasks-changed', { detail: { tasks: [] } }));
     }
-    if (window.renderActiveVisualProgress) {
-      window.renderActiveVisualProgress();
+    try {
+      if (typeof window.renderActiveVisualProgress === 'function') {
+        window.renderActiveVisualProgress();
+      }
+    } catch (err) {
+      console.error('[CueDone] Visual theme render failed safely:', err);
     }
   });
 }
