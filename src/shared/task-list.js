@@ -991,16 +991,21 @@ async function mountTaskList(root) {
         <div class="personal-constellation-visual personal-constellation-visual--entry" role="img" aria-label="" hidden>
           <div class="constellation-sky constellation-sky--entry" aria-hidden="true">
             <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="10" y1="10" x2="28" y2="8" class="constellation-line line--1" />
-              <line x1="28" y1="8" x2="46" y2="14" class="constellation-line line--2" />
-              <line x1="28" y1="8" x2="18" y2="26" class="constellation-line line--3" />
-              <line x1="46" y1="14" x2="38" y2="30" class="constellation-line line--4" />
+              <line x1="8" y1="26" x2="17" y2="21" class="line--1" />
+              <line x1="17" y1="21" x2="26" y2="23" class="line--2" />
+              <line x1="26" y1="23" x2="35" y2="23" class="line--3" />
+              <line x1="35" y1="23" x2="34" y2="36" class="line--4" />
+              <line x1="34" y1="36" x2="49" y2="37" class="line--5" />
+              <line x1="49" y1="37" x2="51" y2="21" class="line--6" />
+              <line x1="51" y1="21" x2="35" y2="23" class="line--7" />
             </svg>
-            <span class="constellation-star star--1"></span>
-            <span class="constellation-star star--2"></span>
-            <span class="constellation-star star--3"></span>
-            <span class="constellation-star star--4"></span>
-            <span class="constellation-star star--5"></span>
+            <span class="constellation-star star--1" style="left: 12.5%; top: 54.2%;"></span>
+            <span class="constellation-star star--2" style="left: 26.5%; top: 43.7%;"></span>
+            <span class="constellation-star star--3" style="left: 40.6%; top: 47.9%;"></span>
+            <span class="constellation-star star--4" style="left: 54.7%; top: 47.9%;"></span>
+            <span class="constellation-star star--5" style="left: 53.1%; top: 75.0%;"></span>
+            <span class="constellation-star star--6" style="left: 76.5%; top: 77.1%;"></span>
+            <span class="constellation-star star--7" style="left: 79.7%; top: 43.7%;"></span>
           </div>
         </div>
         <div class="personal-mountain-visual personal-mountain-visual--entry" role="img" aria-label="" hidden>
@@ -1638,16 +1643,21 @@ async function mountTaskList(root) {
         <div class="personal-constellation-visual" role="img" aria-label="" hidden>
           <div class="constellation-sky" aria-hidden="true">
             <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="10" y1="10" x2="28" y2="8" class="constellation-line line--1" />
-              <line x1="28" y1="8" x2="46" y2="14" class="constellation-line line--2" />
-              <line x1="28" y1="8" x2="18" y2="26" class="constellation-line line--3" />
-              <line x1="46" y1="14" x2="38" y2="30" class="constellation-line line--4" />
+              <line x1="8" y1="26" x2="17" y2="21" class="line--1" />
+              <line x1="17" y1="21" x2="26" y2="23" class="line--2" />
+              <line x1="26" y1="23" x2="35" y2="23" class="line--3" />
+              <line x1="35" y1="23" x2="34" y2="36" class="line--4" />
+              <line x1="34" y1="36" x2="49" y2="37" class="line--5" />
+              <line x1="49" y1="37" x2="51" y2="21" class="line--6" />
+              <line x1="51" y1="21" x2="35" y2="23" class="line--7" />
             </svg>
-            <span class="constellation-star star--1"></span>
-            <span class="constellation-star star--2"></span>
-            <span class="constellation-star star--3"></span>
-            <span class="constellation-star star--4"></span>
-            <span class="constellation-star star--5"></span>
+            <span class="constellation-star star--1" style="left: 12.5%; top: 54.2%;"></span>
+            <span class="constellation-star star--2" style="left: 26.5%; top: 43.7%;"></span>
+            <span class="constellation-star star--3" style="left: 40.6%; top: 47.9%;"></span>
+            <span class="constellation-star star--4" style="left: 54.7%; top: 47.9%;"></span>
+            <span class="constellation-star star--5" style="left: 53.1%; top: 75.0%;"></span>
+            <span class="constellation-star star--6" style="left: 76.5%; top: 77.1%;"></span>
+            <span class="constellation-star star--7" style="left: 79.7%; top: 43.7%;"></span>
           </div>
         </div>
         <div class="personal-mountain-visual" role="img" aria-label="" hidden>
