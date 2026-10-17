@@ -130,20 +130,51 @@ export function onBreakNotificationAlarm(handler) {
 }
 
 export function showBreakNotification() {
-  return chrome.notifications
-    .create(BREAK_NOTIFICATION_ID, {
-      type: "basic",
-      iconUrl: "icons/icon128.png",
-      title: "CueDone break time",
-      message: "Break time is ready. Open CueDone to Show or Skip.",
-      silent: true,
-      priority: 0,
-      requireInteraction: true,
-    })
-    .then((notificationId) => {
-      console.info("CueDone break notification created", { notificationId });
-      return notificationId;
-    });
+  const iconUrl =
+    typeof chrome.runtime?.getURL === "function"
+      ? chrome.runtime.getURL("icons/icon128.png")
+      : "icons/icon128.png";
+  const fallbackIconUrl =
+    typeof chrome.runtime?.getURL === "function"
+      ? chrome.runtime.getURL("icons/icon48.png")
+      : "icons/icon48.png";
+  const createWithIcon = (url) =>
+    chrome.notifications
+      .create(BREAK_NOTIFICATION_ID, {
+        type: "basic",
+        iconUrl: url,
+        title: "CueDone break time",
+        message: "Break time is ready. Open CueDone to Show or Skip.",
+        silent: true,
+        priority: 0,
+        requireInteraction: true,
+      })
+      .then((notificationId) => {
+        console.info("CueDone break notification created", { notificationId });
+        return notificationId;
+      });
+  return createWithIcon(iconUrl).catch((error) => {
+    const message = String(error?.message || error || "");
+    if (
+      message.includes("Unable to download") ||
+      message.includes("iconUrl") ||
+      message.includes("image")
+    ) {
+      console.warn("CueDone break notification icon failed, retrying with fallback", {
+        attemptedIconUrl: iconUrl,
+        fallbackIconUrl,
+        error: message,
+      });
+      return createWithIcon(fallbackIconUrl).catch((fallbackError) => {
+        console.warn("CueDone break notification fallback also failed; suppressing to protect service worker", {
+          fallbackIconUrl,
+          error: String(fallbackError?.message || fallbackError || ""),
+        });
+        return null;
+      });
+    }
+    throw error;
+  });
 }
 
 export function clearBreakNotification() {

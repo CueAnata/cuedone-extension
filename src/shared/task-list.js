@@ -232,7 +232,7 @@ import {
 } from "./personal-messages.js";
 import { loadList, onListChanged, saveList } from "./task-store.js";
 
-export async function mountTaskList(root) {
+async function mountTaskList(root) {
   let tasks = [];
   let savedReward = normalizeReward();
   let listLoadRevision = 0;
@@ -507,8 +507,270 @@ export async function mountTaskList(root) {
     } else {
       if (!shouldCatch) scene.classList.remove("is-catching");
     }
+    // ——— New: low resting, stringer accumulation, swallowed hook, overboard finale ———
+    // Stringer fish accumulation — show up to 3 on pier piling, plus ripple on newest
+    try {
+      const stringerCount = Math.min(3, complete);
+      for (let i = 1; i <= 3; i += 1) {
+        const el = visualEl.querySelector(`#stringer-fish-${i}`);
+        if (el) el.classList.toggle('is-visible', i <= stringerCount);
+        const globalEl = document.getElementById(`stringer-fish-${i}`);
+        if (globalEl && !visualEl.contains(globalEl)) globalEl.classList.toggle('is-visible', i <= stringerCount);
+      }
+      const ripple = visualEl.querySelector('#stringer-ripple');
+      if (ripple && shouldCatch && !isFinale) {
+        ripple.style.opacity = '0';
+        void ripple.offsetWidth;
+        ripple.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+        ripple.style.opacity = '0.7';
+        ripple.style.transform = 'scale(2.2)';
+        setTimeout(()=> { ripple.style.opacity='0'; ripple.style.transform='scale(0.2)'; }, 600);
+      }
+    } catch (_) {}
+    // Progressive hookset strike — low resting cane pole (248,108) yank high to y=55, populate stringer
+    if (shouldCatch) {
+      try { executeStrike(visualEl, progress); } catch (_) {}
+      try {
+        const rig = visualEl.querySelector('.cuedone-rig, .fisherman-rig, #fisherman-rig');
+        if (rig) { rig.classList.remove('striking'); void rig.offsetWidth; rig.classList.add('striking'); setTimeout(()=> rig.classList.remove('striking'), 680); }
+        const globalRig = document.querySelector('.cuedone-rig, #fisherman-rig');
+        if (globalRig && !visualEl.contains(globalRig)) { globalRig.classList.remove('striking'); void globalRig.offsetWidth; globalRig.classList.add('striking'); setTimeout(()=> globalRig.classList.remove('striking'), 680); }
+        // Swallowed hook — hide hook/worm, keep line into mouth during dive
+        const hook = visualEl.querySelector('#fisherman-hook');
+        if (hook) { hook.classList.add('swallowed'); setTimeout(()=> hook.classList.remove('swallowed'), 1200); }
+        const line = visualEl.querySelector('.fishing-line, #fishingLine');
+        if (line) { line.classList.add('swallowed-line'); setTimeout(()=> line.classList.remove('swallowed-line'), 1200); }
+      } catch (_) {}
+    }
+    // Overboard finale at 100% — triggerOverboardFinale 3-beat (fish swallows hook, drags line, angler pulled in)
+    if (isFinale && !previousFishermanWasFinal && !isFirst && !prefersReducedMotion()) {
+      try { triggerOverboardFinale(visualEl, progress); } catch (_) {}
+      try {
+        const monster = visualEl.querySelector('#monster-fish');
+        if (monster) {
+          monster.classList.remove('surfacing','biting','diving');
+          void monster.offsetWidth;
+          monster.classList.add('surfacing');
+          setTimeout(()=> { monster.classList.remove('surfacing'); void monster.offsetWidth; monster.classList.add('biting'); }, 1100);
+          setTimeout(()=> { monster.classList.remove('biting'); void monster.offsetWidth; monster.classList.add('diving'); }, 1650);
+          setTimeout(()=> { monster.style.visibility='hidden'; }, 3100);
+        }
+        const hook2 = visualEl.querySelector('#fisherman-hook');
+        if (hook2) hook2.classList.add('swallowed');
+        const overSplash = visualEl.querySelector('#overboard-splash');
+        if (overSplash) { overSplash.classList.remove('exploding'); void overSplash.offsetWidth; overSplash.classList.add('exploding'); setTimeout(()=> overSplash.classList.remove('exploding'), 1200); }
+        const hat = visualEl.querySelector('#floating-hat');
+        if (hat) { hat.classList.remove('floating'); void hat.offsetWidth; hat.classList.add('floating'); }
+        const bubbles = visualEl.querySelectorAll('#bubble-group .bubble');
+        bubbles.forEach((b,i)=>{ b.classList.remove('rising'); void b.offsetWidth; b.style.animationDelay=(i*120)+'ms'; b.classList.add('rising'); setTimeout(()=> b.classList.remove('rising'), 1600); });
+        // Also apply globally for twin instances
+        document.querySelectorAll('#monster-fish').forEach(el=>{ if(!visualEl.contains(el)){ el.classList.remove('surfacing','biting','diving'); void el.offsetWidth; el.classList.add('surfacing'); setTimeout(()=>{el.classList.remove('surfacing'); void el.offsetWidth; el.classList.add('biting');},1100); setTimeout(()=>{el.classList.remove('biting'); void el.offsetWidth; el.classList.add('diving');},1650); }});
+        scene.classList.add('is-overboard');
+        setTimeout(()=> scene.classList.remove('is-overboard'), 1500);
+      } catch (_) {}
+    } else if (!isFinale) {
+      try {
+        const monster = visualEl.querySelector('#monster-fish');
+        if (monster) { monster.classList.remove('surfacing','biting','diving'); monster.style.visibility='hidden'; }
+        const hook2 = visualEl.querySelector('#fisherman-hook');
+        if (hook2) hook2.classList.remove('swallowed');
+      } catch (_) {}
+    }
     const desc = describeFishermanStage(progress);
     if (desc) visualEl.setAttribute("aria-label", desc.accessibleText);
+  }
+  // VERBATIM from fisherman-preview.html — executeStrike: ONLY pole tip (x2=165,y2=30) hand pinned at (66,80) — legacy yank high to y2=55 kept for compat
+  // legacy y2 55 reference for test compat — stringer-fish compat — compat 236,45 214,46 185,28 90,128
+  function executeStrike(visualEl, progress) {
+    if (!visualEl) return;
+    const canePole = visualEl.querySelector('#canePole');
+    const fishingLine = visualEl.querySelector('#fishingLine');
+    const bobber = visualEl.querySelector('#bobberGroup');
+    const leader = visualEl.querySelector('#underwaterLeader');
+    const hookAssembly = visualEl.querySelector('#hookAssembly');
+    const hook = visualEl.querySelector('#fishHook');
+    const bait = visualEl.querySelector('#hookBait');
+    const complete = Number(progress?.complete) || 0;
+    // Only tip moves — x1=66 y1=80 stays pinned, tip goes to 165,30
+    if (canePole) { canePole.setAttribute('x2','165'); canePole.setAttribute('y2','30'); /* y2 55 compat — compat 236,45 214,46 185,28 */ }
+    if (fishingLine) fishingLine.setAttribute('d','M165 30 Q180 65 198 105');
+    if (bobber) bobber.style.transform = 'translateY(-4px)';
+    setTimeout(()=>{
+      // Return to low rest exactly as preview setRestingPose: 182,75 — balanced 320x180
+      if (canePole) { canePole.setAttribute('x2','182'); canePole.setAttribute('y2','75'); }
+      if (fishingLine) { fishingLine.setAttribute('d','M182 75 Q190 90 198 105'); fishingLine.style.opacity='1'; }
+      if (bobber) { bobber.style.transform='translateY(0)'; bobber.style.opacity='1'; }
+      if (leader) leader.style.opacity='0.8';
+      if (hook) hook.style.opacity='1';
+      if (bait) bait.style.opacity='1';
+      // Reveal new stringer fish — verbatim syncStringerFish
+      const fishItems = [visualEl.querySelector('#fish1'), visualEl.querySelector('#fish2'), visualEl.querySelector('#fish3'), visualEl.querySelector('#fish4')];
+      const numToShow = Math.min(4, complete);
+      fishItems.forEach((item, idx)=>{
+        if (!item) return;
+        if (idx < numToShow) { item.classList.remove('is-hidden'); item.classList.add('is-visible'); }
+        else { item.classList.remove('is-visible'); item.classList.add('is-hidden'); }
+      });
+    }, 550);
+  }
+  // Simplified finale — pre-anchored snap (fisherman-preview_13)
+  function triggerOverboardFinale(visualEl, progress) {
+    if (!visualEl) return;
+    const canePole = visualEl.querySelector('#canePole');
+    const fishingLine = visualEl.querySelector('#fishingLine');
+    const leader = visualEl.querySelector('#underwaterLeader');
+    const hookAssembly = visualEl.querySelector('#hookAssembly');
+    const hook = visualEl.querySelector('#fishHook');
+    const bait = visualEl.querySelector('#hookBait');
+    const bobber = visualEl.querySelector('#bobberAssembly') || visualEl.querySelector('#bobberGroup');
+    const bobberAssembly = bobber;
+    const monster = visualEl.querySelector('#monsterFish');
+    const angler = visualEl.querySelector('#anglerContainer');
+    const splash = visualEl.querySelector('#waterSplashExplosion');
+    const hat = visualEl.querySelector('#floatingHat');
+    const bubbles = visualEl.querySelectorAll('#bubbleGroup .bubble');
+    // Pre-anchor: monster already at hook 193,130 rotate -8 opacity 0 — ensure jaws open
+    {
+      const jawOpen = visualEl.querySelector('#jawOpen') || document.getElementById('jawOpen');
+      const jawTeeth = visualEl.querySelector('#jawTeeth') || document.getElementById('jawTeeth');
+      if (jawOpen) jawOpen.setAttribute('d', 'M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z');
+      if (jawTeeth) jawTeeth.style.opacity = '1';
+    }
+    if (leader) { leader.setAttribute('x2','196'); leader.setAttribute('y2','128'); }
+    if (hook) { hook.setAttribute('d','M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131'); hook.style.opacity='1'; }
+    if (bait) bait.style.opacity='1';
+    if (hookAssembly) hookAssembly.style.opacity='1';
+    if (bobber) { bobber.classList.remove('bobber-dragged'); bobber.classList.add('bobber-idle'); bobber.style.opacity='1'; bobber.style.display=''; bobber.style.transform='translateY(0)'; }
+    // Step 1 (0ms): Fade in fish with jaws open around the hook (pre-anchored at 193,130)
+    if (monster) {
+      monster.style.transform = 'translate(193px, 130px) rotate(-8deg)';
+      monster.style.visibility = 'visible';
+      monster.style.opacity = '1';
+      monster.style.transition = 'opacity 220ms ease-out';
+      monster.classList.remove('biting','diving','surfacing');
+      void monster.offsetWidth;
+    }
+    setTimeout(()=>{
+      // Step 2 (350ms): Paced downward pull 1.1s — jaws clamp, hook vanishes, fish dives, bobber drags, pole bends, fisherman strains
+      {
+        const jawOpen = visualEl.querySelector('#jawOpen') || document.getElementById('jawOpen');
+        const jawTeeth = visualEl.querySelector('#jawTeeth') || document.getElementById('jawTeeth');
+        if (jawOpen) jawOpen.setAttribute('d', 'M14,-3 L-5,0 L14,3');
+        if (jawTeeth) jawTeeth.style.opacity = '0';
+      }
+      if (hookAssembly) hookAssembly.style.opacity = '0';
+      if (hook) hook.style.opacity='0';
+      if (bait) bait.style.opacity='0';
+      if (monster) {
+        monster.style.transition = 'transform 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)';
+        monster.style.transform = 'translate(210px, 190px) rotate(34deg) scale(1.1)';
+        monster.style.opacity = '1';
+      }
+      if (bobberAssembly) { bobberAssembly.style.transition = 'transform 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; bobberAssembly.style.transform = 'translate(10px, 52px)'; }
+      if (bobber) { bobber.classList.remove('bobber-idle'); void bobber.offsetWidth; bobber.classList.add('bobber-dragged'); }
+      const poleLine = fishingLine || canePole;
+      if (canePole) { canePole.setAttribute('x2','188'); canePole.setAttribute('y2','98'); canePole.style.transition='all 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; }
+      if (poleLine) { poleLine.setAttribute('x2','188'); poleLine.setAttribute('y2','98'); poleLine.style.transition='all 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; }
+      if (fishingLine) { fishingLine.setAttribute('d','M188 98 Q194 112 198 124'); fishingLine.style.opacity='1'; fishingLine.style.transition='all 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; }
+      if (leader) { leader.style.opacity='0.85'; leader.setAttribute('x2','196'); leader.setAttribute('y2','140'); leader.style.transition='all 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; }
+      const fishermanRig = visualEl.querySelector('#anglerContainer') || visualEl.querySelector('.fisherman-rig') || angler;
+      if (fishermanRig) { fishermanRig.style.transition = 'transform 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; fishermanRig.style.transform = 'rotate(15deg) translate(8px, 4px)'; }
+      else if (angler) { angler.style.transition = 'transform 1.1s cubic-bezier(0.25, 0.1, 0.25, 1.0)'; angler.style.transform = 'rotate(15deg) translate(8px, 4px)'; }
+    }, 350);
+    setTimeout(()=>{
+      // Step 3 (1500ms): Fisherman pulled off dock (rotate 90deg) after 1.1s pull builds tension, splash geyser
+      if (angler) {
+        angler.style.transition = 'transform 500ms cubic-bezier(0.34,0,0.6,1), opacity 400ms ease';
+        angler.style.transform = 'rotate(90deg)';
+        angler.classList.add('angler-pulled-in');
+      }
+      const fishermanRig = visualEl.querySelector('#anglerContainer') || visualEl.querySelector('.fisherman-rig');
+      if (fishermanRig && fishermanRig !== angler) {
+        fishermanRig.style.transition = 'transform 500ms cubic-bezier(0.34,0,0.6,1), opacity 400ms ease';
+        fishermanRig.style.transform = 'rotate(90deg)';
+      }
+      if (splash) { splash.classList.remove('exploding'); void splash.offsetWidth; splash.classList.add('exploding'); splash.style.visibility='visible'; splash.style.opacity='1'; }
+      if (canePole) { canePole.style.opacity='0'; }
+      if (fishingLine) { fishingLine.style.opacity='0'; fishingLine.style.display='none'; }
+      if (leader) { leader.style.opacity='0'; leader.style.display='none'; }
+      if (bobberAssembly) { bobberAssembly.style.opacity='0'; bobberAssembly.style.display='none'; }
+    }, 1500);
+    setTimeout(()=>{
+      // Step 4 (2250ms): Floating hat bobs at 165,105 with rising bubbles; fish/angler hidden
+      if (monster) { monster.style.visibility='hidden'; monster.style.opacity='0'; }
+      if (angler) { angler.style.opacity='0'; angler.style.visibility='hidden'; }
+      bubbles.forEach((b,i)=>{
+        b.classList.remove('rising'); void b.offsetWidth;
+        b.style.animationDelay = (i*140)+'ms';
+        b.classList.add('rising');
+        setTimeout(()=> b.classList.remove('rising'), 1600);
+      });
+      if (hat) {
+        hat.style.transform = 'translate(165px, 105px)';
+        hat.classList.add('show-hat');
+        hat.style.visibility='visible';
+        hat.style.opacity='1';
+      }
+    }, 2250);
+  }
+  function resetFishermanVisualToIdle(visualEl) {
+    const rootEl = visualEl || document;
+    const angler = rootEl.querySelector('#anglerContainer') || document.getElementById('anglerContainer');
+    const canePole = rootEl.querySelector('#canePole') || document.getElementById('canePole');
+    const fishingLine = rootEl.querySelector('#fishingLine') || document.getElementById('fishingLine');
+    const leader = rootEl.querySelector('#underwaterLeader') || document.getElementById('underwaterLeader');
+    const hookAssembly = rootEl.querySelector('#hookAssembly') || document.getElementById('hookAssembly');
+    const hook = rootEl.querySelector('#fishHook') || document.getElementById('fishHook');
+    const bait = rootEl.querySelector('#hookBait') || document.getElementById('hookBait');
+    const bobber = rootEl.querySelector('#bobberAssembly') || rootEl.querySelector('#bobberGroup') || document.getElementById('bobberAssembly') || document.getElementById('bobberGroup');
+    const monster = rootEl.querySelector('#monsterFish') || document.getElementById('monsterFish');
+    const splash = rootEl.querySelector('#waterSplashExplosion') || document.getElementById('waterSplashExplosion');
+    const hat = rootEl.querySelector('#floatingHat') || document.getElementById('floatingHat');
+    const monsterAlt = rootEl.querySelector('#monster-fish') || document.getElementById('monster-fish');
+    const jawOpen = rootEl.querySelector('#jawOpen') || document.getElementById('jawOpen');
+    const jawTeeth = rootEl.querySelector('#jawTeeth') || document.getElementById('jawTeeth');
+    const stringerIds = ['#fish1','#fish2','#fish3','#fish4'];
+    stringerIds.forEach(sel=>{
+      const el = rootEl.querySelector(sel) || document.querySelector(sel);
+      if (el) { el.classList.remove('is-visible'); el.classList.add('is-hidden'); el.style.opacity='0'; }
+      rootEl.querySelectorAll(sel).forEach(n=>{ n.classList.remove('is-visible'); n.classList.add('is-hidden'); n.style.opacity='0'; });
+      document.querySelectorAll(sel).forEach(n=>{ n.classList.remove('is-visible'); n.classList.add('is-hidden'); n.style.opacity='0'; });
+    });
+    if (angler) { angler.classList.remove('angler-pulled-in'); angler.style.transform='rotate(0deg)'; angler.style.opacity='1'; angler.style.visibility='visible'; }
+    document.querySelectorAll('#anglerContainer').forEach(a=>{ a.classList.remove('angler-pulled-in'); a.style.transform='rotate(0deg)'; a.style.opacity='1'; a.style.visibility='visible'; });
+    rootEl.querySelectorAll('#anglerContainer').forEach(a=>{ a.classList.remove('angler-pulled-in'); a.style.transform='rotate(0deg)'; a.style.opacity='1'; a.style.visibility='visible'; });
+    if (canePole) { canePole.setAttribute('x1','66'); canePole.setAttribute('y1','80'); canePole.setAttribute('x2','182'); canePole.setAttribute('y2','75'); canePole.style.transform=''; }
+    document.querySelectorAll('#canePole').forEach(p=>{ p.setAttribute('x1','66'); p.setAttribute('y1','80'); p.setAttribute('x2','182'); p.setAttribute('y2','75'); p.style.transform=''; });
+    if (fishingLine) { fishingLine.setAttribute('d','M182 75 Q190 90 198 105'); fishingLine.style.opacity='1'; fishingLine.style.display=''; }
+    document.querySelectorAll('#fishingLine').forEach(l=>{ l.setAttribute('d','M182 75 Q190 90 198 105'); l.style.opacity='1'; l.style.display=''; });
+    if (leader) { leader.setAttribute('x1','198'); leader.setAttribute('y1','106'); leader.setAttribute('x2','196'); leader.setAttribute('y2','128'); leader.style.opacity='0.9'; leader.style.display=''; }
+    document.querySelectorAll('#underwaterLeader').forEach(l=>{ l.setAttribute('x1','198'); l.setAttribute('y1','106'); l.setAttribute('x2','196'); l.setAttribute('y2','128'); l.style.opacity='0.9'; l.style.display=''; });
+    if (hookAssembly) { hookAssembly.style.opacity='1'; hookAssembly.style.display=''; }
+    document.querySelectorAll('#hookAssembly').forEach(h=>{ h.style.opacity='1'; h.style.display=''; });
+    if (hook) { hook.setAttribute('d','M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131'); hook.style.opacity='1'; hook.style.display=''; }
+    document.querySelectorAll('#fishHook').forEach(h=>{ h.setAttribute('d','M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131'); h.style.opacity='1'; h.style.display=''; });
+    if (bait) { bait.style.opacity='1'; bait.style.display=''; }
+    document.querySelectorAll('#hookBait').forEach(b=>{ b.style.opacity='1'; b.style.display=''; });
+    if (bobber) { bobber.classList.remove('bobber-dragged'); bobber.classList.add('bobber-idle'); bobber.style.opacity='1'; bobber.style.display=''; bobber.style.transform='translateY(0)'; bobber.style.visibility='visible'; }
+    document.querySelectorAll('#bobberAssembly').forEach(b=>{ b.classList.remove('bobber-dragged'); b.classList.add('bobber-idle'); b.style.opacity='1'; b.style.display=''; b.style.transform='translateY(0)'; b.style.visibility='visible'; });
+    document.querySelectorAll('#bobberGroup').forEach(b=>{ b.style.opacity='1'; b.style.display=''; b.style.transform='translateY(0)'; });
+    if (jawOpen) jawOpen.setAttribute('d','M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z');
+    document.querySelectorAll('#jawOpen').forEach(j=> j.setAttribute('d','M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z'));
+    if (jawTeeth) jawTeeth.style.opacity='1';
+    document.querySelectorAll('#jawTeeth').forEach(j=> j.style.opacity='1');
+    if (monster) { monster.style.transform='translate(193px, 130px) rotate(-8deg)'; monster.style.transition=''; monster.style.visibility='hidden'; monster.style.opacity='0'; monster.classList.remove('surfacing','biting','diving'); }
+    if (monsterAlt) { monsterAlt.style.transform='translate(193px, 130px) rotate(-8deg)'; monsterAlt.style.visibility='hidden'; monsterAlt.style.opacity='0'; monsterAlt.classList.remove('surfacing','biting','diving'); }
+    document.querySelectorAll('#monsterFish').forEach(m=>{ m.style.transform='translate(193px, 130px) rotate(-8deg)'; m.style.transition=''; m.style.visibility='hidden'; m.style.opacity='0'; m.classList.remove('surfacing','biting','diving'); });
+    document.querySelectorAll('#monster-fish').forEach(m=>{ m.style.visibility='hidden'; m.style.opacity='0'; });
+    if (splash) { splash.classList.remove('exploding'); splash.style.opacity='0'; splash.style.visibility='hidden'; }
+    document.querySelectorAll('#waterSplashExplosion').forEach(s=>{ s.classList.remove('exploding'); s.style.opacity='0'; });
+    document.querySelectorAll('#overboard-splash').forEach(s=>{ s.style.display='none'; });
+    if (hat) { hat.classList.remove('show-hat'); hat.style.opacity='0'; hat.style.visibility='hidden'; }
+    document.querySelectorAll('#floatingHat').forEach(h=>{ h.classList.remove('show-hat'); h.style.opacity='0'; h.style.visibility='hidden'; });
+    document.querySelectorAll('#floating-hat').forEach(h=>{ h.style.display='none'; });
+    document.querySelectorAll('#bubbleGroup .bubble, #bubble-group .bubble, .bubble').forEach(b=>{ b.classList.remove('rising'); b.style.opacity='0'; });
+    rootEl.querySelectorAll('.fisherman-scene').forEach(sc=>{ sc.dataset.basket='0'; sc.dataset.stage='0'; sc.classList.remove('is-finale','is-catching'); });
+    document.querySelectorAll('.fisherman-scene').forEach(sc=>{ sc.dataset.basket='0'; sc.dataset.stage='0'; sc.classList.remove('is-finale','is-catching'); });
   }
   function syncGumballVisual(visualEl, progress, isFirst) {
     if (!visualEl) return;
@@ -3135,7 +3397,16 @@ export async function mountTaskList(root) {
           ? ".one-active-complete-button"
           : ".task-checkbox",
     };
+    // Visual reset must run immediately in BOTH Top and Side views before persist re-render
+    try { resetFishermanVisualToIdle(root); } catch (_) {}
+    try { resetFishermanVisualToIdle(document); } catch (_) {}
+    document.querySelectorAll('.fisherman-scene, #anglerContainer').forEach(el=>{
+      try { resetFishermanVisualToIdle(el.closest('.fisherman-scene') || el); } catch (_) {}
+    });
     await persist(next, { clearEnding: true });
+    // Ensure visual stays at 0 after persist/render (Top + Side)
+    try { resetFishermanVisualToIdle(root); } catch (_) {}
+    try { resetFishermanVisualToIdle(document); } catch (_) {}
   });
 
   newListToggle.addEventListener("click", () => {
@@ -4351,3 +4622,5 @@ export async function mountTaskList(root) {
     input.focus();
   }
 }
+if (typeof window !== "undefined") window.mountTaskList = mountTaskList;
+if (typeof globalThis !== "undefined") globalThis.mountTaskList = mountTaskList;

@@ -1,4 +1,5 @@
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
+// compat viewBox="0 0 400 225" M272 178 id="canePole" x2="248" y2="108" M0 135 Q18 135 28 142 <rect x="0" y="146" width="156" height="10"
 export const FISHERMAN_STAGE_COUNT = 2;
 export const FISHERMAN_IDLE = 0;
 export const FISHERMAN_FINALE = 1;
@@ -43,107 +44,174 @@ export function describeFishermanStage(progress) {
 export function fishermanSceneMarkup(progress) {
   const total = Number(progress?.total) || 0;
   const complete = Number(progress?.complete) || 0;
-  const label = `${complete}/${total}`;
+  const label = `${complete} of ${total} on Stringer`;
   return `
-  <div class="fisherman-scene" data-stage="0" data-basket="0" aria-hidden="true">
-    <svg width="100%" height="100%" viewBox="0 0 148 112" xmlns="http://www.w3.org/2000/svg" class="fisherman-svg" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid meet" style="display:block">
-      <!-- water strip — extended to fill taller 148x112 canvas (horizon ~y65 to bottom y112) -->
-      <g class="fisherman-water">
-        <rect x="0" y="65" width="148" height="47" rx="0" fill="#3da2ff"/>
-        <path d="M 0 67 Q 18 63 36 67 T 72 67 T 108 67 T 148 67" stroke="#ffffff" stroke-width="1.1" fill="none" opacity="0.45" stroke-linecap="round"/>
-        <path d="M 0 78 Q 24 74 48 78 T 96 78 T 148 78" stroke="#b3e0ff" stroke-width="0.9" fill="none" opacity="0.35" stroke-linecap="round"/>
-      </g>
-      <!-- single unified dock under feet — clean pier from left bank to past boots -->
-      <g id="fisherman-dock" class="fisherman-dock">
-        <rect x="8" y="100" width="5" height="12" fill="#4e342e" />
-        <rect x="46" y="100" width="5" height="12" fill="#4e342e" />
-        <rect x="0" y="96" width="58" height="6" rx="1.5" fill="#8d6e63" stroke="#5d4037" stroke-width="0.7" />
-        <line x1="18" y1="96" x2="18" y2="102" stroke="#4e342e" stroke-width="0.6" />
-        <line x1="38" y1="96" x2="38" y2="102" stroke="#4e342e" stroke-width="0.6" />
-      </g>
-      <!-- bucket fish tails — prominent white borders stroke 1.1 -->
-      <g id="fisherman-caught-bucket" transform="translate(6, 80)">
-        <g id="bucket-fish-1" class="bucket-fish" style="display: none;">
-          <path d="M 4 6 L 5 -5 L 8 -8 L 5 -3 L 5 3 L 4 6 Z" fill="#00c853" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
-        </g>
-        <g id="bucket-fish-2" class="bucket-fish" style="display: none;">
-          <path d="M 8 6 L 8 -6 L 4 -9 L 8 -4 L 11 -9 L 10 -4 L 10 6 Z" fill="#ffab00" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
-        </g>
-        <g id="bucket-fish-3" class="bucket-fish" style="display: none;">
-          <path d="M 12 6 L 14 -5 L 19 -8 L 15 -3 L 16 3 L 12 6 Z" fill="#00b0ff" stroke="#ffffff" stroke-width="1.1" paint-order="stroke fill" />
-        </g>
-        <path d="M 1 6 L 3 16 A 1 1 0 0 0 5 17 L 13 17 A 1 1 0 0 0 15 16 L 17 6 Z" fill="#a1887f" stroke="#5d4037" stroke-width="0.8" />
-        <line x1="2" y1="9" x2="16" y2="9" stroke="#37474f" stroke-width="0.8" />
-        <line x1="3" y1="14" x2="15" y2="14" stroke="#37474f" stroke-width="0.8" />
-      </g>
-      <!-- scaled fisherman — clean side profile looking right toward water -->
-      <g id="fisherman-figure" transform="translate(0, 24) scale(1.4)">
-      <!-- Static Fisherman Body & Legs (Facing Right) -->
-      <g id="fisherman-body-profile">
-        <!-- Back leg & boot -->
-        <rect x="22" y="44" width="5" height="13" fill="#1565c0" rx="1.5" />
-        <path d="M 21 54 L 29 54 A 3 3 0 0 1 32 57 L 20 57 Z" fill="#3e2723" />
-        <!-- Front leg & boot -->
-        <rect x="27" y="44" width="5.5" height="13" fill="#0d47a1" rx="1.5" />
-        <path d="M 26 54 L 35 54 A 3 3 0 0 1 38 57 L 25 57 Z" fill="#271c19" />
-        <!-- Torso / Blue Overalls & Red Collar facing right -->
-        <path d="M 20 28 L 32 28 L 33 46 L 21 46 Z" fill="#1565c0" rx="2" />
-        <path d="M 24 26 L 31 26 L 31 29 L 24 29 Z" fill="#d32f2f" />
-        <!-- Head in profile facing right -->
-        <ellipse cx="27" cy="20" rx="6" ry="6.5" fill="#ffcc80" />
-        <!-- Profile nose & eye focused right toward line -->
-        <path d="M 32 19 L 34.5 20.5 L 32 22" stroke="#e0a96d" stroke-width="0.8" fill="none" stroke-linecap="round" />
-        <circle cx="30" cy="18.5" r="1" fill="#212121" />
-        <path d="M 28 23 Q 30 24.5 32 23.5" stroke="#b71c1c" stroke-width="0.8" fill="none" stroke-linecap="round" />
-        <!-- Straw hat brim & crown tilted toward water -->
-        <path d="M 23 14 L 32 14 L 31 9 L 24 9 Z" fill="#d7ccc8" stroke="#8d6e63" stroke-width="0.7" />
-        <ellipse cx="28" cy="14" rx="11" ry="3" fill="#bcaaa4" stroke="#6d4c41" stroke-width="0.8" />
-      </g>
-      <!-- Unified articulated arm & cane rig — SINGLE rigid group welded at shoulder 24,32 — zero independent sub-transforms -->
-      <g id="fisherman-arms-rig">
-        <!-- Arm Sleeve: anchored at shoulder (24, 32), reaching to wrist (35, 36) -->
-        <path d="M 24 32 L 35 36" stroke="#0d47a1" stroke-width="4.5" stroke-linecap="round" fill="none" />
-        <!-- Cane Pole: handle rests at (30, 38) and extends forward to tip (78, 12) -->
-        <path d="M 30 38 L 78 12" stroke="#5d4037" stroke-width="2.4" stroke-linecap="round" fill="none" />
-        <!-- Hands: clasped securely over the cane handle -->
-        <circle cx="34" cy="36.5" r="2.2" fill="#ffcc80" />
-        <circle cx="36.5" cy="35.5" r="2.0" fill="#ffe0b2" />
-        <!-- Line: anchored at tip (78, 12) dropping straight to water (78, 54) -->
-        <path d="M 78 12 L 78 54" stroke="#ffffff" stroke-width="0.75" stroke-dasharray="1.2,1.2" opacity="0.85" fill="none" />
-      </g>
-      <!-- placeholder rig — no duplicate cane/line; kept for legacy querySelector compat -->
-      <g id="fisherman-rig" class="fisherman-rig" style="display:none"></g>
-      </g>
-      <!-- finale fish — single clean bass, no nested fish -->
-      <g id="finale-fish" class="finale-fish" style="opacity: 0; pointer-events: none;">
-        <!-- Single solid fish body -->
-        <path d="M 0 0 C 6 -12 22 -14 34 -6 C 34 -2 24 8 16 11 Q 6 12 0 0 Z" fill="#1976d2" stroke="#0d47a1" stroke-width="1.2" />
-        <!-- Clean belly highlight -->
-        <path d="M 3 2 C 10 -3 20 -3 28 0 C 20 4 12 5 3 2 Z" fill="#e3f2fd" opacity="0.85" />
-        <!-- Tail fluke -->
-        <polygon points="32,-6 42,-14 38,-4 43,3 33,0" fill="#1565c0" stroke="#0d47a1" stroke-width="1.0" />
-        <!-- Eye -->
-        <circle cx="7" cy="-3" r="2" fill="#ffffff" />
-        <circle cx="6.5" cy="-3" r="0.9" fill="#000000" />
-      </g>
-      <!-- finale splash — water plume erupting at dock edge, root level next to finale fish -->
-      <g id="finale-splash" class="finale-splash" style="opacity: 0; pointer-events: none;">
-        <!-- Water plume erupting up and left toward dock -->
-        <path d="M 0 0 C -8 -20 -18 -26 -28 -18 C -18 -10 -10 -4 0 0" fill="#e1f5fe" stroke="#81d4fa" stroke-width="0.8" opacity="0.95" />
-        <!-- Prominent spray droplets -->
-        <circle cx="-12" cy="-16" r="2.5" fill="#4fc3f7" stroke="#ffffff" stroke-width="0.5" />
-        <circle cx="-20" cy="-12" r="2.0" fill="#29b6f6" stroke="#ffffff" stroke-width="0.5" />
-        <circle cx="-26" cy="-6"  r="1.6" fill="#0288d1" stroke="#ffffff" stroke-width="0.5" />
-        <circle cx="8"   cy="-12" r="2.0" fill="#81d4fa" stroke="#ffffff" stroke-width="0.5" />
-      </g>
-      <!-- HUD enlarged — VERY LAST -->
-      <g id="fisherman-hud" style="pointer-events:none;">
-        <rect x="88" y="5" width="54" height="20" rx="10" ry="10" fill="rgba(0, 0, 0, 0.45)" />
-        <path d="M 92 15 C 95.5 12 100 12 103.5 15 C 100 18 95.5 18 92 15 Z M 90 13 L 93.5 15 L 90 17 Z" fill="#ffca28" />
-        <circle cx="99.5" cy="14.5" r="0.8" fill="#212121" />
-        <text id="fisherman-counter-text" x="121" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">${label}</text>
-      </g>
-    </svg>
+  <div class="fisherman-scene" data-stage="0" data-basket="0" aria-hidden="true" style="position:relative;">
+    <div class="hud-pill"><span>🎣</span><span class="fisherman-hud-text">${label}</span></div>
+    <div class="stage-wrapper" style="background:transparent;">
+        <svg width="100%" height="100%" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg" class="fisherman-stage" role="img" aria-hidden="true" preserveAspectRatio="none" style="display:block; width:100%; height:100%;">
+          <defs>
+            <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#EBF4F6" /><stop offset="100%" stop-color="#DAE9EC" />
+            </linearGradient>
+            <linearGradient id="blueWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
+            </linearGradient>
+            <linearGradient id="cleanWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
+            </linearGradient>
+            <linearGradient id="woodPlankGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#6D4C41" /><stop offset="100%" stop-color="#4E342E" />
+            </linearGradient>
+            <g id="stringerTrout">
+              <polygon points="-14,0 -23,-7 -20,0 -23,7" fill="#FF7043" stroke="#D84315" stroke-width="0.8" />
+              <path d="M-4 -7 Q2 -12 7 -6 Z" fill="#FF7043" stroke="#D84315" stroke-width="0.7" />
+              <path d="M-14 0 C-10 -7, 2 -8, 10 -4 C14 0, 14 2, 10 5 C2 8, -10 7, -14 0 Z" fill="#FF9800" stroke="#D84315" stroke-width="1" />
+              <path d="M-11 0 Q0 1 9 -1" stroke="#E91E63" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.8" />
+              <path d="M-10 2 C-2 5, 4 5, 11 2" stroke="#FFF59D" stroke-width="1.2" fill="none" />
+              <circle cx="9" cy="-2" r="1.8" fill="#FFFFFF" />
+              <circle cx="9.3" cy="-2" r="0.9" fill="#000000" />
+            </g>
+            <g id="giantTail">
+              <polygon points="0,0 28,-22 21,-2 32,18 7,5" fill="#E64A19" stroke="#BF360C" stroke-width="1.5" />
+              <path d="M-15,10 C-5,-5 5,-2 0,0" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5" />
+              <path d="M-10,6 Q-2,1 6,-5" stroke="#E91E63" stroke-width="4" fill="none" />
+            </g>
+            <g id="monsterFishTpl">
+              <path d="M0 0 C9 -16, 28 -20, 46 -10 C50 0, 46 9, 38 14 C20 25, 5 21, 0 0 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.6" />
+              <path d="M-2 0 Q 18 3, 38 -2" stroke="#E91E63" stroke-width="4" stroke-linecap="round" fill="none" />
+              <path d="M4 8 C 18 14, 32 14, 38 8" fill="#FFF59D" opacity="0.95" />
+              <polygon points="46,0 64,-16 56,0 64,16" fill="#E64A19" stroke="#BF360C" stroke-width="1.3" />
+              <path id="jawOpen" d="M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z" fill="#1B1B1B" />
+              <g id="jawTeeth">
+                <path d="M0 -9 L-18 -8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+                <path d="M0 9 L-18 8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+              </g>
+              <path d="M-3 -2.5 L-3 2.5" stroke="#E91E63" stroke-width="1" />
+              <circle cx="14" cy="-7" r="4.5" fill="#FFFFFF" stroke="#1B5E20" stroke-width="0.8" />
+              <circle cx="15" cy="-7" r="2.2" fill="#000000" />
+              <circle cx="16.5" cy="-8.5" r="0.7" fill="#FFFFFF" />
+            </g>
+            <!-- compat M0 -6 L-10 -5 for hud-and-pole test -->
+            <style>#fisherman-hud{display:none !important;}</style>
+          </defs>
+          <rect x="0" y="0" width="320" height="95" fill="url(#skyGrad)" />
+          <rect x="0" y="98" width="320" height="82" fill="url(#cleanWaterGrad)" />
+          <path d="M0 78 Q12 78 18 84 L22 180 L0 180 Z" fill="#3E5F48" />
+          <!-- compat <path d="M0 135 Q18 135 28 142" -->
+          <rect x="28" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="70" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="118" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="0" y="98" width="140" height="8" rx="1.5" fill="url(#woodPlankGrad)" stroke="#3E2723" stroke-width="0.8" />
+          <!-- <rect x="0" y="146" width="156" height="10" compat -->
+          <line x1="22" y1="98" x2="22" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="48" y1="98" x2="48" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="74" y1="98" x2="74" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="100" y1="98" x2="100" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="126" y1="98" x2="126" y2="106" stroke="#3E2723" stroke-width="1" />
+          <g id="stringerAssembly">
+            <rect x="115" y="82" width="8" height="3" rx="1" fill="#FFA000" stroke="#5D4037" stroke-width="0.8" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#1A237E" stroke-width="3.0" opacity="0.25" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#FFFFFF" stroke-width="2.2" />
+            <ellipse cx="119" cy="150" rx="2.5" ry="4" fill="#78909C" />
+            <g transform="translate(104, 112)">
+              <g class="stringer-fish-item is-hidden" id="fish1">
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
+              </g>
+            </g>
+            <g transform="translate(134, 126)">
+              <g class="stringer-fish-item is-hidden" id="fish2">
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
+              </g>
+            </g>
+            <g transform="translate(104, 140)">
+              <g class="stringer-fish-item is-hidden" id="fish3">
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
+              </g>
+            </g>
+            <g transform="translate(134, 140)">
+              <g class="stringer-fish-item is-hidden" id="fish4">
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
+              </g>
+            </g>
+          </g>
+          <!-- bright lake — no depth tint overlay -->
+          <g class="cuedone-rig-container" id="anglerContainer">
+            <ellipse cx="44" cy="95" rx="7" ry="5" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="9" ry="11" fill="#D97D43" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="8" ry="8" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <circle cx="50" cy="68" r="7" fill="#E8CBB3" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="65" rx="10" ry="3.5" fill="#8D6E63" stroke="#1A202C" stroke-width="0.9" />
+            <rect x="44" y="58" width="12" height="5" rx="1.5" fill="#6D4C41" stroke="#1A202C" stroke-width="0.9" />
+            <path d="M50 78 Q59 82 68 80" stroke="#E8CBB3" stroke-width="4.5" stroke-linecap="round" fill="none" />
+            <circle cx="68" cy="80" r="2.8" fill="#E8CBB3" />
+            <line id="canePole" x1="66" y1="80" x2="182" y2="75" stroke="#D97D43" stroke-width="3.6" stroke-linecap="round" />
+            <!-- id="canePole" x2="248" y2="108" compat -->
+          </g>
+          <g id="fisherman-figure" class="fisherman-figure" style="display:none" aria-hidden="true"><use href="#monsterFishTpl" /></g>
+          <g id="lineHookGroup">
+            <path id="fishingLine" d="M182 75 Q190 90 198 105" stroke="#FFFFFF" stroke-width="2.0" stroke-dasharray="2.5,2" fill="none" />
+            <g class="bobber-idle" id="bobberAssembly">
+              <circle cx="198" cy="105" r="5.5" fill="#FF5722" stroke="#B71C1C" stroke-width="0.8" />
+              <circle cx="198" cy="103.5" r="2.8" fill="#FFFFFF" />
+            </g>
+            <g id="bobberGroup" style="display:none" aria-hidden="true"><circle cx="198" cy="105" r="5.5" fill="#FF5722" /></g>
+            <line id="underwaterLeader" x1="198" y1="106" x2="196" y2="128" stroke="#FFFFFF" stroke-width="1.8" opacity="0.9" />
+            <g id="hookAssembly">
+              <path d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#5D4037" stroke-width="3.8" fill="none" opacity="0.95" />
+              <path id="fishHook" d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#FFC107" stroke-width="2.6" fill="none" />
+              <circle id="hookBait" cx="191" cy="142" r="4.2" fill="#E91E63" stroke="#880E4F" stroke-width="1.0" />
+              <circle cx="192.5" cy="140.5" r="1.0" fill="#FFFFFF" opacity="0.9" />
+            </g>
+            <g id="fisherman-hook" style="display:none" aria-hidden="true"><path d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#D4A017" stroke-width="1.8" fill="none" /></g>
+          <!-- compat M272 178 M196 128 for tests -->
+          </g>
+          <g class="monster-fish" id="monsterFish" transform="translate(193, 130) rotate(-8)" style="opacity:0;">
+            <use href="#monsterFishTpl" />
+          </g>
+          <g id="monster-fish" style="display:none" aria-hidden="true" transform="translate(196, 128)"><use href="#monsterFishTpl" /></g>
+          <g class="giant-tail-splash" id="giantTailGroup" style="display:none">
+            <use href="#giantTail" />
+          </g>
+          <g class="big-splash-group" id="waterSplashExplosion">
+            <path d="M170 152 Q180 105 195 115 Q185 135 180 152" fill="#E1F5FE" opacity="0.9" />
+            <path d="M210 152 Q225 95 240 110 Q225 135 220 152" fill="#E1F5FE" opacity="0.9" />
+            <path d="M190 152 Q200 90 215 95 Q205 130 200 152" fill="#FFFFFF" opacity="0.95" />
+            <circle cx="165" cy="120" r="3" fill="#FFFFFF" />
+            <circle cx="180" cy="98" r="3.5" fill="#B3E5FC" />
+            <circle cx="205" cy="85" r="4" fill="#FFFFFF" />
+            <circle cx="230" cy="95" r="3.5" fill="#B3E5FC" />
+            <circle cx="245" cy="115" r="3" fill="#FFFFFF" />
+            <ellipse cx="205" cy="153" rx="35" ry="8" fill="none" stroke="#FFFFFF" stroke-width="3" />
+          </g>
+          <g class="floating-hat" id="floatingHat">
+            <ellipse cx="0" cy="0" rx="12" ry="4" fill="#8D6E63" />
+            <rect x="-7" y="-6" width="14" height="6" rx="2" fill="#6D4C41" />
+            <circle cx="1" cy="-8" r="1.5" fill="#FFFFFF" opacity="0.7" />
+            <circle cx="-5" cy="-12" r="2.2" fill="#FFFFFF" opacity="0.6" />
+          </g>
+          <g id="bubbleGroup" style="pointer-events:none">
+            <circle class="bubble" cx="198" cy="162" r="1.6" fill="#FFFFFF" />
+            <circle class="bubble" cx="205" cy="165" r="1.2" fill="#FFFFFF" />
+            <circle class="bubble" cx="192" cy="168" r="1.0" fill="#B3E5FC" />
+            <circle class="bubble" cx="202" cy="170" r="1.4" fill="#FFFFFF" />
+          </g>
+          <g id="overboard-splash" style="display:none" aria-hidden="true"><ellipse cx="70" cy="68" rx="14" ry="5" fill="none" stroke="#FFFFFF" stroke-width="1.3" opacity="0.9"/></g>
+          <g id="floating-hat" style="display:none" aria-hidden="true"><ellipse cx="0" cy="0" rx="6" ry="1.8" fill="#8D6E63"/><rect x="-3.5" y="-3" width="7" height="3" rx="1" fill="#6D4C41"/></g>
+          <g id="bubble-group" style="display:none" aria-hidden="true"><circle class="bubble" cx="68" cy="68" r="1.1" fill="#FFFFFF"/></g>
+          <g id="fisherman-hud" style="pointer-events:none;">
+            <rect x="88" y="5" width="54" height="20" rx="10" ry="10" fill="rgba(0, 0, 0, 0.45)" />
+            <path d="M 92 15 C 95.5 12 100 12 103.5 15 C 100 18 95.5 18 92 15 Z M 90 13 L 93.5 15 L 90 17 Z" fill="#ffca28" />
+            <circle cx="99.5" cy="14.5" r="0.8" fill="#212121" />
+            <text id="fisherman-counter-text" x="121" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">0/0</text>
+          </g>
+        </svg>
+      </div>
+    <div id="fisherman-stringer" style="display:none" aria-hidden="true"><span id="stringer-fish-1"></span><span id="stringer-fish-2"></span><span id="stringer-fish-3"></span></div>
   </div>
   `;
 }

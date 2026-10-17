@@ -143,11 +143,17 @@
       70% { transform: translate(195px, 151px) rotate(6deg); }
       100% { opacity: 1; transform: translate(195px, 150px) rotate(0deg); }
     }
+    @keyframes hatFloatBob {
+      0% { opacity: 0; transform: translate(140px, 135px) scale(0.6); }
+      40% { opacity: 1; transform: translate(165px, 105px) scale(1) rotate(-8deg); }
+      70% { transform: translate(165px, 105px) rotate(6deg); }
+      100% { opacity: 1; transform: translate(165px, 105px) rotate(0deg); }
+    }
     .floating-hat {
       opacity: 0;
     }
     .floating-hat.show-hat {
-      animation: hatFloat 1.2s ease-out 0.85s forwards;
+      animation: hatFloatBob 1.2s ease-out 0.85s forwards;
     }
 
     /* Big Water Splash Explosion — geyser for Beat 3 */
@@ -179,19 +185,19 @@
       animation: fishTailSlap 1.2s ease-out 0.35s forwards;
     }
 
-    /* Monster Fish — 3-beat finale: mouth at (0,0) locked to hook (272,178) — no flash */
+    /* Monster Fish — 3-beat finale: mouth at (0,0) locked to hook 212,120 — no flash */
     @keyframes monsterSurface {
-      0% { opacity: 0; transform: translate(300px, 172px) scale(0.72) rotate(-8deg); }
-      100% { opacity: 1; transform: translate(272px, 178px) scale(1) rotate(0deg); }
+      0% { opacity: 0; transform: translate(280px, 140px) scale(0.72) rotate(-8deg); }
+      100% { opacity: 1; transform: translate(212px, 120px) scale(1) rotate(0deg); }
     }
     @keyframes monsterBite {
-      0% { transform: translate(272px, 178px) scale(1) rotate(0deg); }
-      30% { transform: translate(272px, 178px) scale(1.09) rotate(3deg); }
-      100% { transform: translate(272px, 178px) scale(1) rotate(0deg); }
+      0% { transform: translate(212px, 120px) scale(1) rotate(0deg); }
+      30% { transform: translate(212px, 120px) scale(1.09) rotate(3deg); }
+      100% { transform: translate(212px, 120px) scale(1) rotate(0deg); }
     }
     @keyframes monsterDiveLocked {
-      0% { transform: translate(272px, 178px) scale(1) rotate(0deg); opacity:1; }
-      100% { transform: translate(218px, 210px) scale(0.88) rotate(58deg); opacity:1; }
+      0% { transform: translate(212px, 120px) scale(1) rotate(0deg); opacity:1; }
+      100% { transform: translate(240px, 165px) scale(0.88) rotate(58deg); opacity:1; }
     }
     .monster-fish {
       opacity: 0; visibility: hidden;
@@ -258,13 +264,16 @@
       </div>
 
       <div class="stage-wrapper">
-        <svg class="fisherman-stage" viewBox="0 0 400 225">
+        <svg class="fisherman-stage" viewBox="0 0 320 180">
           <defs>
             <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="1">
               <stop offset="0%" stop-color="#EBF4F6" /><stop offset="100%" stop-color="#DAE9EC" />
             </linearGradient>
             <linearGradient id="blueWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
-              <stop offset="0%" stop-color="#1E88E5" /><stop offset="60%" stop-color="#1565C0" /><stop offset="100%" stop-color="#0D47A1" />
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
+            </linearGradient>
+            <linearGradient id="cleanWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
             </linearGradient>
             <linearGradient id="woodPlankGrad" x1="0%" y1="0%" x2="0%" y2="1">
               <stop offset="0%" stop-color="#6D4C41" /><stop offset="100%" stop-color="#4E342E" />
@@ -295,137 +304,137 @@
               <path d="M-10,6 Q-2,1 6,-5" stroke="#E91E63" stroke-width="4" fill="none" />
             </g>
 
-            <!-- Monster Fish — MOUTH at local (0,0) so jaws lock directly onto hook at 272,178 -->
+            <!-- Monster Fish — 88px long, 38px girth, jaws 18px — mouth at (0,0) — large -->
             <g id="monsterFishTpl">
-              <!-- Body extends right from mouth (0,0) — tail to east, head west facing hook -->
-              <path d="M0 0 C6 -11, 18 -13, 26 -6 C28 0, 26 4, 22 7 C12 12, 2 10, 0 0 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.4" />
+              <!-- Body 88px long, 38px girth -->
+              <path d="M0 0 C9 -16, 28 -20, 46 -10 C50 0, 46 9, 38 14 C20 25, 5 21, 0 0 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.6" />
               <!-- Rainbow stripe -->
-              <path d="M-2 0 Q 10 2, 22 -1" stroke="#E91E63" stroke-width="3.0" stroke-linecap="round" fill="none" />
+              <path d="M-2 0 Q 18 3, 38 -2" stroke="#E91E63" stroke-width="4" stroke-linecap="round" fill="none" />
               <!-- Belly -->
-              <path d="M2 4 C 10 7, 18 7, 22 4" fill="#FFF59D" opacity="0.95" />
+              <path d="M4 8 C 18 14, 32 14, 38 8" fill="#FFF59D" opacity="0.95" />
               <!-- Tail on right (east) -->
-              <polygon points="26,0 36,-10 32,0 36,10" fill="#E64A19" stroke="#BF360C" stroke-width="1.1" />
-              <!-- Head / open jaws AT (0,0) — chomps hook -->
-              <path d="M0 -6 L-10 -5 L-6 0 L-10 5 L0 6 Z" fill="#1B1B1B" />
-              <path d="M0 -6 L-10 -5 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
-              <path d="M0 6 L-10 5 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
-              <path d="M-2 -1.5 L-2 1.5" stroke="#E91E63" stroke-width="0.8" />
+              <polygon points="46,0 64,-16 56,0 64,16" fill="#E64A19" stroke="#BF360C" stroke-width="1.3" />
+              <!-- Head / large gaping jaws 18px AT (0,0) — chomps hook -->
+              <path id="jawOpen" d="M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z" fill="#1B1B1B" />
+              <g id="jawTeeth">
+                <path d="M0 -9 L-18 -8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+                <path d="M0 9 L-18 8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+              </g>
+              <path d="M-3 -2.5 L-3 2.5" stroke="#E91E63" stroke-width="1" />
               <!-- Eye clearly visible just behind jaws -->
-              <circle cx="8" cy="-4.2" r="3.0" fill="#FFFFFF" stroke="#1B5E20" stroke-width="0.7" />
-              <circle cx="9" cy="-4.2" r="1.5" fill="#000000" />
-              <circle cx="9.7" cy="-4.9" r="0.45" fill="#FFFFFF" />
+              <circle cx="14" cy="-7" r="4.5" fill="#FFFFFF" stroke="#1B5E20" stroke-width="0.8" />
+              <circle cx="15" cy="-7" r="2.2" fill="#000000" />
+              <circle cx="16.5" cy="-8.5" r="0.7" fill="#FFFFFF" />
             </g>
           </defs>
 
-          <!-- Sky & Blue Water Body -->
-          <rect x="0" y="0" width="400" height="150" fill="url(#skyGrad)" />
-          <rect x="0" y="150" width="400" height="75" fill="url(#blueWaterGrad)" />
-          <line x1="0" y1="150" x2="400" y2="150" stroke="#90CAF9" stroke-width="1.5" />
+          <!-- Single continuous water rect 0,105 320x120 cleanWaterGrad — no seam -->
+          <rect x="0" y="0" width="320" height="95" fill="url(#skyGrad)" />
+          <rect x="0" y="105" width="320" height="120" fill="url(#cleanWaterGrad)" />
 
-          <!-- Grassy Shoreline Bank on Left (x=0) -->
-          <path d="M0 135 Q18 135 28 142 L32 225 L0 225 Z" fill="#3E5F48" />
+          <!-- Grassy Shoreline Bank on Left (x=0) — elevated -->
+          <path d="M0 78 Q12 78 18 84 L22 180 L0 180 Z" fill="#3E5F48" />
 
-          <!-- Pier Pilings -->
-          <rect x="34" y="152" width="9" height="73" fill="#3E2723" />
-          <rect x="84" y="152" width="9" height="73" fill="#3E2723" />
-          <rect x="142" y="152" width="9" height="73" fill="#3E2723" />
+          <!-- Pier Pilings — y=104 to 180 continuous -->
+          <rect x="28" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="70" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="118" y="104" width="9" height="76" fill="#3E2723" />
 
-          <!-- Continuous Pier Deck from Left (x=0) -->
-          <rect x="0" y="146" width="156" height="10" rx="1.5" fill="url(#woodPlankGrad)" stroke="#3E2723" stroke-width="0.8" />
-          <line x1="28" y1="146" x2="28" y2="156" stroke="#3E2723" stroke-width="1" />
-          <line x1="58" y1="146" x2="58" y2="156" stroke="#3E2723" stroke-width="1" />
-          <line x1="88" y1="146" x2="88" y2="156" stroke="#3E2723" stroke-width="1" />
-          <line x1="118" y1="146" x2="118" y2="156" stroke="#3E2723" stroke-width="1" />
-          <line x1="148" y1="146" x2="148" y2="156" stroke="#3E2723" stroke-width="1" />
+          <!-- Dock deck y=98 to 106 — fisherman sits ON TOP -->
+          <rect x="0" y="98" width="140" height="8" rx="1.5" fill="url(#woodPlankGrad)" stroke="#3E2723" stroke-width="0.8" />
+          <line x1="22" y1="98" x2="22" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="48" y1="98" x2="48" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="74" y1="98" x2="74" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="100" y1="98" x2="100" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="126" y1="98" x2="126" y2="106" stroke="#3E2723" stroke-width="1" />
 
-          <!-- ==================== UNDERWATER STRINGER LINE ==================== -->
-          <!-- Cord tied to cleat at 135, hanging down with caught fish -->
+          <!-- ==================== UNDERWATER STRINGER LINE — y=112,126,140 slightly smaller -->
+          <!-- Cord tied to cleat at deck 83, hanging into deep water -->
           <g id="stringerAssembly">
-            <rect x="131" y="145" width="8" height="3" rx="1" fill="#FFA000" stroke="#5D4037" stroke-width="0.8" />
-            <line x1="135" y1="148" x2="135" y2="216" stroke="#E0E0E0" stroke-width="1.3" />
-            <ellipse cx="135" cy="216" rx="2.5" ry="4" fill="#78909C" />
+            <rect x="115" y="82" width="8" height="3" rx="1" fill="#FFA000" stroke="#5D4037" stroke-width="0.8" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#1A237E" stroke-width="3.0" opacity="0.25" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#FFFFFF" stroke-width="2.2" />
+            <ellipse cx="119" cy="150" rx="2.5" ry="4" fill="#78909C" />
 
-            <!-- Fish 1 (Depth 168) -->
-            <g transform="translate(120, 168)">
+            <!-- Fish 1 (Depth 112) — slightly smaller -->
+            <g transform="translate(104, 112)">
               <g class="stringer-fish-item is-hidden" id="fish1">
-                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="0.9" stroke-dasharray="1.5,1.5" />
-                <use href="#stringerTrout" />
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
               </g>
             </g>
 
-            <!-- Fish 2 (Depth 182, flipped facing right) -->
-            <g transform="translate(150, 182)">
+            <!-- Fish 2 (Depth 126) — slightly smaller -->
+            <g transform="translate(134, 126)">
               <g class="stringer-fish-item is-hidden" id="fish2">
-                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="0.9" stroke-dasharray="1.5,1.5" />
-                <use href="#stringerTrout" transform="scale(-1, 1)" />
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
               </g>
             </g>
 
-            <!-- Fish 3 (Depth 196) -->
-            <g transform="translate(120, 196)">
+            <!-- Fish 3 (Depth 140) — slightly smaller -->
+            <g transform="translate(104, 140)">
               <g class="stringer-fish-item is-hidden" id="fish3">
-                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="0.9" stroke-dasharray="1.5,1.5" />
-                <use href="#stringerTrout" />
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
               </g>
             </g>
 
-            <!-- Fish 4 (Depth 210, flipped) -->
-            <g transform="translate(150, 210)">
+            <!-- Fish 4 (Depth 140 duplicate, hidden) -->
+            <g transform="translate(134, 140)">
               <g class="stringer-fish-item is-hidden" id="fish4">
-                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="0.9" stroke-dasharray="1.5,1.5" />
-                <use href="#stringerTrout" transform="scale(-1, 1)" />
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
               </g>
             </g>
           </g>
 
-          <!-- Water depth tint over stringer to sit naturally submerged -->
-          <rect x="0" y="150" width="400" height="75" fill="#0D47A1" opacity="0.22" style="pointer-events: none;" />
+          <!-- Water depth tint removed for bright clear lake -->
 
           <!-- ==================== FISHERMAN IN OVERALLS ==================== -->
           <!-- Unified container centered at dock plank x=75, y=146 -->
           <g class="cuedone-rig-container" id="anglerContainer">
-            <!-- Legs sitting on dock -->
-            <rect x="68" y="143" width="20" height="7" rx="2" fill="#263238" />
-            <!-- Shirt & Denim Overalls -->
-            <ellipse cx="74" cy="134" rx="11" ry="13" fill="#D97D43" />
-            <ellipse cx="74" cy="137" rx="10" ry="10" fill="#37474F" />
-            <line x1="68" y1="126" x2="70" y2="138" stroke="#37474F" stroke-width="3.2" stroke-linecap="round" />
-            <line x1="78" y1="126" x2="76" y2="138" stroke="#37474F" stroke-width="3.2" stroke-linecap="round" />
-            <circle cx="70" cy="130" r="1.5" fill="#FFCA28" />
-            <circle cx="76" cy="130" r="1.5" fill="#FFCA28" />
-            <!-- Head & Hat -->
-            <circle cx="75" cy="110" r="8.5" fill="#E8CBB3" />
-            <rect x="68" y="101" width="14" height="6" rx="2" fill="#6D4C41" />
-            <ellipse cx="75" cy="107" rx="12" ry="4" fill="#8D6E63" />
-            <!-- Arm firmly holding pole -->
-            <path d="M74 126 Q84 130 94 126" stroke="#E8CBB3" stroke-width="5" stroke-linecap="round" fill="none" />
-            <circle cx="94" cy="126" r="3" fill="#E8CBB3" />
-            <!-- Cane Fishing Pole (Dynamic line modified in JS for strikes & resting) -->
-            <line id="canePole" x1="90" y1="128" x2="250" y2="102" stroke="#D97D43" stroke-width="3.2" stroke-linecap="round" />
+            <!-- Fisherman sits ON TOP of deck y98-106 — rump 44,95 torso 50,86 head 50,68 hat 50,65 — bold outline -->
+            <ellipse cx="44" cy="95" rx="7" ry="5" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="9" ry="11" fill="#D97D43" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="8" ry="8" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <circle cx="50" cy="68" r="7" fill="#E8CBB3" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="65" rx="10" ry="3.5" fill="#8D6E63" stroke="#1A202C" stroke-width="0.9" />
+            <rect x="44" y="58" width="12" height="5" rx="1.5" fill="#6D4C41" stroke="#1A202C" stroke-width="0.9" />
+            <!-- Arm normal proportion: M50 78 Q59 82 68 80 hand 68,80 -->
+            <path d="M50 78 Q59 82 68 80" stroke="#E8CBB3" stroke-width="4.5" stroke-linecap="round" fill="none" />
+            <circle cx="68" cy="80" r="2.8" fill="#E8CBB3" />
+            <!-- Cane pole base pinned at hand 66,80 resting tip 182,75 sw3.6 bold -->
+            <line id="canePole" x1="66" y1="80" x2="182" y2="75" stroke="#D97D43" stroke-width="3.6" stroke-linecap="round" />
           </g>
 
-          <!-- ==================== FISHING LINE, BOBBER & HOOK ==================== -->
+          <!-- ==================== FISHING LINE, BOBBER & HOOK — balanced 320x180 -->
           <g id="lineHookGroup">
-            <!-- Line from rod tip down to bobber -->
-            <path id="fishingLine" d="M250 102 Q265 125 280 152" stroke="#FFFFFF" stroke-width="1.2" stroke-dasharray="2.5,2" fill="none" />
+            <!-- Line from rod tip 182,75 down to bobber on water line 198,105 -->
+            <path id="fishingLine" d="M182 75 Q190 90 198 105" stroke="#FFFFFF" stroke-width="2.0" stroke-dasharray="2.5,2" fill="none" />
             
-            <!-- Dual-tone Bobber at water surface -->
-            <g class="bobber-idle" id="bobberGroup">
-              <circle cx="280" cy="151.5" r="4.2" fill="#FF5722" />
-              <circle cx="280" cy="150" r="2.2" fill="#FFFFFF" />
+            <!-- Bobber floats right on water line at 198,105 r5.5 bold — id bobberAssembly -->
+            <g class="bobber-idle" id="bobberAssembly">
+              <circle cx="198" cy="105" r="5.5" fill="#FF5722" stroke="#B71C1C" stroke-width="0.8" />
+              <circle cx="198" cy="103.5" r="2.8" fill="#FFFFFF" />
             </g>
+            <!-- compat alias for older selectors -->
+            <g id="bobberGroup" style="display:none"></g>
 
-            <!-- Line hanging down from bobber into water to HOOK at 272,178 — brass hook + worm -->
-            <line id="underwaterLeader" x1="280" y1="152" x2="272" y2="178" stroke="#E0E0E0" stroke-width="0.9" opacity="0.8" />
-            <!-- The Hook under water at 272,178 -->
-            <path id="fishHook" d="M272 178 L272 185 Q272 189 268 189 Q264 189 264 184 L264 181" stroke="#D4A017" stroke-width="1.3" fill="none" />
-            <!-- Red worm bait on hook at 272,178 -->
-            <path id="hookBait" d="M268 188 Q266 193 269 196" stroke="#D32F2F" stroke-width="2" stroke-linecap="round" fill="none" />
+            <!-- Submerged line hangs down to hook at 196,128 -->
+            <line id="underwaterLeader" x1="198" y1="106" x2="196" y2="128" stroke="#FFFFFF" stroke-width="1.8" opacity="0.9" />
+            <!-- Hook + worm assembly — enlarged brass hook sw2.6 worm r4.2 -->
+            <g id="hookAssembly">
+              <path d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#5D4037" stroke-width="3.8" fill="none" opacity="0.95" />
+              <path id="fishHook" d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#FFC107" stroke-width="2.6" fill="none" />
+              <circle id="hookBait" cx="191" cy="142" r="4.2" fill="#E91E63" stroke="#880E4F" stroke-width="1.0" />
+              <circle cx="192.5" cy="140.5" r="1.0" fill="#FFFFFF" opacity="0.9" />
+            </g>
           </g>
 
           <!-- ==================== FINALE: 3-BEAT CATCH & OVERBOARD ==================== -->
           <!-- Beat 1 & 2: Monster fish approaches, bites hook at 275,175, then dives bending rod -->
-          <g class="monster-fish" id="monsterFish">
+          <g class="monster-fish" id="monsterFish" transform="translate(196, 128)">
             <use href="#monsterFishTpl" />
           </g>
           <!-- Legacy tail splash (kept hidden, not used in finale) -->
@@ -505,7 +514,8 @@
         this.leader = document.getElementById('underwaterLeader');
         this.hook = document.getElementById('fishHook');
         this.bait = document.getElementById('hookBait');
-        this.bobber = document.getElementById('bobberGroup');
+        this.bobber = document.getElementById('bobberAssembly') || document.getElementById('bobberGroup');
+        this.hookAssembly = document.getElementById('hookAssembly');
 
         this.monster = document.getElementById('monsterFish');
         this.bubbles = document.querySelectorAll('#bubbleGroup .bubble');
@@ -525,11 +535,11 @@
         this.pulledIn = false;
       }
 
-      // Sets resting pole geometry (tip at low 250, 102)
+      // Sets resting pole geometry (tip at low 182,75) — balanced 320x180
       setRestingPose() {
-        this.pole.setAttribute('x2', '250');
-        this.pole.setAttribute('y2', '102');
-        this.line.setAttribute('d', 'M250 102 Q265 125 280 152');
+        this.pole.setAttribute('x2', '182');
+        this.pole.setAttribute('y2', '75');
+        this.line.setAttribute('d', 'M182 75 Q190 90 198 105');
         this.line.style.opacity = '1';
         this.bobber.style.opacity = '1';
         this.leader.style.opacity = '0.8';
@@ -537,15 +547,15 @@
         this.bait.style.opacity = '1';
       }
 
-      // Hookset strike: Rod tip bends UP high to (245, 45) for realistic action!
+      // Hookset strike: ONLY pole tip moves to (165,30) — hand pinned at (66,80)
       performStrike(callback) {
         if (this.isStriking || this.pulledIn) return;
         this.isStriking = true;
 
-        // Rapid strike up high!
-        this.pole.setAttribute('x2', '245');
-        this.pole.setAttribute('y2', '42');
-        this.line.setAttribute('d', 'M245 42 Q262 95 280 152');
+        // Rapid strike up high — only tip moves, hand stays pinned at 66,80!
+        this.pole.setAttribute('x2', '165');
+        this.pole.setAttribute('y2', '30');
+        this.line.setAttribute('d', 'M165 30 Q180 65 198 105');
         this.bobber.style.transform = 'translateY(-4px)';
 
         // Hold strike tension for 400ms, then return down as caught fish lands on stringer
@@ -557,55 +567,49 @@
         }, 550);
       }
 
-      // 100% Finale — 3 distinct beats, mouth locked to hook (272,178), no flash, locked dive
+      // 100% Finale — 3 distinct beats, mouth locked to hook (272,178), no flash, locked dive — 800ms bite, 1600ms splash
       triggerPulledInFinale() {
         if (this.pulledIn) return;
         this.pulledIn = true;
 
-        // Beat 1 (0-1100ms): Monster surfaces directly next to hook with open jaws at 272,178 — mouth at (0,0)
-        this.statusText.textContent = "Beat 1: Monster surfaces at hook (272,178) — jaws open…";
+        // Beat 1 (0-800ms): Monster surfaces directly next to hook with open jaws at 196,128 — mouth at (0,0) — hook/bobber STAY VISIBLE until 800ms
+        this.statusText.textContent = "Beat 1: Monster surfaces at hook (196,128) — jaws open…";
         this.monster.classList.remove('biting','diving','surfacing');
         this.monster.style.visibility='visible'; this.monster.style.opacity='1';
         void this.monster.offsetWidth;
         this.monster.classList.add('surfacing');
-        this.leader.setAttribute('x2','272'); this.leader.setAttribute('y2','178');
-        this.hook.setAttribute('d','M272 178 L272 185 Q272 189 268 189 Q264 189 264 184 L264 181');
+        this.leader.setAttribute('x2','196'); this.leader.setAttribute('y2','128');
+        this.hook.setAttribute('d','M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131'); // compat M272 178
         this.hook.style.opacity='1'; this.bait.style.opacity='1';
+        if (this.hookAssembly) this.hookAssembly.style.opacity='1';
         this.bobber.classList.remove('bobber-dragged');
         this.bobber.classList.add('bobber-idle');
-        this.bobber.style.opacity='1';
+        this.bobber.style.opacity='1'; this.bobber.style.display=''; this.bobber.style.transform='translateY(0)';
 
         setTimeout(()=>{
-          // Beat 2 (1100-2000ms): Fish bites down hard — hook & worm swallowed (opacity 0), bobber dragged deep, pole bends, line stays into mouth
+          // Beat 2 (800ms): Fish bites down — jaws clamp, hook & worm swallowed, bobber pulled deep out of frame
           this.statusText.textContent = "Beat 2: CHOMP! Jaws lock on hook — swallowed, bobber dragged deep, pole bends…";
-          // Keep fish visible constant — no opacity flicker
           this.monster.classList.add('biting');
-          // Hook and worm disappear inside closed mouth
           this.hook.style.opacity='0';
           this.bait.style.opacity='0';
-          // After bite, transition to locked dive where line stays into mouth while hook stays swallowed
-          setTimeout(()=> {
-            this.monster.classList.remove('surfacing','biting'); void this.monster.offsetWidth; this.monster.classList.add('diving');
-            // Locked dive: keep hook/bait hidden (swallowed), line intact from bobber straight into fish mouth (272,178 -> dive)
-            this.bobber.classList.remove('bobber-idle'); void this.bobber.offsetWidth; this.bobber.classList.add('bobber-dragged');
-            this.pole.setAttribute('x2','252'); this.pole.setAttribute('y2','132');
-            this.line.setAttribute('d','M252 132 L280 155');
-            // Keep leader straight from bobber into mouth — mouth now dives, so leader follows fish
-            this.leader.style.opacity='0.85';
-            this.leader.setAttribute('x2','272'); this.leader.setAttribute('y2','192');
-            // Hook stays hidden inside mouth during dive
-            this.bobber.style.transform = 'translateY(14px)';
-          }, 550);
-        }, 1100);
+          if (this.hookAssembly) this.hookAssembly.style.opacity='0';
+          this.monster.classList.remove('surfacing','biting'); void this.monster.offsetWidth; this.monster.classList.add('diving');
+          this.bobber.classList.remove('bobber-idle'); void this.bobber.offsetWidth; this.bobber.classList.add('bobber-dragged');
+          this.pole.setAttribute('x2','182'); this.pole.setAttribute('y2','75');
+          this.line.setAttribute('d','M182 75 Q190 90 198 105');
+          this.leader.style.opacity='0.85';
+          this.leader.setAttribute('x2','196'); this.leader.setAttribute('y2','140');
+          this.bobber.style.transform = 'translate(10px, 50px)';
+        }, 800);
 
         setTimeout(()=>{
-          // Beat 3 (2100ms+): Fisherman gets pulled head-first off dock planks with geyser splash
+          // Beat 3 (1600ms): Fisherman gets pulled head-first off dock planks with geyser splash — bobber removed completely
           this.statusText.textContent = "Beat 3: Yanked head-first off the dock — geyser splash!";
           this.angler.classList.add('angler-pulled-in');
           this.line.style.opacity='0'; this.leader.style.opacity='0'; this.hook.style.opacity='0'; this.bait.style.opacity='0';
-          this.bobber.style.opacity='0';
+          this.bobber.style.opacity='0'; this.bobber.style.display='none';
           this.splash.classList.remove('exploding'); void this.splash.offsetWidth; this.splash.classList.add('exploding');
-        }, 2150);
+        }, 1600);
 
         setTimeout(()=>{
           // Punchline: fisherman, fish, and line disappear underwater, bubbles rise, hat floats peacefully alone
