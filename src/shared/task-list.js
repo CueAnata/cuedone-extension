@@ -912,8 +912,18 @@ async function mountTaskList(root) {
       ? coffeeLevels 
       : (p) => ({ carafe: Math.max(0, 100 - p * 100), mug: Math.min(100, p * 100) });
     const { carafe, mug } = levelsCalc(progress);
+    const steaming = typeof isSteaming === 'function' 
+      ? isSteaming(progress) 
+      : ((Number(progress?.complete) || 0) >= (Number(progress?.total) || 1));
     const pouring = typeof isPouring === 'function' ? isPouring(progress) : false;
-    const steaming = typeof isSteaming === 'function' ? isSteaming(progress) : false;
+    // Ensure the steam SVG paths/container are toggled visible
+    const steamContainer = visualEl.querySelector('.coffee-steam, .steam-group, [data-part="steam"]');
+    if (steamContainer) {
+      steamContainer.style.display = steaming ? 'block' : 'none';
+      steamContainer.style.opacity = steaming ? '1' : '0';
+      steamContainer.classList.toggle('active', steaming);
+      steamContainer.classList.toggle('is-steaming', steaming);
+    }
     const reduced = prefersReducedMotion();
     carafeFill.style.height = `${carafe}%`;
     mugFill.style.height = `${mug}%`;

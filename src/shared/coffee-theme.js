@@ -12,4 +12,11 @@ export function coffeeLevels(progress){
 }
 export const coffeeLevelsLegacy = coffeeLevelsValues;
 export function isPouring(){return false;}
-export function isSteaming(){return false;}
+export function isSteaming(progress) {
+  if (typeof progress === 'number') {
+    return progress >= 1;
+  }
+  const t = Number(progress?.total) || 0;
+  const c = Number(progress?.complete) || 0;
+  return t > 0 && c >= t;
+}
