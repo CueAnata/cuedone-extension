@@ -64,3 +64,21 @@ body.popup-view {
   flex: 1 1 auto !important;
   min-width: 0 !important;
 }
+
+.is-editing #visual-container,
+.is-editing .task-list-visual,
+[data-mode="add-task"] #visual-container,
+[data-mode="add-task"] .task-list-visual,
+#task-input-container.active ~ #visual-container {
+  display: none !important;
+}
+
+.task-input-row,
+#task-input-container {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+#task-input {
+  width: 100% !important;
+}
