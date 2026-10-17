@@ -937,8 +937,9 @@ async function mountTaskList(root) {
 
   connectBreakClockView();
 
+  root.classList.add("task-list-container");
   root.innerHTML = `
-    <div class="task-entry-row">
+    <div class="task-entry-row task-input-row">
       <form class="task-form">
         <label class="sr-only" for="new-task">New task</label>
         <input
@@ -3363,6 +3364,8 @@ async function mountTaskList(root) {
     input.value = "";
     restoreFocus = null;
     await persist(next);
+    root.classList.remove("is-editing");
+    root.removeAttribute("data-mode");
     input.focus();
   });
 
@@ -3410,11 +3413,17 @@ async function mountTaskList(root) {
   });
 
   newListToggle.addEventListener("click", () => {
+    // Robust hiding: set is-editing immediately before any DOM updates to avoid flashing
+    root.classList.add("is-editing");
+    root.dataset.mode = "add-task";
     const opening = newListToggle.getAttribute("aria-expanded") !== "true";
     setCarryoverOpen(opening, { reset: opening });
     if (opening) {
       const firstChoice = carryoverList.querySelector(".carryover-checkbox");
       (firstChoice || createNewListButton).focus();
+    } else {
+      root.classList.remove("is-editing");
+      root.removeAttribute("data-mode");
     }
   });
 
@@ -3440,6 +3449,8 @@ async function mountTaskList(root) {
   });
 
   cancelNewListButton.addEventListener("click", () => {
+    root.classList.remove("is-editing");
+    root.removeAttribute("data-mode");
     setCarryoverOpen(false);
     newListToggle.focus();
   });
@@ -3538,6 +3549,8 @@ async function mountTaskList(root) {
     }
     render();
     applyEntryMode(true);
+    root.classList.remove("is-editing");
+    root.removeAttribute("data-mode");
     saveTaskEntryOpen(true).catch(() => {});
     input.focus();
   });
@@ -3546,15 +3559,22 @@ async function mountTaskList(root) {
     const previous = entryOpen;
     if (await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
       value: false, apply: applyEntryMode, restore: () => applyEntryMode(previous) })) {
+      root.classList.remove("is-editing");
+      root.removeAttribute("data-mode");
       addToggle.focus();
     }
   });
 
   addToggle.addEventListener("click", async () => {
+    root.classList.add("is-editing");
+    root.dataset.mode = "add-task";
     const previous = entryOpen;
     if (await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
       value: true, apply: applyEntryMode, restore: () => applyEntryMode(previous) })) {
       input.focus();
+    } else {
+      root.classList.remove("is-editing");
+      root.removeAttribute("data-mode");
     }
   });
 

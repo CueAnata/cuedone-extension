@@ -43,3 +43,24 @@ body.popup-view {
   background: transparent !important;
   background-color: transparent !important;
 }
+
+/* Robust CSS-driven hiding — prevent flashing side-by-side card during task creation */
+.task-list-container.is-editing .task-list-visual,
+.task-list-container[data-mode="add-task"] .task-list-visual,
+.task-list-container.is-editing .personal-fisherman-visual,
+.task-list-container.is-editing .personal-fisherman-visual--entry,
+.task-list-container.is-editing .personal-plant--entry,
+.task-list-container[data-mode="add-task"] .personal-fisherman-visual,
+.task-list-container[data-mode="add-task"] .personal-fisherman-visual--entry,
+.task-list-container[data-mode="add-task"] .personal-plant--entry {
+  display: none !important;
+}
+.task-input-row {
+  width: 100% !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+.task-input-row input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
