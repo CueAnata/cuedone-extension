@@ -29,24 +29,27 @@ if (shouldRestoreSideFromPopup(preferredView)) {
 
 const clearAllBtn = document.getElementById('clear-all-btn');
 if (clearAllBtn) {
-  clearAllBtn.addEventListener('click', async () => {
+  clearAllBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    // Purge all tasks for the currently active list mode via the exact Create New List workflow
+    if (typeof window._clearAllViaNewList === 'function') {
+      await window._clearAllViaNewList();
+      return;
+    }
+    // Fallback: direct clear if task-list controller not yet mounted (uses identical save path)
     await setLocal({ 
       tasks: [], 
       'cuedone.personalPrivateTasks': [], 
       'cuedone.personalPublicTasks': [] 
     });
-
-    // Re-render the active view with the empty task list
     if (typeof window.mountTopView === 'function') {
       await window.mountTopView();
     } else if (typeof renderTaskList === 'function') {
       await renderTaskList([]);
     } else {
-      // Dispatch storage-change notification so task-list controller redraws
       window.dispatchEvent(new Event('storage'));
       document.dispatchEvent(new CustomEvent('cuedone:tasks-changed', { detail: { tasks: [] } }));
     }
-
     if (window.renderActiveVisualProgress) {
       window.renderActiveVisualProgress();
     }
