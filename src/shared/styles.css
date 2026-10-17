@@ -1457,20 +1457,18 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 }
 
 .constellation-line {
-  stroke: rgba(180,220,255,0.92);
-  stroke-width: 1.6;
-  stroke-linecap: round;
   opacity: 0;
-  filter: drop-shadow(0 0 3px rgba(135,206,250,0.85));
+  transition: opacity 0.3s ease;
+  filter: drop-shadow(0 0 2px rgba(184, 228, 255, 0.8));
 }
 
-.personal-constellation-visual[data-stage="1"] .line--1,
-.personal-constellation-visual[data-stage="2"] .line--1,
-.personal-constellation-visual[data-stage="2"] .line--2,
-.personal-constellation-visual[data-stage="3"] .line--1,
-.personal-constellation-visual[data-stage="3"] .line--2,
-.personal-constellation-visual[data-stage="3"] .line--3,
-.personal-constellation-visual[data-stage="4"] .constellation-line { opacity: 1; }
+/* Reveal handle lines across early stages */
+[data-stage="1"] .line--1,
+[data-stage="2"] .line--1, [data-stage="2"] .line--2,
+[data-stage="3"] .line--1, [data-stage="3"] .line--2, [data-stage="3"] .line--3, [data-stage="3"] .line--4,
+[data-stage="4"] .line--1, [data-stage="4"] .line--2, [data-stage="4"] .line--3, [data-stage="4"] .line--4, [data-stage="4"] .line--5, [data-stage="4"] .line--6, [data-stage="4"] .line--7 {
+  opacity: 0.85 !important;
+}
 
 .constellation-sky::before {
   content: "";

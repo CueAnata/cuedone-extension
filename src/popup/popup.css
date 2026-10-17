@@ -115,3 +115,18 @@ body.popup-view {
   border-radius: 10px;
   display: block;
 }
+
+[data-personal-visual-theme="constellation"] .personal-plant,
+[data-personal-visual-theme="constellation"] .personal-plant--entry {
+  padding: 0 !important;
+  background: #0d1b2a !important;
+  overflow: hidden !important;
+}
+
+[data-personal-visual-theme="constellation"] .personal-constellation-visual,
+[data-personal-visual-theme="constellation"] .constellation-sky {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 105px !important;
+  border-radius: 14px !important;
+}

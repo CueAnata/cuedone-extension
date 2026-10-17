@@ -990,14 +990,14 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-constellation-visual personal-constellation-visual--entry" role="img" aria-label="" hidden>
           <div class="constellation-sky constellation-sky--entry" aria-hidden="true">
-            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="8" y1="26" x2="17" y2="21" class="line--1" />
-              <line x1="17" y1="21" x2="26" y2="23" class="line--2" />
-              <line x1="26" y1="23" x2="35" y2="23" class="line--3" />
-              <line x1="35" y1="23" x2="34" y2="36" class="line--4" />
-              <line x1="34" y1="36" x2="49" y2="37" class="line--5" />
-              <line x1="49" y1="37" x2="51" y2="21" class="line--6" />
-              <line x1="51" y1="21" x2="35" y2="23" class="line--7" />
+            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true" style="overflow: visible;">
+              <line x1="8" y1="26" x2="17" y2="21" class="line--1 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="17" y1="21" x2="26" y2="23" class="line--2 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="26" y1="23" x2="35" y2="23" class="line--3 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="35" y1="23" x2="34" y2="36" class="line--4 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="34" y1="36" x2="49" y2="37" class="line--5 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="49" y1="37" x2="51" y2="21" class="line--6 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="51" y1="21" x2="35" y2="23" class="line--7 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
             </svg>
             <span class="constellation-star star--1" style="left: 12.5%; top: 54.2%;"></span>
             <span class="constellation-star star--2" style="left: 26.5%; top: 43.7%;"></span>
@@ -1642,14 +1642,14 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-constellation-visual" role="img" aria-label="" hidden>
           <div class="constellation-sky" aria-hidden="true">
-            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true">
-              <line x1="8" y1="26" x2="17" y2="21" class="line--1" />
-              <line x1="17" y1="21" x2="26" y2="23" class="line--2" />
-              <line x1="26" y1="23" x2="35" y2="23" class="line--3" />
-              <line x1="35" y1="23" x2="34" y2="36" class="line--4" />
-              <line x1="34" y1="36" x2="49" y2="37" class="line--5" />
-              <line x1="49" y1="37" x2="51" y2="21" class="line--6" />
-              <line x1="51" y1="21" x2="35" y2="23" class="line--7" />
+            <svg class="constellation-lines" viewBox="0 0 64 48" preserveAspectRatio="none" aria-hidden="true" style="overflow: visible;">
+              <line x1="8" y1="26" x2="17" y2="21" class="line--1 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="17" y1="21" x2="26" y2="23" class="line--2 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="26" y1="23" x2="35" y2="23" class="line--3 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="35" y1="23" x2="34" y2="36" class="line--4 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="34" y1="36" x2="49" y2="37" class="line--5 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="49" y1="37" x2="51" y2="21" class="line--6 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
+              <line x1="51" y1="21" x2="35" y2="23" class="line--7 constellation-line" stroke="#b8e4ff" stroke-width="1.2" stroke-linecap="round" />
             </svg>
             <span class="constellation-star star--1" style="left: 12.5%; top: 54.2%;"></span>
             <span class="constellation-star star--2" style="left: 26.5%; top: 43.7%;"></span>
