@@ -82,3 +82,20 @@ body.popup-view {
 #task-input {
   width: 100% !important;
 }
+
+.personal-plant--entry .personal-plant-visual,
+.personal-plant-visual {
+  min-height: 96px !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+.personal-plant-visual svg,
+.personal-plant-visual > * {
+  overflow: visible !important;
+}
+
+.personal-plant-visual[data-bloom="true"] {
+  padding-top: 14px;
+}
