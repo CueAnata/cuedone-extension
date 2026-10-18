@@ -855,7 +855,8 @@ async function mountTaskList(root) {
     // Clamp offset so at full completion the ember sits exactly at the socket
     const clampedOffset = Math.max(0, Math.min(totalLen, offset));
     fuse.style.setProperty("--fuse-length", `${totalLen}px`);
-    fuse.style.setProperty("--fuse-offset", `${clampedOffset}px`);
+    // A negative offset consumes the open tip while retaining the socket end.
+    fuse.style.setProperty("--fuse-offset", `${-clampedOffset}px`);
     if (reduced) {
       fuse.style.transition = "none";
       if (spark) spark.style.transition = "none";
@@ -1015,14 +1016,14 @@ async function mountTaskList(root) {
           <div class="dynamite-scene" aria-hidden="true">
             <div class="bomb-illustration" aria-hidden="true">
               <div class="bomb-body"><div class="bomb-cap"></div></div>
-              <svg class="bomb-fuse-svg" viewBox="0 0 60 28" aria-hidden="true">
+              <svg class="bomb-fuse-svg" viewBox="0 0 64 44" aria-hidden="true">
                 <defs>
                   <radialGradient id="bombSparkGradEntry" cx="35%" cy="30%" r="65%">
                     <stop offset="0%" stop-color="#fff9c4"/><stop offset="35%" stop-color="#ffeb3b"/><stop offset="62%" stop-color="#ff9800"/><stop offset="100%" stop-color="#ff3d00"/>
                   </radialGradient>
                 </defs>
-                <path class="bomb-fuse" d="M52 6 C38 4, 32 16, 30 24" />
-                <path class="bomb-fuse-inner" d="M52 6 C38 4, 32 16, 30 24" />
+                <path class="bomb-fuse" d="M52 12 C42 10, 36 16, 32 24" />
+                <path class="bomb-fuse-inner" d="M52 12 C42 10, 36 16, 32 24" />
                 <g class="bomb-spark-svg" visibility="hidden"><circle r="4.8" fill="url(#bombSparkGradEntry)" stroke="#bf360c" stroke-width="0.6"/><g opacity="0.9" class="bomb-spark-glow"><circle r="8.5" fill="none" stroke="#ffb300" stroke-width="0.9" stroke-dasharray="1.4 2.6" opacity="0.95"/><circle r="10.5" fill="none" stroke="#ff6f00" stroke-width="0.5" stroke-dasharray="1 3" opacity="0.55"/></g></g>
               </svg>
               <div class="bomb-burst"></div>
@@ -1667,14 +1668,14 @@ async function mountTaskList(root) {
           <div class="dynamite-scene" aria-hidden="true">
             <div class="bomb-illustration" aria-hidden="true">
               <div class="bomb-body"><div class="bomb-cap"></div></div>
-              <svg class="bomb-fuse-svg" viewBox="0 0 60 28" aria-hidden="true">
+              <svg class="bomb-fuse-svg" viewBox="0 0 64 44" aria-hidden="true">
                 <defs>
                   <radialGradient id="bombSparkGrad" cx="35%" cy="30%" r="65%">
                     <stop offset="0%" stop-color="#fff9c4"/><stop offset="35%" stop-color="#ffeb3b"/><stop offset="62%" stop-color="#ff9800"/><stop offset="100%" stop-color="#ff3d00"/>
                   </radialGradient>
                 </defs>
-                <path class="bomb-fuse" d="M52 6 C38 4, 32 16, 30 24" />
-                <path class="bomb-fuse-inner" d="M52 6 C38 4, 32 16, 30 24" />
+                <path class="bomb-fuse" d="M52 12 C42 10, 36 16, 32 24" />
+                <path class="bomb-fuse-inner" d="M52 12 C42 10, 36 16, 32 24" />
                 <g class="bomb-spark-svg" visibility="hidden"><circle r="4.8" fill="url(#bombSparkGrad)" stroke="#bf360c" stroke-width="0.6"/><g opacity="0.9" class="bomb-spark-glow"><circle r="8.5" fill="none" stroke="#ffb300" stroke-width="0.9" stroke-dasharray="1.4 2.6" opacity="0.95"/><circle r="10.5" fill="none" stroke="#ff6f00" stroke-width="0.5" stroke-dasharray="1 3" opacity="0.55"/></g></g>
               </svg>
               <div class="bomb-burst"></div>
