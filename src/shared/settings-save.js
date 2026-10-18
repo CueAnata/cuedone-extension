@@ -2,7 +2,7 @@
 export function createSettingsSaver(showError) {
   let pending = Promise.resolve();
   const lastSaved = new Map();
-  return function saveSetting({ save, load, value, apply, restore, commit = apply }) {
+  function saveSetting({ save, load, value, apply, restore, commit = apply }) {
     const operation = pending.then(async () => {
       try {
         await save(value);
@@ -26,5 +26,7 @@ export function createSettingsSaver(showError) {
     });
     pending = operation.catch(() => {});
     return operation;
-  };
+  }
+  saveSetting.flush = () => pending;
+  return saveSetting;
 }

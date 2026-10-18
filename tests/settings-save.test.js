@@ -92,3 +92,19 @@ test("a later failure keeps a successful setting even if rereading storage fails
   assert.equal(await saveSetting({ ...options, value: "off" }), false);
   assert.equal(visible, "on");
 });
+
+test("Settings flush waits for queued explicit Off and false choices", async () => {
+  const gate = deferred();
+  const saved = [];
+  const saver = createSettingsSaver(() => {});
+  const common = {load:async()=>null,apply(){},restore(){}};
+  saver({...common,value:"off",save:async value=>{await gate.promise;saved.push(value);}});
+  saver({...common,value:false,save:async value=>saved.push(value)});
+  let finished = false;
+  const flush = saver.flush().then(()=>{finished=true;});
+  await Promise.resolve();
+  assert.equal(finished,false);
+  gate.resolve();
+  await flush;
+  assert.deepEqual(saved,["off",false]);
+});

@@ -479,3 +479,9 @@ test("runtime non-final checkbox stays a micro celebration", () => {
   assert.equal(result.isFinal, false);
   assert.equal(result.plan.kind, "micro");
 });
+
+test("Personal allows resetting partial completion while Client keeps its completed-list gate", () => {
+  const tasks=[{...createTask("One",1,"a"),completed:true},createTask("Two",2,"b")];
+  assert.equal(resetListVisible({tasks,presentation:"personal"}),true);
+  assert.equal(resetListVisible({tasks,presentation:"client"}),false);
+});

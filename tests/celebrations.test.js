@@ -7,6 +7,8 @@ import {
   celebrationAudioEnabledForTests,
   clearCelebrationFeedback,
   FINAL_SOUND_ASSETS,
+  FINAL_SOUND_POOL,
+  resolveFinalSound,
   playBreakClockRing,
   playCelebrationSound,
   playTaskSound,
@@ -512,4 +514,30 @@ test("celebration visuals stay out of the shared task model", () => {
   assert.match(css, /\.final-trail-bit\.is-cars/);
   assert.match(css, /\.final-trail-bit\.is-butterflies/);
   assert.equal(css.includes(".final-trail-bit.is-confetti"), false);
+});
+
+test("Random final sound covers every cue uniformly, permitting independent repeats", () => {
+  assert.equal(FINAL_SOUND_POOL.length,12);
+  const selected=FINAL_SOUND_POOL.map((_,i)=>resolveFinalSound("random",()=> (i+.5)/FINAL_SOUND_POOL.length));
+  assert.deepEqual(selected,[...FINAL_SOUND_POOL]);
+  assert.equal(resolveFinalSound("random",()=>.4),resolveFinalSound("random",()=>.4));
+  assert.equal(resolveFinalSound("current"),"current");
+});
+
+test("new final cues are bundled playable WAVs and respect Sound Off", () => {
+  installDom();const audio=installAudio();setCelebrationAudioEnabled(true);
+  for(const name of ["party-horn","whip-crack","cash-register","chiptune-blip","rimshot","jackpot-coins","gong"]) {
+    const bytes=readFileSync(fileURLToPath(FINAL_SOUND_ASSETS[name]));
+    assert.equal(bytes.toString("ascii",0,4),"RIFF");
+    assert.equal(bytes.toString("ascii",8,12),"WAVE");
+    const duration=bytes.readUInt32LE(40)/bytes.readUInt32LE(28);
+    assert.ok(duration>=.4 && duration<=2.5);
+    assert.equal(playCelebrationSound("final",name),true);
+    assert.equal(audio.playedSources().at(-1),FINAL_SOUND_ASSETS[name]);
+  }
+  setCelebrationAudioEnabled(false);
+  const before=audio.htmlPlays();
+  assert.equal(playCelebrationSound("final","random"),false);
+  assert.equal(playCelebrationSound("final","gong"),false);
+  assert.equal(audio.htmlPlays(),before);
 });

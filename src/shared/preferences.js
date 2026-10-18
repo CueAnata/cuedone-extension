@@ -46,6 +46,15 @@ const FINAL_CELEBRATION_VALUES = [
   "butterflies",
 ];
 const FINAL_SOUND_VALUES = [
+  "random",
+  "party-horn",
+  "whip-crack",
+  "cash-register",
+  "chiptune-blip",
+  "rimshot",
+  "jackpot-coins",
+  "gong",
+
   "current",
   "yay",
   "applause",
@@ -95,11 +104,11 @@ export function normalizeFinalCelebration(value) {
 }
 
 export function normalizeFinalSound(value) {
-  return FINAL_SOUND_VALUES.includes(value) ? value : "current";
+  return FINAL_SOUND_VALUES.includes(value) ? value : "random";
 }
 
 export function normalizeTaskSound(value) {
-  return TASK_SOUND_VALUES.includes(value) ? value : "bubble-pop";
+  return TASK_SOUND_VALUES.includes(value) ? value : "random";
 }
 
 export function taskEntryVisibility(isOpen) {
@@ -667,4 +676,27 @@ export function onPersonalRandomThemeChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName === "local" && changes[PERSONAL_RANDOM_THEME_KEY]) callback(changes[PERSONAL_RANDOM_THEME_KEY].newValue ?? {});
   });
+}
+
+
+// Save the full selected Personal settings, including explicit disabled values.
+export function savePersonalSettingsSnapshot(settings) {
+  const values = { [PERSONAL_PRESENTATION_KEY]: normalizePersonalPresentation(settings.presentation) };
+  if (settings.presentation === "private") {
+    Object.assign(values, {
+      [PERSONAL_TASK_LAYOUT_KEY]: normalizePersonalTaskLayout(settings.layout),
+      [PERSONAL_PLANT_THEME_KEY]: normalizePlantTheme(settings.progress),
+      [PERSONAL_VISUAL_THEME_KEY]: normalizeVisualTheme(settings.theme),
+      [PERSONAL_COMPLETION_SOUND_KEY]: normalizeCompletionSound(settings.sound),
+      [PERSONAL_TASK_SOUND_KEY]: normalizeTaskSound(settings.taskSound),
+      [PERSONAL_FINAL_SOUND_KEY]: normalizeFinalSound(settings.finalSound),
+      [PERSONAL_AFFIRMATION_KEY]: normalizeAffirmation(settings.affirmation),
+      [PERSONAL_COMPLETE_MESSAGE_KEY]: normalizeCompleteMessage(settings.completeMessage),
+      [PERSONAL_PAUSE_MESSAGE_KEY]: normalizePauseMessage(settings.pauseMessage),
+      [PERSONAL_BREAK_TIMER_KEY]: normalizeBreakTimerModel(settings.breakTimer),
+      [PERSONAL_BREAK_NOTIFICATIONS_KEY]: normalizePersonalBreakNotifications(settings.notifications),
+    });
+    if (settings.theme === "random") values[PERSONAL_RANDOM_THEME_KEY] = settings.randomTheme;
+  }
+  return setLocal(values);
 }

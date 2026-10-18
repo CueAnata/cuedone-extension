@@ -18,6 +18,14 @@ const MARKS = {
   buddy: "👍",
 };
 export const FINAL_SOUND_ASSETS = Object.freeze({
+  "party-horn": new URL("../../assets/audio/final-party-horn.wav", import.meta.url).href,
+  "whip-crack": new URL("../../assets/audio/final-whip-crack.wav", import.meta.url).href,
+  "cash-register": new URL("../../assets/audio/final-cash-register.wav", import.meta.url).href,
+  "chiptune-blip": new URL("../../assets/audio/final-chiptune-blip.wav", import.meta.url).href,
+  "rimshot": new URL("../../assets/audio/final-rimshot.wav", import.meta.url).href,
+  "jackpot-coins": new URL("../../assets/audio/final-jackpot-coins.wav", import.meta.url).href,
+  "gong": new URL("../../assets/audio/final-gong.wav", import.meta.url).href,
+
   yay: new URL("../../assets/audio/final-yay.mp3", import.meta.url).href,
   applause: new URL("../../assets/audio/final-applause.mp3", import.meta.url)
     .href,
@@ -470,6 +478,12 @@ function playBundledFinalSound(name, token) {
   }
 }
 
+export const FINAL_SOUND_POOL = Object.freeze(["current", ...Object.keys(FINAL_SOUND_ASSETS)]);
+export function resolveFinalSound(name, random = Math.random) {
+  if (name !== "random") return FINAL_SOUND_POOL.includes(name) ? name : "current";
+  return FINAL_SOUND_POOL[Math.max(0, Math.min(FINAL_SOUND_POOL.length - 1, Math.floor(random() * FINAL_SOUND_POOL.length)))];
+}
+
 export function resolveTaskSound(name, random = Math.random) {
   if (name === "none") {
     return null;
@@ -672,6 +686,7 @@ export function playCelebrationSound(
     return playTaskSound(taskSound);
   }
 
+  finalSound = resolveFinalSound(finalSound);
   const token = stopActivePlayback();
   if (kind === "final" && finalSound !== "current") {
     return playBundledFinalSound(finalSound, token);

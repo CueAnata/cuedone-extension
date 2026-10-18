@@ -1,4 +1,7 @@
-import { loadPersonalRandomTheme, savePersonalRandomTheme, onPersonalRandomThemeChanged } from "./preferences.js";
+import { CLIENT_ACTIVITIES, clientActivity, clientActivityIconMarkup } from "./client-activities.js";
+import { normalizeClientSequence, reconcileClientSequence, assignClientSequencePart, clientSequenceState, assignClientPartActivity, assignClientTaskActivity } from "./client-sequence.js";
+import { loadClientSequence, saveClientSequence, onClientSequenceChanged } from "./task-store.js";
+import { savePersonalSettingsSnapshot, loadPersonalRandomTheme, savePersonalRandomTheme, onPersonalRandomThemeChanged } from "./preferences.js";
 import { createVisualThemeSelection } from "./random-visual-theme.js";
 import { visualProgress } from "./progress.js";
 import { createSettingsSaver } from "./settings-save.js";
@@ -258,10 +261,21 @@ async function mountTaskList(root) {
   let pendingSynchronizedKind = null;
   let personalPresentation = "private";
   let personalTaskLayout = "full-list";
+  let clientSequence = normalizeClientSequence();
+  let clientSequenceSaving = false;
+  let openClientActivityPart = null;
+  let openCustomPart = null;
+  let pendingClientSequenceSave = Promise.resolve();
   let personalPlantTheme = "off";
   let personalVisualTheme = "random";
   let visualThemeSelection = createVisualThemeSelection();
   let pendingVisualTheme = null;
+  const pendingPersonalWrites = new Set();
+  function trackPersonalWrite(operation) {
+    pendingPersonalWrites.add(operation);
+    operation.finally(() => pendingPersonalWrites.delete(operation)).catch(() => {});
+    return operation;
+  }
   let personalFullListOpen = false;
   let personalSound = "off";
   let personalTaskSound = "bubble-pop";
@@ -967,6 +981,7 @@ async function mountTaskList(root) {
         />
         <button class="add-button" type="submit">Add</button>
         <button class="done-button" type="button">Done</button>
+        <label class="client-add-part" hidden>Add to <select class="client-add-part-select" aria-label="Part for new tasks"></select></label>
       </form>
       <div class="personal-plant personal-plant--entry" hidden aria-hidden="true">
         <div class="personal-plant-visual personal-plant-visual--entry" role="img" aria-label="" hidden>
@@ -1179,7 +1194,6 @@ async function mountTaskList(root) {
               <option value="fisherman">Fisherman</option>
               <option value="submarine">Submarine</option>
             </select>
-            <button type="button" class="personal-visual-theme-done">Done</button>
           </div>
           <p class="personal-settings-note">
             Plant grows with your progress. Empty shows no plant and adds no finale.
@@ -1217,11 +1231,11 @@ async function mountTaskList(root) {
             </label>
             <div class="personal-task-sound-controls">
               <select id="personal-task-sound" class="personal-task-sound-select">
+                <option value="random">Random</option>
                 <option value="none">None</option>
                 <option value="bubble-pop">Bubble Pop</option>
                 <option value="soft-click">Soft Click</option>
                 <option value="wood-tap">Wood Tap</option>
-                <option value="random">Random</option>
               </select>
               <button
                 class="personal-task-sound-preview sound-preview-button"
@@ -1237,11 +1251,20 @@ async function mountTaskList(root) {
             </label>
             <div class="personal-final-sound-controls">
               <select id="personal-final-sound" class="personal-final-sound-select">
+                <option value="random">Random</option>
                 <option value="current">Current tone</option>
                 <option value="yay">Yay!</option>
                 <option value="applause">Applause</option>
                 <option value="trumpet-fanfare">Trumpet fanfare</option>
                 <option value="hurrah">Hurrah!</option>
+                <option value="party-horn">Party horn</option>
+                <option value="whip-crack">Cracking whip</option>
+                <option value="cash-register">Cash register ding</option>
+                <option value="chiptune-blip">Chiptune blip</option>
+                <option value="rimshot">Rimshot (ba-dum-dish)</option>
+                <option value="jackpot-coins">Jackpot coins</option>
+                <option value="gong">Gong hit</option>
+
               </select>
               <button
                 class="personal-final-sound-preview sound-preview-button"
@@ -1529,9 +1552,26 @@ async function mountTaskList(root) {
             <span class="client-settings-gear" aria-hidden="true">&#9881;</span>
             <span class="client-settings-label">Settings</span>
           </button>
-          <button class="client-settings-done-inline" type="button" hidden>✓ Done</button>
+          <button class="client-settings-done-inline" type="button" hidden>✓ Save</button>
         </div>
         <div id="client-settings-panel" class="client-settings-panel" hidden>
+          <div class="client-pref-row">
+            <label class="client-pref-label" for="client-list-layout">List layout</label>
+            <select id="client-list-layout" class="client-list-layout">
+              <option value="custom">Full list — Custom tasks</option>
+              <option value="activities">Full list — Activity choices</option>
+              <option value="sequence">First / Then sequence</option>
+            </select>
+          </div>
+          <div class="client-pref-row client-sequence-settings">
+            <label class="client-pref-label" for="client-sequence-mode">Parts</label>
+            <select id="client-sequence-mode" class="client-sequence-mode">
+              <option value="2">2 parts — First / Then</option>
+              <option value="3">3 parts — First / Then / Next</option>
+              <option value="4">4 parts — First / Then / Next / Last</option>
+            </select>
+          </div>
+          <p class="client-sequence-help">Choose an activity on each part, then add your own tasks. Each part can hold any number of tasks. Use Move to… to move a task. Empty parts are skipped; reducing parts keeps later assignments for re-expansion.</p>
           <div class="client-pref-row">
             <p class="client-pref-label" id="completion-style-label">On complete</p>
             <div
@@ -1559,11 +1599,11 @@ async function mountTaskList(root) {
             <label class="client-pref-label" for="task-sound">Task sound</label>
             <div class="client-task-sound-controls">
               <select id="task-sound" class="task-sound-select">
+                <option value="random">Random</option>
                 <option value="none">None</option>
                 <option value="bubble-pop">Bubble Pop</option>
                 <option value="soft-click">Soft Click</option>
                 <option value="wood-tap">Wood Tap</option>
-                <option value="random">Random</option>
               </select>
               <button class="task-sound-preview sound-preview-button" type="button">Preview</button>
             </div>
@@ -1572,11 +1612,20 @@ async function mountTaskList(root) {
             <label class="client-pref-label" for="final-sound">Final sound</label>
             <div class="client-final-sound-controls">
               <select id="final-sound" class="final-sound-select">
+                <option value="random">Random</option>
                 <option value="current">Current tone</option>
                 <option value="yay">Yay!</option>
                 <option value="applause">Applause</option>
                 <option value="trumpet-fanfare">Trumpet fanfare</option>
                 <option value="hurrah">Hurrah!</option>
+                <option value="party-horn">Party horn</option>
+                <option value="whip-crack">Cracking whip</option>
+                <option value="cash-register">Cash register ding</option>
+                <option value="chiptune-blip">Chiptune blip</option>
+                <option value="rimshot">Rimshot (ba-dum-dish)</option>
+                <option value="jackpot-coins">Jackpot coins</option>
+                <option value="gong">Gong hit</option>
+
               </select>
               <button class="final-sound-preview sound-preview-button" type="button">Preview</button>
             </div>
@@ -1597,7 +1646,6 @@ async function mountTaskList(root) {
               <option value="butterflies">Butterflies</option>
             </select>
           </div>
-          <button class="client-settings-done" type="button">✓ Done</button>
         </div>
       </div>
     </section>
@@ -1719,6 +1767,7 @@ async function mountTaskList(root) {
       </div>
       <p class="personal-plant-status sr-only" aria-live="polite"></p>
     </section>
+    <p class="client-sequence-status" role="status" hidden></p>
     <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
     <p class="empty-state">No tasks yet. Add one to get started.</p>
     <section class="client-motivator" hidden>
@@ -1757,6 +1806,9 @@ async function mountTaskList(root) {
       <button class="finish-for-now-button" type="button" hidden>
         Finish for now
       </button>
+      <div class="list-actions-footer" role="group" aria-label="List actions">
+        <button type="button" class="reset-list-button">Reset List</button>
+        <button id="clear-all-btn" type="button" class="clear-all-button">Clear All</button>
       <button
         class="new-list-toggle"
         type="button"
@@ -1765,6 +1817,7 @@ async function mountTaskList(root) {
       >
         Review &amp; Continue
       </button>
+      </div>
       <div id="new-list-review" class="new-list-review" hidden>
         <h2 class="new-list-heading" id="new-list-heading">Choose tasks to keep</h2>
         <p class="new-list-copy">
@@ -1786,7 +1839,6 @@ async function mountTaskList(root) {
       </div>
     </section>
     <div class="list-reset" hidden>
-      <button type="button" class="reset-list-button">Reset List</button>
       <div class="reset-confirm" hidden>
         <p class="reset-confirm-copy">Start this list again?</p>
         <div class="reset-confirm-actions">
@@ -1797,6 +1849,13 @@ async function mountTaskList(root) {
     </div>
   `;
 
+  const clientListLayout = root.querySelector(".client-list-layout");
+  const clientSequenceSettings = root.querySelector(".client-sequence-settings");
+  const clientSequenceHelp = root.querySelector(".client-sequence-help");
+  const clientSequenceMode = root.querySelector(".client-sequence-mode");
+  const clientSequenceStatus = root.querySelector(".client-sequence-status");
+  const clientAddPart = root.querySelector(".client-add-part");
+  const clientAddPartSelect = root.querySelector(".client-add-part-select");
   const form = root.querySelector(".task-form");
   const input = root.querySelector(".task-input");
   const doneButton = root.querySelector(".done-button");
@@ -2027,7 +2086,6 @@ async function mountTaskList(root) {
   const settingsToggleIcon = settingsToggle.querySelector(".client-settings-gear");
   const settingsToggleLabel = settingsToggle.querySelector(".client-settings-label");
   const settingsPanel = root.querySelector(".client-settings-panel");
-  const clientSettingsDone = root.querySelector(".client-settings-done");
   const clientSettingsDoneInline = root.querySelector(".client-settings-done-inline");
   const completionStyleButtons = root.querySelectorAll(
     "[data-completion-style]"
@@ -2155,7 +2213,7 @@ async function mountTaskList(root) {
     personalSettingsToggle.setAttribute("aria-expanded", String(expanded));
     personalSettingsToggle.classList.toggle("is-open", expanded);
     personalSettingsToggleIcon.textContent = expanded ? "✓" : "⚙";
-    personalSettingsToggleLabel.textContent = expanded ? "Done" : "Settings";
+    personalSettingsToggleLabel.textContent = expanded ? "Save" : "Settings";
   }
 
   function paintPersonalPresentation(value) {
@@ -2441,7 +2499,11 @@ async function mountTaskList(root) {
     });
   }
 
-  async function persistPersonalBreakNotifications(next) {
+  function persistPersonalBreakNotifications(...args) {
+    return trackPersonalWrite(persistPersonalBreakNotificationsValue(...args));
+  }
+
+  async function persistPersonalBreakNotificationsValue(next) {
     const previous = personalBreakNotifications;
     applyPersonalBreakNotifications(next);
     try {
@@ -2570,7 +2632,11 @@ async function mountTaskList(root) {
     paintBreakClock();
   }
 
-  async function persistBreakClock(next, failureMessage) {
+  function persistBreakClock(...args) {
+    return trackPersonalWrite(persistBreakClockValue(...args));
+  }
+
+  async function persistBreakClockValue(next, failureMessage) {
     const previous = personalBreakTimer;
     const nextTimer = withBreakClock(personalBreakTimer, next);
     try {
@@ -2588,7 +2654,11 @@ async function mountTaskList(root) {
     }
   }
 
-  async function persistBreakSuggestions(next) {
+  function persistBreakSuggestions(...args) {
+    return trackPersonalWrite(persistBreakSuggestionsValue(...args));
+  }
+
+  async function persistBreakSuggestionsValue(next) {
     const previous = personalBreakTimer;
     const nextTimer = withBreakSuggestions(personalBreakTimer, next);
     try {
@@ -2605,7 +2675,11 @@ async function mountTaskList(root) {
     }
   }
 
-  async function persistBreakSuggestionSource(next) {
+  function persistBreakSuggestionSource(...args) {
+    return trackPersonalWrite(persistBreakSuggestionSourceValue(...args));
+  }
+
+  async function persistBreakSuggestionSourceValue(next) {
     const previous = personalBreakTimer;
     const nextTimer = withBreakSuggestionSource(personalBreakTimer, next);
     try {
@@ -2756,7 +2830,11 @@ async function mountTaskList(root) {
     }
   }
 
-  async function requestPersonalPresentation(next) {
+  function requestPersonalPresentation(...args) {
+    return trackPersonalWrite(requestPersonalPresentationValue(...args));
+  }
+
+  async function requestPersonalPresentationValue(next) {
     const requested = nextPersonalPresentationAction(next);
     if (!requested || requested === personalPresentation) {
       paintPersonalPresentation(personalPresentation);
@@ -2777,6 +2855,7 @@ async function mountTaskList(root) {
   function setSettingsPanelOpen(isOpen) {
     const expanded = isOpen === true;
     settingsPanel.hidden = !expanded;
+    root.classList.toggle("client-settings-open", expanded);
     settingsToggle.setAttribute("aria-expanded", String(expanded));
     settingsToggle.classList.toggle("is-open", expanded);
     settingsToggleIcon.textContent = "⚙";
@@ -2925,7 +3004,7 @@ async function mountTaskList(root) {
     }
 
     const rewardText =
-      plan.kind === "final" ? formatRewardReveal(currentReward()) : "";
+      plan.kind === "final" && !clientSequence.enabled ? formatRewardReveal(currentReward()) : "";
 
     if (plan.kind === "final" && plan.playVisualCelebration) {
       finalCelebrationActive = true;
@@ -3012,11 +3091,12 @@ async function mountTaskList(root) {
 
   function updateClientChrome() {
     const client = isClientMode();
+    root.classList.toggle("client-sequence-active", client && clientSequence.enabled);
     const progress = taskProgress(visibleTasks());
     const label = formatProgressLabel(progress);
 
     progressSection.hidden = !client;
-    motivatorSection.hidden = !client;
+    motivatorSection.hidden = !client || clientSequence.enabled;
     progressLabel.textContent = label;
     progressFill.style.width = `${progress.percent}%`;
     progressTrack.setAttribute("aria-valuenow", String(progress.complete));
@@ -3027,25 +3107,25 @@ async function mountTaskList(root) {
 
   function updateResetAction() {
     const shown = visibleTasks();
-    const canReset = resetListVisible({
-      tasks: shown,
-      presentation: document.body.dataset.presentation,
-      style: document.body.dataset.completionStyle,
-      finalCelebrationActive,
-    });
-    if (!canResetList(shown)) {
+    const canReset = canResetList(shown, { allowPartial: true });
+    if (!canResetList(shown, { allowPartial: true })) {
       resetConfirming = false;
       finalCelebrationActive = false;
     }
 
     resetSection.hidden = !canReset;
-    resetButton.hidden = !canReset || resetConfirming;
+    resetButton.hidden = resetConfirming;
+    resetButton.disabled = !canReset;
     resetConfirm.hidden = !canReset || !resetConfirming;
   }
 
   async function persist(nextTasks, { clearEnding = false } = {}) {
     const previous = tasks;
     const previousKind = tasksKind;
+    const previousSequence = clientSequence;
+    if (isClientMode() && clientSequence.enabled) {
+      clientSequence = reconcileClientSequence(clientSequence, nextTasks, Number(clientAddPartSelect.value));
+    }
     const kind = currentListKind();
     tasks = nextTasks;
     tasksKind = kind;
@@ -3062,6 +3142,7 @@ async function mountTaskList(root) {
       await saveList(kind, tasks, {
         clearEnding,
         breakTimer: resumedBreakTimer,
+        clientSequence: isClientMode() ? clientSequence : null,
       });
       if (resumedBreakTimer !== null) {
         applyPersonalBreakTimer(resumedBreakTimer);
@@ -3069,6 +3150,7 @@ async function mountTaskList(root) {
       showListError("");
       clearStaleEnding(kind, clearEnding);
     } catch {
+      clientSequence = previousSequence;
       tasks = previous;
       tasksKind = previousKind;
       render();
@@ -3084,11 +3166,29 @@ async function mountTaskList(root) {
     const oneActiveState = personalOneActiveState(shown, {
       reviewAll: personalFullListOpen,
     });
-    const renderedTasks = oneActive ? oneActiveState.visibleTasks : shown;
+    const sequence = isClientMode() && clientSequence.enabled ? clientSequenceState(clientSequence, shown) : null;
+    const renderedTasks = sequence ? sequence.orderedTasks : oneActive ? oneActiveState.visibleTasks : shown;
+    clientListLayout.value = clientSequence.enabled ? "sequence" : clientSequence.fullListLayout;
+    clientListLayout.disabled = clientSequenceSaving;
+    clientSequenceSettings.hidden = !clientSequence.enabled;
+    clientSequenceHelp.hidden = !clientSequence.enabled;
+    clientSequenceMode.value = String(clientSequence.partCount);
+    clientSequenceMode.disabled = clientSequenceSaving;
+    clientSequenceStatus.hidden = !sequence;
+    clientSequenceStatus.textContent = !sequence ? "" : sequence.complete ? "All parts complete." : sequence.activeIndex === null ? "Add tasks and choose a part." : `${sequence.groups[sequence.activeIndex].label} — current part`;
+    clientAddPart.hidden = !sequence;
+    if (!sequence || openClientActivityPart >= sequence.partCount) openClientActivityPart = null;
+    if (sequence) {
+      const selectedPart = clientAddPartSelect.value;
+      clientAddPartSelect.replaceChildren(...sequence.groups.map(group => {
+        const option = document.createElement("option"); option.value = String(group.index); option.textContent = group.label; return option;
+      }));
+      clientAddPartSelect.value = Number(selectedPart) < sequence.partCount ? selectedPart || "0" : "0";
+    }
     emptyState.textContent = emptyStateCopy(currentListKind());
     emptyState.hidden = shown.length > 0;
     list.replaceChildren();
-    const currentId = nextUnfinishedTask(shown)?.id;
+    const currentId = nextUnfinishedTask(sequence ? sequence.orderedTasks : shown)?.id;
 
     personalOneActive.hidden = !oneActive;
     personalOneActiveKicker.textContent = oneActiveState.activeTask
@@ -3353,7 +3453,61 @@ async function mountTaskList(root) {
       }
     }
 
-    renderedTasks.forEach((task) => {
+    function appendSequenceHeading(group) {
+      const heading = document.createElement("li");
+      heading.className = "client-sequence-heading";
+      heading.dataset.part = String(group.index);
+      heading.classList.toggle("is-active", sequence.activeIndex === group.index);
+      if (sequence.activeIndex === group.index) heading.setAttribute("aria-current", "step");
+      const title = document.createElement("h3"); title.textContent = group.label;
+      const detail = document.createElement("span");
+      detail.textContent = group.tasks.length === 0 ? "No tasks" : group.complete ? "Complete" : sequence.activeIndex === group.index ? "Current part" : "Waiting";
+      const top = document.createElement("div"); top.className = "client-part-heading-row"; top.append(title, detail);
+      const toggle = document.createElement("button"); toggle.type = "button";
+      toggle.className = "client-part-activity-toggle"; toggle.dataset.part = String(group.index);
+      toggle.setAttribute("aria-expanded", String(openClientActivityPart === group.index));
+      toggle.setAttribute("aria-controls", `client-activity-picker-${group.index}`);
+      toggle.setAttribute("aria-label", `${group.label} activity: ${group.activity?.label ?? "Choose activity"}`);
+      toggle.disabled = clientSequenceSaving;
+      toggle.innerHTML = clientActivityIconMarkup(group.activity?.id);
+      const activityLabel = document.createElement("span"); activityLabel.textContent = group.activity?.label ?? "Choose activity";
+      const arrow = document.createElement("span"); arrow.className = "client-part-dropdown-arrow"; arrow.textContent = "▾"; arrow.setAttribute("aria-hidden", "true");
+      toggle.append(activityLabel, arrow);
+      const picker = document.createElement("div"); picker.className = "client-activity-picker";
+      picker.id = `client-activity-picker-${group.index}`; picker.hidden = openClientActivityPart !== group.index;
+      picker.setAttribute("role", "group"); picker.setAttribute("aria-label", `${group.label} activities`);
+      for (const activity of [...CLIENT_ACTIVITIES, { id: "", label: "Custom" }]) {
+        const choice = document.createElement("button"); choice.type = "button"; choice.className = "client-activity-choice";
+        choice.dataset.part = String(group.index); choice.dataset.activity = activity.id;
+        choice.setAttribute("aria-pressed", String((group.activity?.id ?? "") === activity.id));
+        choice.innerHTML = clientActivityIconMarkup(activity.id);
+        const label = document.createElement("span"); label.textContent = activity.label; choice.append(label);
+        picker.append(choice);
+      }
+      top.append(toggle);
+      heading.append(top, picker);
+      if (openCustomPart === group.index) {
+        const editor = document.createElement("div"); editor.className = "client-custom-task-editor";
+        const input = document.createElement("input"); input.type = "text"; input.maxLength = 200;
+        input.className = "client-custom-task-input"; input.placeholder = "Custom task";
+        input.setAttribute("aria-label", `Custom task for ${group.label}`);
+        const save = document.createElement("button"); save.type = "button";
+        save.className = "client-custom-task-save"; save.dataset.part = String(group.index); save.textContent = "Add task";
+        editor.append(input, save); heading.append(editor);
+      }
+      if (group.activity && group.tasks.length === 0) {
+        const addActivity = document.createElement("button");
+        addActivity.type = "button"; addActivity.className = "client-complete-activity";
+        addActivity.dataset.part = String(group.index);
+        addActivity.textContent = `Complete ${group.activity.label}`;
+        addActivity.disabled = clientSequenceSaving;
+        heading.append(addActivity);
+      }
+      list.append(heading);
+    }
+    const sequenceEntries = sequence ? sequence.groups.flatMap(group => [{ group }, ...group.tasks.map(task => ({ task, group }))]) : renderedTasks.map(task => ({ task }));
+    sequenceEntries.forEach(({ task, group }) => {
+      if (!task) { appendSequenceHeading(group); return; }
       const index = shown.findIndex((item) => item.id === task.id);
       const item = document.createElement("li");
       const checkboxId = `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, "")}`;
@@ -3382,7 +3536,59 @@ async function mountTaskList(root) {
       `;
 
       item.querySelector(".task-text").textContent = task.text;
-      list.append(item);
+      if (sequence) {
+        const editor = document.createElement("label"); editor.className = "client-part-editor"; editor.hidden = true;
+        editor.id = `client-task-move-${index}`;
+        const caption = document.createElement("span"); caption.textContent = "Move to";
+        const move = document.createElement("button"); move.type = "button"; move.className = "client-task-move"; move.textContent = "Move to…";
+        move.setAttribute("aria-label", `Move ${task.text} to another part`); move.setAttribute("aria-expanded", "false"); move.setAttribute("aria-controls", editor.id);
+        move.disabled = clientSequenceSaving;
+        item.querySelector(".task-actions").append(move);
+        const select = document.createElement("select"); select.className = "client-task-part";
+        select.setAttribute("aria-label", `Part for ${task.text}`);
+        select.disabled = clientSequenceSaving;
+        for (const part of sequence.groups) {
+          const option = document.createElement("option"); option.value = String(part.index); option.textContent = part.label; select.append(option);
+        }
+        select.value = String(group.index);
+        editor.append(caption, select); item.append(editor);
+      }
+      if (isClientMode() && !sequence && clientSequence.fullListLayout === "activities") {
+        const activity = clientActivity(clientSequence.taskActivities?.[task.id]);
+        const toggle = document.createElement("button"); toggle.type = "button";
+        toggle.className = "client-task-activity-toggle";
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-controls", `client-task-activity-${index}`);
+        toggle.setAttribute("aria-label", `Activity for ${task.text}: ${activity?.label ?? "Choose activity"}`);
+        toggle.innerHTML = clientActivityIconMarkup(activity?.id);
+        const label = document.createElement("span"); label.textContent = activity?.label ?? "Choose activity";
+        const arrow = document.createElement("span"); arrow.className = "client-part-dropdown-arrow"; arrow.textContent = "▾"; arrow.setAttribute("aria-hidden", "true");
+        toggle.append(label, arrow);
+        const picker = document.createElement("div"); picker.className = "client-activity-picker";
+        picker.id = `client-task-activity-${index}`; picker.hidden = true;
+        picker.setAttribute("role", "group"); picker.setAttribute("aria-label", `Activities for ${task.text}`);
+        for (const option of [...CLIENT_ACTIVITIES, { id: "", label: "Custom task only" }]) {
+          const choice = document.createElement("button"); choice.type = "button"; choice.className = "client-activity-choice";
+          choice.dataset.taskId = task.id; choice.dataset.activity = option.id;
+          choice.setAttribute("aria-pressed", String((activity?.id ?? "") === option.id));
+          choice.innerHTML = clientActivityIconMarkup(option.id);
+          const text = document.createElement("span"); text.textContent = option.label; choice.append(text); picker.append(choice);
+        }
+        item.append(toggle, picker);
+      }
+      if (sequence) {
+        const heading = list.querySelector(`.client-sequence-heading[data-part="${group.index}"]`);
+        let taskList = heading.querySelector(".client-part-tasks");
+        if (!taskList) {
+          taskList = document.createElement("ul"); taskList.className = "client-part-tasks";
+          taskList.setAttribute("aria-label", `${group.label} tasks`); heading.append(taskList);
+        }
+        if (group.activity?.label === task.text) {
+          item.querySelector(".task-text").classList.add("visually-hidden");
+          item.querySelector(".task-checkbox").setAttribute("aria-label", `Complete ${task.text}`);
+        }
+        taskList.append(item);
+      } else list.append(item);
     });
 
     updatePersonalChrome();
@@ -3398,6 +3604,41 @@ async function mountTaskList(root) {
     target?.focus();
     restoreFocus = null;
   }
+
+  function persistClientSequence(next) {
+    pendingClientSequenceSave = saveClientSequenceChange(next);
+    return pendingClientSequenceSave;
+  }
+  async function saveClientSequenceChange(next) {
+    if (!isClientMode() || clientSequenceSaving) return;
+    clientSequenceSaving = true;
+    clientSequenceMode.disabled = true;
+    clientListLayout.disabled = true;
+    root.querySelectorAll(".client-task-part").forEach(select => { select.disabled = true; });
+    try {
+      clientSequence = await saveClientSequence(next);
+      showListError("");
+    } catch {
+      showListError("CueDone could not save task parts. Your saved assignments are unchanged.");
+    } finally {
+      clientSequenceSaving = false;
+      render();
+    }
+  }
+  clientListLayout.addEventListener("change", () => {
+    const layout = clientListLayout.value;
+    void persistClientSequence({ ...clientSequence, enabled: layout === "sequence",
+      fullListLayout: layout === "sequence" ? clientSequence.fullListLayout : layout });
+  });
+  clientSequenceMode.addEventListener("change", () => {
+    const value = clientSequenceMode.value;
+    void persistClientSequence({ ...clientSequence, enabled: true, partCount: Number(value) });
+  });
+  onClientSequenceChanged(value => {
+    if (JSON.stringify(clientSequence) === JSON.stringify(value)) return;
+    clientSequence = value;
+    if (isClientMode()) render();
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3416,7 +3657,7 @@ async function mountTaskList(root) {
   });
 
   resetButton.addEventListener("click", () => {
-    if (!canResetList(visibleTasks())) {
+    if (!canResetList(visibleTasks(), { allowPartial: true })) {
       return;
     }
 
@@ -3433,7 +3674,7 @@ async function mountTaskList(root) {
 
   resetConfirmButton.addEventListener("click", async () => {
     const shown = visibleTasks();
-    const next = resetCompletedTasks(shown);
+    const next = resetCompletedTasks(shown, { allowPartial: true });
     if (next === shown) {
       return;
     }
@@ -3604,6 +3845,7 @@ async function mountTaskList(root) {
 
   async function performClearAllViaNewListWorkflow() {
     if (newListSaveInProgress) return;
+    await pendingClientSequenceSave;
     newListError.hidden = true;
     newListError.textContent = "";
     newListStatus.textContent = "Saving new list…";
@@ -3613,11 +3855,12 @@ async function mountTaskList(root) {
     const kind = currentListKind();
     const resumedBreakClock = breakClockAllowed() ? resumeBreakClock(personalBreakClock) : null;
     const resumedBreakTimer = resumedBreakClock === null ? null : withBreakClock(personalBreakTimer, resumedBreakClock);
+    const clearedSequence = isClientMode() ? normalizeClientSequence({ ...clientSequence, assignments: {}, activities: {}, taskActivities: {} }) : null;
     const result = await saveNewListFromReview({
       reviewedTasks: snapshotTasks(visibleTasks()),
       selectedIds: [],
       loadTasks: () => loadList(kind),
-      saveTasks: (next) => saveList(kind, next, { clearEnding: true, breakTimer: resumedBreakTimer }),
+      saveTasks: (next) => saveList(kind, next, { clearEnding: true, breakTimer: resumedBreakTimer, clientSequence: clearedSequence }),
     });
     newListSaveInProgress = false;
     setNewListBusy(false);
@@ -3648,6 +3891,7 @@ async function mountTaskList(root) {
     clearPreviousCompletionState();
     closePersonalFullListReview();
     setCarryoverOpen(false);
+    if (clearedSequence) { clientSequence = reconcileClientSequence(clearedSequence, nextTasks); openCustomPart = null; }
     tasks = nextTasks;
     tasksKind = kind;
     restoreFocus = null;
@@ -3677,7 +3921,7 @@ async function mountTaskList(root) {
     window._clearAllViaNewList = performClearAllViaNewListWorkflow;
   }
 
-  const externalClearAllBtn = typeof document !== "undefined" ? document.getElementById("clear-all-btn") : null;
+  const externalClearAllBtn = root.querySelector("#clear-all-btn");
   if (externalClearAllBtn && !externalClearAllBtn.dataset.wiredViaTaskList) {
     externalClearAllBtn.dataset.wiredViaTaskList = "true";
     externalClearAllBtn.addEventListener("click", (e) => {
@@ -3686,14 +3930,47 @@ async function mountTaskList(root) {
     });
   }
 
-  doneButton.addEventListener("click", async () => {
+  async function savePendingVisualTheme() {
+    const nextTheme = pendingVisualTheme ?? personalVisualTheme;
+    if (nextTheme !== personalVisualTheme) {
+      const previousTheme = personalVisualTheme;
+      pendingVisualTheme = null;
+      const saved = await saveSetting({
+        save: (value) => {
+          if (value === "random") visualThemeSelection.resolve(value);
+          return savePersonalVisualTheme(value, value === "random" ? visualThemeSelection.snapshot() : null);
+        },
+        load: loadPersonalVisualTheme,
+        value: nextTheme,
+        apply: (value) => {
+          applyPersonalVisualTheme(value);
+          render();
+        },
+        restore: () => {
+          applyPersonalVisualTheme(previousTheme);
+          render();
+        },
+      });
+      if (!saved) return false;
+    }
+    pendingVisualTheme = null;
+    return true;
+  }
+
+  async function finishTaskEntry() {
     const previous = entryOpen;
-    if (await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
-      value: false, apply: applyEntryMode, restore: () => applyEntryMode(previous) })) {
+    const saved = await saveSetting({ save: saveTaskEntryOpen, load: loadTaskEntryOpen,
+      value: false, apply: applyEntryMode, restore: () => applyEntryMode(previous) });
+    if (saved) {
       root.classList.remove("is-editing");
       root.removeAttribute("data-mode");
       addToggle.focus();
     }
+    return saved;
+  }
+
+  doneButton.addEventListener("click", () => {
+    void finishTaskEntry();
   });
 
   addToggle.addEventListener("click", async () => {
@@ -3740,6 +4017,15 @@ async function mountTaskList(root) {
       restoreFocus = nextActive
         ? { id: nextActive.id, selector: ".one-active-complete-button" }
         : null;
+    }
+    let sequenceFocusId = null;
+    if (isClientMode() && clientSequence.enabled && checkbox.checked) {
+      const before = clientSequenceState(clientSequence, previous);
+      const after = clientSequenceState(clientSequence, nextTasks);
+      if (before.activeIndex !== after.activeIndex && after.activeIndex !== null) {
+        const nextActive = after.groups[after.activeIndex].tasks.find(task => !task.completed);
+        if (nextActive) sequenceFocusId = nextActive.id;
+      }
     }
     if (plan?.kind === "final" && plan.playVisualCelebration) {
       finalCelebrationActive = true;
@@ -3809,6 +4095,10 @@ async function mountTaskList(root) {
     maybeCelebrate(plan);
     try {
       await saveList(kind, tasks);
+      if (sequenceFocusId !== null) {
+        const nextItem = [...list.querySelectorAll(".task-item")].find(item => item.dataset.id === sequenceFocusId);
+        nextItem?.querySelector(".task-checkbox")?.focus();
+      }
       showListError("");
       playPersonalPrivateAudio(personalAudio);
       if (
@@ -3841,7 +4131,106 @@ async function mountTaskList(root) {
     }
   });
 
+  list.addEventListener("change", event => {
+    const select = event.target.closest(".client-task-part");
+    if (!select) return;
+    const id = select.closest(".task-item")?.dataset.id;
+    if (id) {
+      restoreFocus = { id, selector: ".client-task-move" };
+      void persistClientSequence(assignClientSequencePart(clientSequence, id, Number(select.value)));
+    }
+  });
+
   list.addEventListener("click", async (event) => {
+    const customSave = event.target.closest(".client-custom-task-save");
+    if (customSave) {
+      const input = customSave.previousElementSibling;
+      if (!input.value.trim()) { input.focus(); return; }
+      clientAddPartSelect.value = customSave.dataset.part;
+      const nextTasks = addTask(visibleTasks(), input.value);
+      openCustomPart = null;
+      restoreFocus = { id: nextTasks[nextTasks.length - 1].id, selector: ".task-checkbox" };
+      await persist(nextTasks);
+      return;
+    }
+    const addActivity = event.target.closest(".client-complete-activity");
+    if (addActivity) {
+      if (!isClientMode() || !clientSequence.enabled || clientSequenceSaving) return;
+      const part = Number(addActivity.dataset.part);
+      const activity = clientActivity(clientSequence.activities[part]);
+      if (!activity) return;
+      clientAddPartSelect.value = String(part);
+      const next = addTask(visibleTasks(), activity.label);
+      restoreFocus = { id: next[next.length - 1].id, selector: ".task-checkbox" };
+      await persist(next);
+      const created = [...list.querySelectorAll(".task-item")].find(item => item.dataset.id === next[next.length - 1].id);
+      created?.querySelector(".task-checkbox")?.click();
+      return;
+    }
+    const taskActivityToggle = event.target.closest(".client-task-activity-toggle");
+    if (taskActivityToggle) {
+      const picker = taskActivityToggle.nextElementSibling;
+      const expanded = picker.hidden;
+      for (const other of list.querySelectorAll(".client-task-activity-toggle")) {
+        other.setAttribute("aria-expanded", "false"); other.nextElementSibling.hidden = true;
+      }
+      picker.hidden = !expanded; taskActivityToggle.setAttribute("aria-expanded", String(expanded));
+      if (expanded) picker.querySelector("button")?.focus({ preventScroll: true });
+      return;
+    }
+    const activityToggle = event.target.closest(".client-part-activity-toggle");
+    if (activityToggle) {
+      const part = Number(activityToggle.dataset.part);
+      openClientActivityPart = openClientActivityPart === part ? null : part;
+      clientAddPartSelect.value = String(part);
+      for (const heading of list.querySelectorAll(".client-sequence-heading")) {
+        const expanded = Number(heading.dataset.part) === openClientActivityPart;
+        heading.querySelector(".client-activity-picker").hidden = !expanded;
+        heading.querySelector(".client-part-activity-toggle").setAttribute("aria-expanded", String(expanded));
+      }
+      if (openClientActivityPart !== null) activityToggle.closest(".client-sequence-heading").querySelector(".client-activity-picker button")?.focus({ preventScroll: true });
+      return;
+    }
+    const activityChoice = event.target.closest(".client-activity-choice");
+    if (activityChoice) {
+      if (activityChoice.dataset.taskId) {
+        restoreFocus = { id: activityChoice.dataset.taskId, selector: ".client-task-activity-toggle" };
+        await persistClientSequence(assignClientTaskActivity(clientSequence, activityChoice.dataset.taskId, activityChoice.dataset.activity));
+        return;
+      }
+      const part = Number(activityChoice.dataset.part);
+      const next = assignClientPartActivity(clientSequence, part, activityChoice.dataset.activity);
+      openClientActivityPart = null;
+      if (activityChoice.dataset.activity === "") {
+        openCustomPart = part;
+        await persistClientSequence(next);
+        list.querySelector(`.client-sequence-heading[data-part="${part}"] .client-custom-task-input`)?.focus();
+        return;
+      }
+      openCustomPart = null;
+      const group = clientSequenceState(next, visibleTasks()).groups[part];
+      const activity = clientActivity(activityChoice.dataset.activity);
+      if (activity && group.tasks.length === 0) {
+        const previous = clientSequence;
+        clientSequence = next;
+        clientAddPartSelect.value = String(part);
+        const nextTasks = addTask(visibleTasks(), activity.label);
+        await persist(nextTasks);
+        if (!visibleTasks().some(task => task.id === nextTasks[nextTasks.length - 1].id)) clientSequence = previous;
+      } else {
+        await persistClientSequence(next);
+      }
+      list.querySelector(`.client-part-activity-toggle[data-part="${part}"]`)?.focus();
+      return;
+    }
+    const move = event.target.closest(".client-task-move");
+    if (move) {
+      const editor = move.closest(".task-item").querySelector(".client-part-editor");
+      editor.hidden = !editor.hidden;
+      move.setAttribute("aria-expanded", String(!editor.hidden));
+      if (!editor.hidden) editor.querySelector("select").focus();
+      return;
+    }
     const item = event.target.closest(".task-item");
     if (!item) {
       return;
@@ -3879,6 +4268,22 @@ async function mountTaskList(root) {
     if (event.target.closest(".move-down")) {
       restoreFocus = { id: item.dataset.id, selector: ".move-down" };
       await persist(reorderTasks(shown, fromIndex, fromIndex + 1));
+    }
+  });
+
+  list.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    const picker = event.target.closest(".client-activity-picker");
+    if (picker) {
+      event.preventDefault(); openClientActivityPart = null; picker.hidden = true;
+      const toggle = picker.closest(".client-sequence-heading")?.querySelector(".client-part-activity-toggle") ?? picker.previousElementSibling;
+      toggle.setAttribute("aria-expanded", "false"); toggle.focus();
+    }
+    const editor = event.target.closest(".client-part-editor");
+    if (editor) {
+      event.preventDefault(); editor.hidden = true;
+      const move = editor.closest(".task-item").querySelector(".client-task-move");
+      move.setAttribute("aria-expanded", "false"); move.focus();
     }
   });
 
@@ -3952,18 +4357,58 @@ async function mountTaskList(root) {
     );
   });
 
-  clientSettingsDone.addEventListener("click", () => {
-    setSettingsPanelOpen(false);
-  });
+  async function saveClientSettingsAndReturn() {
+    clientSettingsDoneInline.disabled = true;
+    try {
+      await pendingClientSequenceSave;
+      await saveSetting.flush();
+      setSettingsPanelOpen(false);
+      const showTaskEntry = visibleTasks().length === 0;
+      applyEntryMode(showTaskEntry);
+      await saveTaskEntryOpen(showTaskEntry);
+      openClientActivityPart = null;
+      render();
+      root.scrollTop = 0;
+      root.closest(".app-main")?.scrollTo({ top: 0 });
+      settingsToggle.focus({ preventScroll: true });
+    } catch {
+      showListError("CueDone could not save settings. Please try again.");
+    } finally {
+      clientSettingsDoneInline.disabled = false;
+    }
+  }
+  clientSettingsDoneInline.addEventListener("click", saveClientSettingsAndReturn);
 
-  clientSettingsDoneInline.addEventListener("click", () => {
-    setSettingsPanelOpen(false);
-  });
-
-  personalSettingsToggle.addEventListener("click", () => {
-    setPersonalSettingsPanelOpen(
-      personalSettingsToggle.getAttribute("aria-expanded") !== "true"
-    );
+  personalSettingsToggle.addEventListener("click", async () => {
+    if (personalSettingsToggle.getAttribute("aria-expanded") !== "true") {
+      setPersonalSettingsPanelOpen(true);
+      return;
+    }
+    personalSettingsToggle.disabled = true;
+    try {
+      while (pendingPersonalWrites.size) await Promise.all([...pendingPersonalWrites]);
+      await saveSetting.flush();
+      if (!await savePendingVisualTheme()) return;
+      try {
+        await savePersonalSettingsSnapshot({
+          presentation: personalPresentation, layout: personalTaskLayout,
+          progress: personalPlantTheme, theme: personalVisualTheme,
+          sound: personalSound, taskSound: personalTaskSound, finalSound: personalFinalSound,
+          affirmation: personalAffirmation, completeMessage: personalCompleteMessage,
+          pauseMessage: personalPauseMessage, breakTimer: personalBreakTimer,
+          notifications: personalBreakNotifications, randomTheme: visualThemeSelection.snapshot(),
+        });
+      } catch {
+        showListError("CueDone could not save all Settings. Review your choices and try again.");
+        return;
+      }
+      if (!await finishTaskEntry()) return;
+      setPersonalSettingsPanelOpen(false);
+      render();
+      personalSettingsToggle.focus();
+    } finally {
+      personalSettingsToggle.disabled = false;
+    }
   });
 
   for (const button of personalPresentationButtons) {
@@ -4051,32 +4496,6 @@ async function mountTaskList(root) {
   if (personalVisualThemeSelect) {
     personalVisualThemeSelect.addEventListener("change", () => {
       pendingVisualTheme = normalizeVisualTheme(personalVisualThemeSelect.value);
-    });
-    root.querySelector(".personal-visual-theme-done").addEventListener("click", () => {
-      const next = pendingVisualTheme ?? personalVisualTheme;
-      pendingVisualTheme = null;
-      if (next === personalVisualTheme) {
-        paintPersonalVisualTheme(next);
-        return;
-      }
-
-      const previous = personalVisualTheme;
-      void saveSetting({
-        save: (value) => {
-          if (value === "random") visualThemeSelection.resolve(value);
-          return savePersonalVisualTheme(value, value === "random" ? visualThemeSelection.snapshot() : null);
-        },
-        load: loadPersonalVisualTheme,
-        value: next,
-        apply: (value) => {
-          applyPersonalVisualTheme(value);
-          render();
-        },
-        restore: () => {
-          applyPersonalVisualTheme(previous);
-          render();
-        },
-      });
     });
   }
 
@@ -4751,6 +5170,7 @@ async function mountTaskList(root) {
     rewardSelect.focus();
   });
 
+  clientSequence = await loadClientSequence();
   applyEntryMode(true);
   personalPresentation = await loadPersonalPresentation();
   applyPersonalPresentation(personalPresentation);
@@ -4782,7 +5202,8 @@ async function mountTaskList(root) {
   applyActiveAudioForView();
   const initialKind = currentListKind();
   await showActiveList(initialKind, { resetCarryover: false });
-  applyEntryMode(await loadTaskEntryOpen());
+  const savedEntryOpen = await loadTaskEntryOpen();
+  applyEntryMode(savedEntryOpen || (isClientMode() && visibleTasks().length === 0));
   savedReward = await loadReward();
   rewardEditing = initialRewardEditing(savedReward);
   applyReward(savedReward);

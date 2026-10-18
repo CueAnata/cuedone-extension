@@ -198,13 +198,13 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.doesNotMatch(setter, /save|play|task|Celebrate/);
   assert.match(taskListJs, /class="client-settings-actions"/);
   assert.match(taskListJs, /class="client-settings-done-inline"/);
-  assert.match(taskListJs, /✓ Done/);
+  assert.match(taskListJs, /✓ Save/);
 
   const toggleStart = taskListJs.indexOf(
     'settingsToggle.addEventListener("click"'
   );
   const toggleEnd = taskListJs.indexOf(
-    'personalSettingsToggle.addEventListener("click"',
+    'async function saveClientSettingsAndReturn',
     toggleStart
   );
   const toggleHandler = taskListJs.slice(toggleStart, toggleEnd);
@@ -212,10 +212,10 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.match(toggleHandler, /aria-expanded/);
   assert.doesNotMatch(toggleHandler, /save|play|task|Celebrate/);
 
-  assert.match(panelMarkup, /class="client-settings-done"/);
-  assert.match(panelMarkup, /✓ Done/);
+  assert.doesNotMatch(panelMarkup, /class="client-settings-done"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"[^>]*>✓ Save/);
   assert.match(taskListJs, /clientSettingsDoneInline\.hidden = !expanded/);
-  const doneStart = taskListJs.indexOf('clientSettingsDone.addEventListener("click"');
+  const doneStart = taskListJs.indexOf('async function saveClientSettingsAndReturn');
   const doneEnd = taskListJs.indexOf(
     'personalSettingsToggle.addEventListener("click"',
     doneStart
@@ -223,7 +223,10 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   const doneHandler = taskListJs.slice(doneStart, doneEnd);
   assert.match(doneHandler, /setSettingsPanelOpen\(false\)/);
   assert.match(taskListJs, /clientSettingsDoneInline\.addEventListener\("click"/);
-  assert.doesNotMatch(doneHandler, /save|play|task|Celebrate/);
+  assert.match(doneHandler, /await saveSetting\.flush\(\)/);
+  assert.match(doneHandler, /applyEntryMode\(showTaskEntry\)/);
+  assert.match(doneHandler, /showTaskEntry = visibleTasks\(\)\.length === 0/);
+  assert.doesNotMatch(doneHandler, /maybeCelebrate|playClient/);
 
   assert.ok(
     taskListJs.indexOf('class="client-motivator"') > panelEnd,
@@ -332,7 +335,7 @@ test("Personal Settings is a collapsed Private/Public selector that isolates lis
   assert.match(taskListJs, /data-personal-presentation="public"/);
   assert.match(taskListJs, /Using Private list/);
   assert.match(taskListJs, /formatActiveListLabel/);
-  assert.match(taskListJs, /personalSettingsToggleLabel\.textContent = expanded \? "Done" : "Settings"/);
+  assert.match(taskListJs, /personalSettingsToggleLabel\.textContent = expanded \? "Save" : "Settings"/);
   assert.match(taskListJs, /personalSettingsToggleIcon\.textContent = expanded \? "✓" : "⚙"/);
   assert.match(taskListJs, /not a lock or account/);
   assert.match(taskListJs, /savePersonalPresentation/);
@@ -398,7 +401,7 @@ test("Personal Private One Active Task is persistent, reviewable, and presentati
   assert.match(render, /const shown = visibleTasks\(\)/);
   assert.match(render, /reviewAll: personalFullListOpen/);
   assert.match(render, /oneActiveState\.visibleTasks/);
-  assert.match(render, /renderedTasks\.forEach/);
+  assert.match(render, /sequenceEntries\.forEach/);
   assert.match(render, /shown\.findIndex/);
   assert.match(render, /is-one-active-card/);
   assert.doesNotMatch(render, /saveList|deleteTask|reorderTasks/);
@@ -560,7 +563,7 @@ test("Personal Private affirmations and session endings stay isolated and silent
   );
 });
 
-test("Reset List appears only when every task is complete and confirms before unchecking", () => {
+test("Reset List supports checked tasks and confirms before unchecking", () => {
   assert.match(taskListJs, /Reset List/);
   assert.match(taskListJs, /Start this list again\?/);
   assert.match(taskListJs, /canResetList/);
@@ -592,7 +595,7 @@ test("Reset List appears only when every task is complete and confirms before un
     confirmStart,
     taskListJs.indexOf("doneButton.addEventListener")
   );
-  assert.match(confirmHandler, /resetCompletedTasks\(shown\)/);
+  assert.match(confirmHandler, /resetCompletedTasks\(shown, \{ allowPartial: true \}\)/);
   assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true \}\)/);
   assert.match(
     confirmHandler,
@@ -615,4 +618,21 @@ test("Reset List appears only when every task is complete and confirms before un
     maybeCelebrate.indexOf("showFinalTrail") <
       maybeCelebrate.indexOf('kind: "final"')
   );
+});
+
+test("Client sequence uses one section card and one top Settings Save", () => {
+  assert.doesNotMatch(taskListJs, /class="client-settings-done"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"[^>]*>✓ Save/);
+  assert.match(taskListJs, /taskList\.className = "client-part-tasks"/);
+  assert.match(taskListJs, /taskList\.append\(item\)/);
+  assert.match(taskListJs, /root\.classList\.toggle\("client-settings-open", expanded\)/);
+  assert.match(taskListJs, /root\.querySelector\("#clear-all-btn"\)/);
+});
+
+test("empty Client lists reopen with task entry visible in either sequence layout", () => {
+  assert.match(taskListJs, /applyEntryMode\(savedEntryOpen \|\| \(isClientMode\(\) && visibleTasks\(\)\.length === 0\)\)/);
+});
+
+test("Client sequence hides global entry without changing full-list entry preferences", () => {
+  assert.match(taskListJs, /classList\.toggle\("client-sequence-active", client && clientSequence\.enabled\)/);
 });

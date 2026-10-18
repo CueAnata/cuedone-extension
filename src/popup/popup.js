@@ -7,9 +7,7 @@ import {
 } from "../shared/preferences.js";
 import {
   closeSideView,
-  getLocal,
   openSideView,
-  setLocal,
   setToolbarPopup,
 } from "../platform/browser.js";
 
@@ -25,53 +23,6 @@ if (shouldRestoreSideFromPopup(preferredView)) {
   }
 } else {
   mountTopView();
-}
-
-const clearAllBtn = document.getElementById('clear-all-btn');
-if (clearAllBtn) {
-  clearAllBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    // Purge all tasks for the currently active list mode via the exact Create New List workflow
-    if (typeof window._clearAllViaNewList === 'function') {
-      await window._clearAllViaNewList();
-      return;
-    }
-    // Fallback: direct clear if task-list controller not yet mounted (uses identical save path)
-    await setLocal({ 
-      tasks: [], 
-      'cuedone.personalPrivateTasks': [], 
-      'cuedone.personalPublicTasks': [] 
-    });
-    if (typeof window.mountTopView === 'function') {
-      await window.mountTopView();
-    } else if (typeof renderTaskList === 'function') {
-      await renderTaskList([]);
-    } else {
-      window.dispatchEvent(new Event('storage'));
-      document.dispatchEvent(new CustomEvent('cuedone:tasks-changed', { detail: { tasks: [] } }));
-    }
-    try {
-      if (typeof window.renderActiveVisualProgress === 'function') {
-        window.renderActiveVisualProgress();
-      }
-    } catch (err) {
-      console.error('[CueDone] Visual theme render failed safely:', err);
-    }
-  });
-}
-
-const resetBtn = document.getElementById('reset-btn');
-if (resetBtn) {
-  resetBtn.addEventListener('click', () => {
-    document.querySelector('.reset-list-button')?.click();
-  });
-}
-
-const startNewListBtn = document.getElementById('start-new-list-btn');
-if (startNewListBtn) {
-  startNewListBtn.addEventListener('click', () => {
-    document.querySelector('.new-list-toggle')?.click();
-  });
 }
 
 function mountTopView() {

@@ -23,7 +23,7 @@ export function resetListVisible({
   style = "simple",
   finalCelebrationActive = false,
 } = {}) {
-  if (!canResetList(tasks)) {
+  if (!canResetList(tasks, { allowPartial: presentation === "personal" })) {
     return false;
   }
 

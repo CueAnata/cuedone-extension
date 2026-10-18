@@ -1,3 +1,4 @@
+import { normalizeClientSequence, reconcileClientSequence } from "./client-sequence.js";
 import { themeSelectionForList } from "./random-visual-theme.js";
 import {
   PERSONAL_BREAK_TIMER_KEY,
@@ -9,6 +10,8 @@ import { normalizeBreakTimerModel } from "./break-clock.js";
 import { clearEndingState, normalizeEndingState } from "./personal-messages.js";
 import { isTaskList } from "./tasks.js";
 import { getLocal, onLocalChanged, setLocal } from "../platform/browser.js";
+
+export const CLIENT_SEQUENCE_KEY = "cuedone.clientSequence.v1";
 
 export const TASKS_STORAGE_KEY = "cuedone.tasks";
 export const PUBLIC_TASKS_STORAGE_KEY = "cuedone.publicTasks";
@@ -24,7 +27,7 @@ export async function loadTasks() {
 
 export async function saveTasks(
   tasks,
-  { clearEnding = false, breakTimer = null } = {}
+  { clearEnding = false, breakTimer = null, clientSequence = null } = {}
 ) {
   const values = { [TASKS_STORAGE_KEY]: tasks };
   const ending = clearEnding
@@ -38,6 +41,8 @@ export async function saveTasks(
   if (breakTimer !== null) {
     values[PERSONAL_BREAK_TIMER_KEY] = normalizeBreakTimerModel(breakTimer);
   }
+  const storedSequence = clientSequence ?? (await getLocal(CLIENT_SEQUENCE_KEY))[CLIENT_SEQUENCE_KEY];
+  if (storedSequence != null) values[CLIENT_SEQUENCE_KEY] = reconcileClientSequence(storedSequence, tasks);
   const preference = (await getLocal(PERSONAL_VISUAL_THEME_KEY))[PERSONAL_VISUAL_THEME_KEY];
   const saved = (await getLocal(PERSONAL_RANDOM_THEME_KEY))[PERSONAL_RANDOM_THEME_KEY];
   if (preference === "random" || (preference == null && saved?.active)) {
@@ -101,5 +106,21 @@ export function onListChanged(callback) {
     if (changes[PUBLIC_TASKS_STORAGE_KEY]) {
       callback("public", listFromStorage(changes[PUBLIC_TASKS_STORAGE_KEY].newValue));
     }
+  });
+}
+
+
+export function loadClientSequence() {
+  return getLocal(CLIENT_SEQUENCE_KEY).then(data => normalizeClientSequence(data[CLIENT_SEQUENCE_KEY]));
+}
+export async function saveClientSequence(value) {
+  const tasks = await loadTasks();
+  const saved = reconcileClientSequence(value, tasks);
+  await setLocal({ [CLIENT_SEQUENCE_KEY]: saved });
+  return saved;
+}
+export function onClientSequenceChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName === "local" && changes[CLIENT_SEQUENCE_KEY]) callback(normalizeClientSequence(changes[CLIENT_SEQUENCE_KEY].newValue));
   });
 }

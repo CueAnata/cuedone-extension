@@ -43,16 +43,18 @@ export function deleteTask(tasks, id) {
   return tasks.filter((task) => task.id !== id);
 }
 
-export function canResetList(tasks) {
+export function canResetList(tasks, { allowPartial = false } = {}) {
   return (
     Array.isArray(tasks) &&
     tasks.length > 0 &&
-    tasks.every((task) => task && task.completed === true)
+    (allowPartial
+      ? tasks.some((task) => task && task.completed === true)
+      : tasks.every((task) => task && task.completed === true))
   );
 }
 
-export function resetCompletedTasks(tasks) {
-  if (!canResetList(tasks)) {
+export function resetCompletedTasks(tasks, options) {
+  if (!canResetList(tasks, options)) {
     return tasks;
   }
 

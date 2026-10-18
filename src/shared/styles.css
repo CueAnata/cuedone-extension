@@ -3625,3 +3625,161 @@ body[data-presentation="client"] .celebration-layer.is-visible {
 .personal-battery-visual[data-stage] .battery-fill {
   width: max(0px, calc(var(--battery-level, 0%) - 4px));
 }
+
+/* Shared list actions: the same controls in Top and Side. */
+.list-actions-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.list-actions-footer > button,
+.finish-for-now-button {
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.list-actions-footer > button { flex: 1 1 auto; }
+.list-actions-footer .new-list-toggle {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.list-actions-footer .new-list-toggle:hover,
+.list-actions-footer .new-list-toggle.is-open { background: var(--accent-hover); color: #fff; }
+.list-actions-footer .clear-all-button:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: #f6e8e5;
+}
+.list-actions-footer > button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.finish-for-now-button {
+  width: 100%;
+  margin: 0;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  text-align: center;
+}
+.finish-for-now-button:hover { background: var(--surface); color: var(--text); }
+.list-actions-footer > button:focus-visible,
+.finish-for-now-button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Optional local Client sequence groups. Personal layouts retain their styling. */
+.client-add-part[hidden], .client-sequence-status[hidden] { display: none; }
+.client-add-part { display: flex; gap: 6px; align-items: center; flex-basis: 100%; font-size: 0.82rem; }
+body[data-presentation="client"] .task-form { flex-wrap: wrap; }
+.client-sequence-mode, .client-add-part-select, .client-task-part {
+  min-height: 34px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); color: var(--text); padding: 5px 8px; max-width: 100%;
+}
+.client-sequence-help { margin: 6px 0 12px; font-size: 0.8rem; color: var(--muted); }
+body[data-presentation="client"] .client-sequence-status { margin: 12px 0 8px; font-weight: 750; }
+body[data-presentation="client"] .client-sequence-heading {
+  list-style: none; display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; padding: 9px 10px; border-bottom: 2px solid var(--line);
+}
+body[data-presentation="client"] .client-sequence-heading h3 { margin: 0; font-size: 1.1rem; }
+body[data-presentation="client"] .client-sequence-heading span { font-size: 0.78rem; color: var(--muted); }
+body[data-presentation="client"] .client-sequence-heading.is-active { border-color: var(--accent); background: var(--accent-soft); border-radius: 8px 8px 0 0; }
+body[data-presentation="client"] .client-part-editor {
+  display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; flex-basis: 100%;
+  font-size: 0.78rem; color: var(--muted);
+}
+
+/* Compact activity picker with local pictograms and readable labels. */
+body[data-presentation="client"] .client-sequence-heading {
+  display: grid;
+  gap: 8px;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface);
+}
+body[data-presentation="client"] .client-sequence-heading.is-active { border-color: var(--accent); background: var(--accent-soft); }
+.client-part-heading-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.client-part-activity-toggle, .client-task-activity-toggle {
+  display: flex; align-items: center; gap: 9px; width: 100%; min-height: 46px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  background: var(--surface); color: var(--text); text-align: left; cursor: pointer;
+}
+body[data-presentation="client"] .client-part-activity-toggle > span, body[data-presentation="client"] .client-task-activity-toggle > span { color: var(--text); font-size: 0.9rem; font-weight: 650; }
+body[data-presentation="client"] .client-part-activity-toggle .client-part-dropdown-arrow, body[data-presentation="client"] .client-task-activity-toggle .client-part-dropdown-arrow {
+  margin-left: auto; font-size: 1.5rem; line-height: 1; color: var(--accent);
+}
+.client-activity-icon { width: 26px; height: 26px; flex-shrink: 0; color: var(--accent); }
+.client-activity-picker {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
+  max-height: 246px; overflow-y: auto; overscroll-behavior: contain; padding: 3px;
+}
+.client-activity-choice {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  min-height: 66px; min-width: 0; padding: 8px 5px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer;
+}
+body[data-presentation="client"] .client-activity-choice span { color: var(--text); font-size: 0.76rem; line-height: 1.25; font-weight: 650; }
+.client-activity-choice[aria-pressed="true"], .client-activity-choice:hover { border-color: var(--accent); background: var(--accent-soft); }
+.client-task-move {
+  padding: 4px 7px; min-height: 30px; background: transparent; border: 1px solid var(--line);
+  border-radius: 6px; font: inherit; font-size: 0.74rem; color: var(--text); cursor: pointer;
+}
+.client-activity-picker[hidden], .client-part-editor[hidden] { display: none !important; }
+.client-part-activity-toggle:focus-visible, .client-activity-choice:focus-visible, .client-task-move:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+
+.client-task-activity-toggle, .task-item > .client-activity-picker { grid-column: 1 / -1; }
+.client-task-activity-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.client-complete-activity {
+  justify-self: start; padding: 8px 12px; border: 1px solid var(--accent);
+  border-radius: 8px; background: var(--accent-soft); color: var(--text);
+  font: inherit; font-weight: 650; cursor: pointer;
+}
+.client-complete-activity:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.client-task-complete { grid-column: 1 / -1; justify-self: start; padding: 8px 14px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent-soft); color: var(--text); font: inherit; font-weight: 700; cursor: pointer; }
+
+.client-part-heading-row { flex-wrap: wrap; }
+.client-part-heading-row .client-part-activity-toggle { width: auto; flex: 1 1 100%; }
+.client-custom-task-editor { display: flex; gap: 6px; min-width: 0; }
+.client-custom-task-input { min-width: 0; flex: 1; width: 100%; }
+.client-custom-task-save { border: 1px solid var(--accent); border-radius: 6px; background: var(--accent-soft); padding: 6px 10px; font: inherit; }
+
+/* Sequence sections own their task rows: one visible card per part. */
+body[data-presentation="client"] .client-part-tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+body[data-presentation="client"] .client-part-tasks > .task-item {
+  border: 0; border-radius: 0; box-shadow: none; margin: 0; padding: 8px 0 0; background: transparent;
+}
+body[data-presentation="client"] .client-part-tasks > .task-item.is-complete { opacity: .4; transition: opacity .2s ease; }
+body[data-presentation="client"] .client-sequence-heading:has(.client-part-tasks > .task-item):not(:has(.task-checkbox:not(:checked))) { opacity: .45; }
+body[data-presentation="client"] .client-settings-open .task-list,
+body[data-presentation="client"] .client-settings-open .client-sequence-status,
+body[data-presentation="client"] .client-settings-open .empty-state,
+body[data-presentation="client"] .client-settings-open .list-lifecycle { display: none !important; }
+@media (prefers-reduced-motion: reduce) { body[data-presentation="client"] .client-part-tasks > .task-item.is-complete { transition: none; } }
+
+.client-part-tasks .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Sequence tasks are entered through the part activity/Custom picker. */
+body[data-presentation="client"] .client-sequence-active > .task-entry-row,
+body[data-presentation="client"] .client-sequence-active > .add-task-toggle { display: none !important; }
+
+.client-sequence-settings[hidden], .client-sequence-help[hidden] { display: none !important; }
