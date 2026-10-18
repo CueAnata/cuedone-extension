@@ -1533,11 +1533,43 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
   height: 88px;
 }
 
-.mountain-climber {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 280ms ease;
+/* Hide every stage; the container's current data-stage selects exactly one. */
+.mountain-scene .hr-stage,
+.mountain-scene .mountain-climber {
+  display: none;
+}
+
+@keyframes horse-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-0.4px) rotate(-1.5deg); }
+}
+.mountain-scene .horse-bob {
+  animation: horse-bob 840ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mountain-scene .horse-bob { animation: none; }
+}
+/* Animate nested groups so the fixed scatter positions stay intact. */
+@keyframes hr-victory-flutter {
+  0% { transform: translate(-2px, -10px) rotate(-16deg); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translate(2px, -3px) rotate(14deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(-1px, 3px) rotate(-10deg); opacity: 0; }
+}
+.personal-mountain-visual[data-stage="4"] .hr-stage--4 .hr-flutter {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hr-victory-flutter 3.8s ease-in-out infinite;
+  animation-delay: var(--flutter-delay, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .personal-mountain-visual[data-stage="4"] .hr-stage--4 .hr-flutter {
+    animation: none;
+    opacity: 1;
+  }
 }
 .mountain-rope {
   opacity: 0;
@@ -1549,8 +1581,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .personal-mountain-visual[data-stage="2"] .mountain-climber--2,
 .personal-mountain-visual[data-stage="3"] .mountain-climber--3,
 .personal-mountain-visual[data-stage="4"] .mountain-climber--4 {
-  opacity: 1;
-  visibility: visible;
+  display: inline;
 }
 .personal-mountain-visual[data-stage="0"] .mountain-rope--0,
 .personal-mountain-visual[data-stage="1"] .mountain-rope--1,
