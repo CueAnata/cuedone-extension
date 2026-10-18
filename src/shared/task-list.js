@@ -1763,10 +1763,10 @@ async function mountTaskList(root) {
         aria-expanded="false"
         aria-controls="new-list-review"
       >
-        Start a New List
+        Review &amp; Continue
       </button>
       <div id="new-list-review" class="new-list-review" hidden>
-        <h2 class="new-list-heading" id="new-list-heading">Start a New List</h2>
+        <h2 class="new-list-heading" id="new-list-heading">Choose tasks to keep</h2>
         <p class="new-list-copy">
           Choose unfinished tasks to carry over. Completed tasks and unfinished
           tasks you deselect will be removed.
@@ -1780,7 +1780,7 @@ async function mountTaskList(root) {
         <p class="new-list-status" aria-live="polite"></p>
         <p class="new-list-error" role="alert" hidden></p>
         <div class="new-list-actions">
-          <button class="create-new-list-button" type="button">Create New List</button>
+          <button class="create-new-list-button" type="button">Continue with Selected Tasks</button>
           <button class="cancel-new-list-button" type="button">Cancel</button>
         </div>
       </div>
@@ -2797,6 +2797,7 @@ async function mountTaskList(root) {
       reset ? null : carryoverReview
     );
     const selected = new Set(carryoverReview.selectedIds);
+    createNewListButton.textContent = selected.size ? "Continue with Selected Tasks" : "Start Empty List";
     carryoverList.replaceChildren();
 
     for (const task of carryoverReview.unfinished) {
@@ -3488,6 +3489,7 @@ async function mountTaskList(root) {
       ...carryoverReview,
       selectedIds: carryoverReview.knownIds.filter((id) => selected.has(id)),
     };
+    createNewListButton.textContent = selected.size ? "Continue with Selected Tasks" : "Start Empty List";
     newListStatus.textContent = selected.size
       ? ""
       : "No tasks selected. The new list will start empty.";

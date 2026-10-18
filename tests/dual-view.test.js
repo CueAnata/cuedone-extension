@@ -231,8 +231,11 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   );
 });
 
-test("Start a New List is shared, explicit, synchronized, and separate from Reset List", () => {
-  assert.match(taskListJs, /Start a New List/);
+test("Review and Continue is shared, explicit, synchronized, and separate from Reset List", () => {
+  assert.match(taskListJs, /Review &amp; Continue/);
+  assert.match(taskListJs, /Choose tasks to keep/);
+  assert.match(taskListJs, /Continue with Selected Tasks/);
+  assert.match(taskListJs, /Start Empty List/);
   assert.match(taskListJs, /Choose unfinished tasks to carry over/);
   assert.match(taskListJs, /Completed tasks and unfinished\s+tasks you deselect will be removed/);
   assert.match(taskListJs, /class="create-new-list-button"/);
