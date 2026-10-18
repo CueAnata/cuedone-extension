@@ -1,3 +1,4 @@
+import { visualProgress } from "./progress.js";
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
 // compat viewBox="0 0 400 225" M272 178 id="canePole" x2="248" y2="108" M0 135 Q18 135 28 142 <rect x="0" y="146" width="156" height="10"
 export const FISHERMAN_STAGE_COUNT = 2;
@@ -5,11 +6,13 @@ export const FISHERMAN_IDLE = 0;
 export const FISHERMAN_FINALE = 1;
 
 export function fishermanStateFromProgress(progress) {
-  const n = progress && typeof progress === "object" ? progress : normalizeProgress([]);
+  const state = visualProgress(progress);
+  if (!state) return null;
+  const n = { ...state, percent: state.ratio * 100 };
   const total = Number(n.total) || 0;
   const complete = Number(n.complete) || 0;
   if (total === 0) return null;
-  const isFinale = complete >= total && total > 0;
+  const isFinale = state.isFinal;
   const basketCount = isFinale ? Math.max(0, complete - 1) : complete;
   const stage = isFinale ? FISHERMAN_FINALE : FISHERMAN_IDLE;
   return { stage, isFinale, basketCount, total, complete, percent: n.percent };

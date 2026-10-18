@@ -3440,3 +3440,8 @@ body[data-presentation="client"] .celebration-layer.is-visible {
       opacity 120ms ease;
   }
 }
+
+/* Battery fill follows each task's exact share; stages select color and finale only. */
+.personal-battery-visual[data-stage] .battery-fill {
+  width: max(0px, calc(var(--battery-level, 0%) - 4px));
+}

@@ -12,8 +12,8 @@ test("horse race follows task completion forward and backward through every quar
     assert.equal(describeMountainStage(progress).stage, complete);
     assert.match(describeMountainStage(progress).accessibleText, /Horse race/);
   }
-  assert.equal(mountainStageFromProgress({ total: 0, complete: 0 }), 0);
-  assert.equal(mountainStageFromProgress(undefined), 0);
+  assert.equal(mountainStageFromProgress({ total: 0, complete: 0 }), null);
+  assert.equal(mountainStageFromProgress(undefined), null);
   assert.equal(mountainStageFromProgress({ total: 3, complete: 2 }), 2);
   assert.equal(mountainStageFromProgress({ total: 3, complete: 3 }), 4);
 });

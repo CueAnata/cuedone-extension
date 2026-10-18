@@ -1,3 +1,4 @@
+import { visualProgress } from "./progress.js";
 import { createSettingsSaver } from "./settings-save.js";
 import {
   addTask,
@@ -779,7 +780,7 @@ async function mountTaskList(root) {
     if (!ballsWrap) return;
     const complete = Number(progress?.complete) || 0;
     const total = Number(progress?.total) || 0;
-    const isFinal = total > 0 && complete >= total;
+    const isFinal = total > 0 && complete === total;
     const reduced = prefersReducedMotion();
     const shouldAnimateNew = !isFirst && !reduced && previousGumballComplete != null && complete > previousGumballComplete;
     ballsWrap.replaceChildren();
@@ -873,7 +874,7 @@ async function mountTaskList(root) {
         spark.classList.remove("is-visible");
         spark.classList.remove("is-final");
       }
-    } else if (complete >= total) {
+    } else if (complete === total) {
       if (sparkSvg) {
         // At full completion place it exactly at the socket where the fuse enters the cap, then burst
         try {
@@ -3145,6 +3146,10 @@ async function mountTaskList(root) {
         default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
       }
     }
+    const exactVisualProgress = visualProgress(oneActiveState.progress);
+    for (const visual of [personalBatteryVisual, personalBatteryVisualEntry]) {
+      visual?.style.setProperty("--battery-level", `${(exactVisualProgress?.ratio ?? 0) * 100}%`);
+    }
     const themePair = plantVisible ? themeStage(visualTheme, oneActiveState.progress) : { stage: null, desc: null };
     const activeStage = themePair.stage;
     const activeDesc = themePair.desc;
@@ -3250,7 +3255,7 @@ async function mountTaskList(root) {
     }
     if (gumballActive) {
       previousGumballComplete = Number(gumballProgress.complete) || 0;
-      previousGumballWasFinal = gumballProgress.total > 0 && gumballProgress.complete >= gumballProgress.total;
+      previousGumballWasFinal = gumballProgress.total > 0 && gumballProgress.complete === gumballProgress.total;
       if (isGumballTheme) isFirstGumballRender = false;
     } else if (activeStage == null) {
       previousGumballComplete = 0;
@@ -3307,7 +3312,7 @@ async function mountTaskList(root) {
     if (fishermanActive) {
       const fp = oneActiveState.progress;
       previousFishermanComplete = Number(fp.complete) || 0;
-      previousFishermanWasFinal = !!(fp.total > 0 && fp.complete >= fp.total);
+      previousFishermanWasFinal = !!(fp.total > 0 && fp.complete === fp.total);
       if (isFishermanTheme) isFirstFishermanRender = false;
     } else if (activeStage == null) {
       previousFishermanComplete = null;

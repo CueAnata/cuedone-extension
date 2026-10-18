@@ -1,3 +1,4 @@
+import { progressStage, visualProgress } from "./progress.js";
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
 
 export const PLANT_THEME_VALUES = ["off", "plant"];
@@ -38,15 +39,7 @@ const PLANT_STAGE_LABELS = [
 ];
 
 export function plantStageFromProgress(progress) {
-  const normalized = progress && typeof progress === "object" ? progress : normalizeProgress([]);
-  const total = Number(normalized.total) || 0;
-  const complete = Number(normalized.complete) || 0;
-  if (total === 0) return null;
-  if (complete >= total) return PLANT_STAGE_COUNT - 1;
-  if (complete <= 0) return 0;
-  const percent = normalized.percent != null ? Number(normalized.percent) : Math.round((complete / total) * 100);
-  const stage = Math.floor((percent / 100) * (PLANT_STAGE_COUNT - 1));
-  return Math.max(0, Math.min(PLANT_STAGE_COUNT - 1, stage));
+  return progressStage(progress, PLANT_STAGE_COUNT);
 }
 
 export function plantStageForTasks(tasks) {

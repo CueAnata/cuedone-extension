@@ -29,3 +29,19 @@ export function incompleteCount(progress) {
 export function isPrivateProgressAllowed(presentationMode, personalPresentation) {
   return presentationMode === "personal" && personalPresentation === "private";
 }
+
+// Rounded percent is a display label only. Visuals and finales use exact counts.
+export function visualProgress(progress) {
+  const source = Array.isArray(progress) ? normalizeProgress(progress) : progress;
+  const total = Number(source?.total);
+  const complete = Number(source?.complete);
+  if (!Number.isInteger(total) || total <= 0 || !Number.isInteger(complete) || complete < 0 || complete > total) return null;
+  return { total, complete, ratio: complete / total, isFinal: complete === total };
+}
+
+export function progressStage(progress, stageCount = 5) {
+  const state = visualProgress(progress);
+  if (!state || !Number.isInteger(stageCount) || stageCount < 2) return null;
+  if (state.isFinal) return stageCount - 1;
+  return Math.min(stageCount - 2, Math.floor(state.ratio * (stageCount - 1)));
+}

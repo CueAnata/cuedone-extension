@@ -1,20 +1,12 @@
+import { progressStage, visualProgress } from "./progress.js";
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
 
 export const KITE_STAGE_COUNT = 5;
 const LABELS = ["grounded", "lifting", "rising", "soaring", "high"];
 
 export function kiteStageFromProgress(progress) {
-  const n = progress && typeof progress === "object" ? progress : normalizeProgress([]);
-  const total = Number(n.total) || 0;
-  const complete = Number(n.complete) || 0;
-  if (total === 0) return null;
-  if (complete >= total) return KITE_STAGE_COUNT - 1;
-  if (complete <= 0) return 0;
-  const pct = n.percent != null ? Number(n.percent) : Math.round((complete / total) * 100);
-  let stage = Math.max(0, Math.min(KITE_STAGE_COUNT - 1, Math.floor((pct / 100) * (KITE_STAGE_COUNT - 1))));
-  // Ensure first completion is visibly off the ground even for larger totals (e.g. 1/5)
-  if (stage === 0 && complete > 0) stage = 1;
-  return stage;
+  const stage = progressStage(progress, KITE_STAGE_COUNT);
+  return stage === 0 && visualProgress(progress)?.complete > 0 ? 1 : stage;
 }
 
 export function kiteStageForTasks(tasks) {

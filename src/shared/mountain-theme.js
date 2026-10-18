@@ -1,4 +1,5 @@
-import { isEmptyProgress, normalizeProgress } from "./progress.js";
+import { progressStage } from "./progress.js";
+
 
 export const MOUNTAIN_STAGE_COUNT = 5;
 // #ff6f00 #1565c0 #b8860b preserved for legacy color tests
@@ -6,12 +7,7 @@ export const MOUNTAIN_STAGE_COUNT = 5;
 // <svg class="mountain-svg" viewBox="0 0 148 64" preserved
 
 export function mountainStageFromProgress(progress) {
-  const norm = Array.isArray(progress) ? normalizeProgress(progress) : progress;
-  if (isEmptyProgress(norm) || !Number.isFinite(Number(norm?.total)) || norm.total <= 0) return 0;
-  if (norm.complete >= norm.total) return MOUNTAIN_STAGE_COUNT - 1;
-  const complete = Number(norm.complete) || 0;
-  const pct = (complete / norm.total) * 100;
-  return Math.max(0, Math.min(MOUNTAIN_STAGE_COUNT - 1, Math.floor((pct / 100) * (MOUNTAIN_STAGE_COUNT - 1))));
+  return progressStage(progress, MOUNTAIN_STAGE_COUNT);
 }
 
 function renderHorse(x, y, silkColor, horseColor = "#6d4c41") {
