@@ -46,7 +46,7 @@ test("visual theme normalize defaults and values", () => {
   assert.equal(normalizeVisualTheme("zen-terrarium"), "zen-terrarium");
   assert.equal(normalizeVisualTheme("fisherman"), "fisherman");
   assert.equal(normalizeVisualTheme("unknown"), "plant");
-  assert.deepEqual(VISUAL_THEME_VALUES, ["plant", "gumball", "constellation", "mountain", "dynamite", "coffee", "battery", "aquarium", "kite", "rocket", "zen-terrarium", "fisherman"]);
+  assert.deepEqual(VISUAL_THEME_VALUES, ["random", "plant", "gumball", "constellation", "mountain", "dynamite", "coffee", "battery", "aquarium", "kite", "rocket", "zen-terrarium", "fisherman", "submarine"]);
 });
 
 test("gumball stage derives from completed/total, empty hidden", () => {
@@ -144,7 +144,7 @@ test("gumball and constellation CSS exists, no external assets, reduced-motion",
   assert.match(css, /@media\s*\(prefers-reduced-motion/);
 });
 
-test("Mountain Climb uses inline SVG climber poses without external assets", () => {
+test("Horse Race uses inline SVG climber poses without external assets", () => {
   const mountain = readFileSync("src/shared/mountain-theme.js", "utf8");
   const ui = readFileSync("src/shared/task-list.js", "utf8");
   assert.match(mountain, /export function mountainSceneMarkup/);

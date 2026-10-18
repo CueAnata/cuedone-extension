@@ -1,5 +1,8 @@
+import { themeSelectionForList } from "./random-visual-theme.js";
 import {
   PERSONAL_BREAK_TIMER_KEY,
+  PERSONAL_RANDOM_THEME_KEY,
+  PERSONAL_VISUAL_THEME_KEY,
   PERSONAL_ENDING_KEY,
 } from "./preferences.js";
 import { normalizeBreakTimerModel } from "./break-clock.js";
@@ -34,6 +37,12 @@ export async function saveTasks(
   }
   if (breakTimer !== null) {
     values[PERSONAL_BREAK_TIMER_KEY] = normalizeBreakTimerModel(breakTimer);
+  }
+  const preference = (await getLocal(PERSONAL_VISUAL_THEME_KEY))[PERSONAL_VISUAL_THEME_KEY];
+  const saved = (await getLocal(PERSONAL_RANDOM_THEME_KEY))[PERSONAL_RANDOM_THEME_KEY];
+  if (preference === "random" || (preference == null && saved?.active)) {
+    const previous = listFromStorage((await getLocal(TASKS_STORAGE_KEY))[TASKS_STORAGE_KEY]);
+    values[PERSONAL_RANDOM_THEME_KEY] = themeSelectionForList(saved, previous, tasks, preference);
   }
   await setLocal(values);
 }

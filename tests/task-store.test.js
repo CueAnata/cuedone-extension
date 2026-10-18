@@ -384,3 +384,23 @@ test("Public list changes never expose or clear the Private pause", async () => 
   assert.deepEqual(store[PERSONAL_ENDING_KEY], pause);
   assert.equal(endingVisible(pause, "personal", "public", publicTasks), false);
 });
+
+test("Random theme and shuffle bag stay fixed until a completed list is replaced", async () => {
+  const { PERSONAL_RANDOM_THEME_KEY, PERSONAL_VISUAL_THEME_KEY } = await import("../src/shared/preferences.js");
+  const { createVisualThemeSelection } = await import("../src/shared/random-visual-theme.js");
+  const selection = createVisualThemeSelection(() => 0);
+  const active = selection.resolve("random");
+  const initial = selection.snapshot();
+  const tasks = [createTask("One", 1, "one"),createTask("Two", 2, "two")];
+  const store = mockChromeStorage({[TASKS_STORAGE_KEY]:tasks,[PERSONAL_VISUAL_THEME_KEY]:"random",[PERSONAL_RANDOM_THEME_KEY]:initial});
+  await saveTasks(tasks.map(task => ({...task,completed:true})));
+  assert.deepEqual(store[PERSONAL_RANDOM_THEME_KEY], initial);
+  await saveList("public", [createTask("Public", 3, "public")]);
+  assert.deepEqual(store[PERSONAL_RANDOM_THEME_KEY], initial);
+  await saveTasks([]);
+  assert.equal(store[PERSONAL_RANDOM_THEME_KEY].active, active);
+  assert.equal(store[PERSONAL_RANDOM_THEME_KEY].pendingNextList,true);
+  await saveTasks([createTask("Next list", 4, "next")]);
+  assert.notEqual(store[PERSONAL_RANDOM_THEME_KEY].active,active);
+  assert.equal(store[PERSONAL_RANDOM_THEME_KEY].bag.length,initial.bag.length - 1);
+});

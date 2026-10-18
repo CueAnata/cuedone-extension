@@ -7,7 +7,7 @@ const themes = await Promise.all([
   ["plant", "plant", 5], ["gumball", "gumball", 5], ["constellation", "constellation", 5],
   ["mountain", "mountain", 5], ["dynamite", "dynamite", 5], ["coffee", "coffee", 5],
   ["battery", "battery", 5], ["aquarium", "aquarium", 5], ["kite", "kite", 5],
-  ["rocket", "rocket", 6], ["zen-terrarium", "zenTerrarium", 5],
+  ["rocket", "rocket", 6], ["submarine", "submarine", 5], ["zen-terrarium", "zenTerrarium", 5],
   ["fisherman", "fisherman", 2],
 ].map(async ([file, prefix, count]) => ({
   name: file, count, stage: (await import(`../src/shared/${file}-theme.js`))[`${prefix}StageFromProgress`],

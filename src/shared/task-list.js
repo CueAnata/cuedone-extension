@@ -1,3 +1,5 @@
+import { loadPersonalRandomTheme, savePersonalRandomTheme, onPersonalRandomThemeChanged } from "./preferences.js";
+import { createVisualThemeSelection } from "./random-visual-theme.js";
 import { visualProgress } from "./progress.js";
 import { createSettingsSaver } from "./settings-save.js";
 import {
@@ -187,11 +189,12 @@ import {
   mountainStageFromProgress,
 } from "./mountain-theme.js";
 import { describeDynamiteStage, dynamiteStageFromProgress } from "./dynamite-theme.js";
-import { describeCoffeeStage, coffeeStageFromProgress, coffeeLevels, isPouring, isSteaming } from "./coffee-theme.js";
-import { describeBatteryStage, batteryStageFromProgress } from "./battery-theme.js";
+import { describeCoffeeStage, coffeeStageFromProgress, coffeeLevels, isPouring, isSteaming, coffeePourMarkup, coffeeFeedPath } from "./coffee-theme.js";
+import { describeBatteryStage, batteryStageFromProgress, batterySceneMarkup } from "./battery-theme.js";
 import { describeAquariumStage, aquariumStageFromProgress } from "./aquarium-theme.js";
 import { describeKiteStage, kiteStageFromProgress, kiteSceneMarkup } from "./kite-theme.js";
 import { describeAnimalPuzzleStage as describeAnimalPuzzleStageAlias, animalPuzzleStageFromProgress as animalPuzzleStageFromProgressAlias } from "./animal-puzzle-theme.js";
+import { describeSubmarineStage, submarineStageFromProgress, submarineSceneMarkup } from "./submarine-theme.js";
 import { describeRocketStage, rocketStageFromProgress } from "./rocket-theme.js";
 import { describeFishermanStage, fishermanSceneMarkup as fishermanSceneMarkupBase, fishermanStateFromProgress } from "./fisherman-theme.js";
 // Full-bleed taller canvas 148x112: ensure root <svg> is width="100%" height="100%" display="block" with tight viewBox 0 0 148 112 so sky/horizon/water/dock fill edge-to-edge
@@ -256,7 +259,9 @@ async function mountTaskList(root) {
   let personalPresentation = "private";
   let personalTaskLayout = "full-list";
   let personalPlantTheme = "off";
-  let personalVisualTheme = "plant";
+  let personalVisualTheme = "random";
+  let visualThemeSelection = createVisualThemeSelection();
+  let pendingVisualTheme = null;
   let personalFullListOpen = false;
   let personalSound = "off";
   let personalTaskSound = "bubble-pop";
@@ -811,9 +816,10 @@ async function mountTaskList(root) {
       case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
       case "kite":
       case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
+      case "submarine": return { stage: submarineStageFromProgress(progress), desc: describeSubmarineStage(progress) };
       case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
       case "fisherman": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
-      case "zen-terrarium": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
+      case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
       default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
     }
   }
@@ -908,7 +914,7 @@ async function mountTaskList(root) {
     const carafeFill = visualEl.querySelector(".carafe-fill");
     const mugFill = visualEl.querySelector(".mug-fill");
     const stream = visualEl.querySelector(".pour-stream");
-    const inner = visualEl.querySelector(".carafe-pour-inner");
+    const feed = visualEl.querySelector(".coffee-feed");
     if (!carafeFill || !mugFill) return;
     const levelsCalc = typeof coffeeLevels === 'function' 
       ? coffeeLevels 
@@ -927,6 +933,7 @@ async function mountTaskList(root) {
       steamContainer.classList.toggle('is-steaming', steaming);
     }
     const reduced = prefersReducedMotion();
+    carafeFill.hidden = carafe <= 0;
     carafeFill.style.height = `${carafe}%`;
     mugFill.style.height = `${mug}%`;
     if (stream) {
@@ -934,16 +941,9 @@ async function mountTaskList(root) {
       stream.style.height = pouring ? "42px" : "0px";
       stream.style.transition = reduced ? "none" : "";
     }
-    if (inner) {
-      const carafeH = 40;
-      const fillH = carafeH * (carafe / 100);
-      const fillTop = carafeH - fillH;
-      const top = Math.max(0, fillTop - 2);
-      const height = Math.max(0, 44 - top);
-      inner.style.top = `${top}px`;
-      inner.style.height = pouring ? `${height}px` : "0px";
-      inner.classList.toggle("is-pouring", pouring);
-      inner.style.transition = reduced ? "none" : "";
+    if (feed) {
+      feed.classList.toggle("is-pouring", pouring);
+      feed.querySelector(".coffee-feed-path")?.setAttribute("d", coffeeFeedPath(progress));
     }
     visualEl.classList.toggle("is-steaming", steaming);
     carafeFill.style.transition = reduced ? "none" : "";
@@ -1033,12 +1033,12 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-coffee-visual personal-coffee-visual--entry" role="img" aria-label="" hidden>
           <div class="coffee-scene" aria-hidden="true">
-            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div><div class="carafe-pour-inner" aria-hidden="true"></div></div><div class="carafe-spout"><div class="pour-stream" aria-hidden="true"></div></div><div class="carafe-handle"></div><div class="carafe-lid"></div></div>
+            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div></div><div class="carafe-spout"></div>${coffeePourMarkup()}<div class="carafe-handle"></div><div class="carafe-lid"></div></div>
             <div class="mug" aria-hidden="true"><div class="mug-body"><div class="mug-fill"></div></div><div class="mug-handle"></div><span class="mug-steam s1"></span><span class="mug-steam s2"></span><span class="mug-steam-heart" aria-hidden="true"><svg viewBox="0 0 22 34" aria-hidden="true"><path d="M11 28 C 11 28 5.2 22.2 5.2 17.6 C5.2 14.1 7.4 12.2 10.1 14.2 L11 15 L11.9 14.2 C14.6 12.2 16.8 14.1 16.8 17.6 C16.8 22.2 11 28 11 28 Z" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linejoin="round"/><path d="M11 14.2 C 8.5 12.5, 14.5 9.2, 11 6.5 C 8.2 4.2, 14 1.2, 11 -1.2" fill="none" stroke="#1a1a1a" stroke-width="1.15" stroke-linecap="round"/><path d="M11 5.2 C 13.8 3, 7.2 -0.8, 11 -3.8" fill="none" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round" opacity="0.95"/></svg></span></div>
           </div>
         </div>
         <div class="personal-battery-visual personal-battery-visual--entry" role="img" aria-label="" hidden>
-          <div class="battery-scene" aria-hidden="true"><span class="battery-body"><span class="battery-fill"></span></span><span class="battery-tip"></span><span class="battery-bolt battery-bolt--top" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradTop" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 24 L22 4 L16 13 L33 2 L10 20 L16 16 Z" fill="url(#boltGradTop)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 24 L22 4 L16 13 L33 2" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="battery-bolt battery-bolt--bottom" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradBot" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 14 L22 34 L16 25 L33 36 L10 18 L16 22 Z" fill="url(#boltGradBot)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 14 L22 34 L16 25 L33 36" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          ${batterySceneMarkup("Entry")}
         </div>
         <div class="personal-aquarium-visual personal-aquarium-visual--entry" role="img" aria-label="" hidden>
           <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-ripple" aria-hidden="true"></span><span class="aquarium-bag"></span></span></div>
@@ -1048,6 +1048,9 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-rocket-visual personal-rocket-visual--entry" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
+        </div>
+        <div class="personal-submarine-visual personal-submarine-visual--entry" role="img" aria-label="" hidden>
+          ${submarineSceneMarkup()}
         </div>
         <div class="personal-fisherman-visual personal-fisherman-visual--entry" role="img" aria-label="" hidden>
           ${fishermanSceneMarkup()}
@@ -1162,18 +1165,21 @@ async function mountTaskList(root) {
           <div class="personal-visual-theme-row" hidden>
             <label class="personal-pref-label" for="personal-visual-theme">Theme</label>
             <select id="personal-visual-theme" class="personal-visual-theme-select">
+              <option value="random">Random</option>
               <option value="plant">Plant</option>
               <option value="gumball">Gumball Jar</option>
               <option value="constellation">Constellation</option>
-              <option value="mountain">Mountain Climb</option>
-              <option value="dynamite">Dynamite Fuse</option>
+              <option value="mountain">Horse Race</option>
+              <option value="dynamite">Bomb Fuse</option>
               <option value="coffee">Coffee Pour</option>
               <option value="battery">Battery</option>
               <option value="aquarium">Aquarium</option>
               <option value="kite">Kite</option>
               <option value="rocket">Rocket</option>
               <option value="fisherman">Fisherman</option>
+              <option value="submarine">Submarine</option>
             </select>
+            <button type="button" class="personal-visual-theme-done">Done</button>
           </div>
           <p class="personal-settings-note">
             Plant grows with your progress. Empty shows no plant and adds no finale.
@@ -1685,12 +1691,12 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-coffee-visual" role="img" aria-label="" hidden>
           <div class="coffee-scene" aria-hidden="true">
-            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div><div class="carafe-pour-inner" aria-hidden="true"></div></div><div class="carafe-spout"><div class="pour-stream" aria-hidden="true"></div></div><div class="carafe-handle"></div><div class="carafe-lid"></div></div>
+            <div class="carafe" aria-hidden="true"><div class="carafe-body"><div class="carafe-fill"></div></div><div class="carafe-spout"></div>${coffeePourMarkup()}<div class="carafe-handle"></div><div class="carafe-lid"></div></div>
             <div class="mug" aria-hidden="true"><div class="mug-body"><div class="mug-fill"></div></div><div class="mug-handle"></div><span class="mug-steam s1"></span><span class="mug-steam s2"></span><span class="mug-steam-heart" aria-hidden="true"><svg viewBox="0 0 22 34" aria-hidden="true"><path d="M11 28 C 11 28 5.2 22.2 5.2 17.6 C5.2 14.1 7.4 12.2 10.1 14.2 L11 15 L11.9 14.2 C14.6 12.2 16.8 14.1 16.8 17.6 C16.8 22.2 11 28 11 28 Z" fill="none" stroke="#1a1a1a" stroke-width="1.25" stroke-linejoin="round"/><path d="M11 14.2 C 8.5 12.5, 14.5 9.2, 11 6.5 C 8.2 4.2, 14 1.2, 11 -1.2" fill="none" stroke="#1a1a1a" stroke-width="1.15" stroke-linecap="round"/><path d="M11 5.2 C 13.8 3, 7.2 -0.8, 11 -3.8" fill="none" stroke="#1a1a1a" stroke-width="1.05" stroke-linecap="round" opacity="0.95"/></svg></span></div>
           </div>
         </div>
         <div class="personal-battery-visual" role="img" aria-label="" hidden>
-          <div class="battery-scene" aria-hidden="true"><span class="battery-body"><span class="battery-fill"></span></span><span class="battery-tip"></span><span class="battery-bolt battery-bolt--top" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradTop2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 24 L22 4 L16 13 L33 2 L10 20 L16 16 Z" fill="url(#boltGradTop2)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 24 L22 4 L16 13 L33 2" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="battery-bolt battery-bolt--bottom" aria-hidden="true"><svg viewBox="0 0 36 38" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="boltGradBot2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFED4A"/><stop offset="45%" stop-color="#FFC400"/><stop offset="100%" stop-color="#FF8F00"/></linearGradient></defs><path d="M3 14 L22 34 L16 25 L33 36 L10 18 L16 22 Z" fill="url(#boltGradBot2)" stroke="#B86A00" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/><path d="M3 14 L22 34 L16 25 L33 36" fill="none" stroke="rgba(255,255,255,0.62)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          ${batterySceneMarkup()}
         </div>
         <div class="personal-aquarium-visual" role="img" aria-label="" hidden>
           <div class="aquarium-scene" aria-hidden="true"><span class="aquarium-tank"><span class="aquarium-fish f1"></span><span class="aquarium-fish f2"></span><span class="aquarium-fish f3"></span><span class="aquarium-fish f4"></span><span class="aquarium-ripple" aria-hidden="true"></span><span class="aquarium-bag"></span></span></div>
@@ -1700,6 +1706,9 @@ async function mountTaskList(root) {
         </div>
         <div class="personal-rocket-visual" role="img" aria-label="" hidden>
           <div class="rocket-scene" aria-hidden="true"><span class="rocket-stand"></span><span class="rocket-body"><span class="rocket-fin"></span><span class="rocket-flame"></span></span><span class="shooting-star" aria-hidden="true"></span></div>
+        </div>
+        <div class="personal-submarine-visual" role="img" aria-label="" hidden>
+          ${submarineSceneMarkup()}
         </div>
         <div class="personal-fisherman-visual" role="img" aria-label="" hidden>
           ${fishermanSceneMarkup()}
@@ -1969,14 +1978,16 @@ async function mountTaskList(root) {
   const personalKiteVisualEntry = root.querySelector(".personal-kite-visual--entry");
   const personalAnimalPuzzleVisual = personalKiteVisual;
   const personalAnimalPuzzleVisualEntry = personalKiteVisualEntry;
+  const personalSubmarineVisual = root.querySelector(".personal-submarine-visual:not(.personal-submarine-visual--entry)");
+  const personalSubmarineVisualEntry = root.querySelector(".personal-submarine-visual--entry");
   const personalRocketVisual = root.querySelector(".personal-rocket-visual:not(.personal-rocket-visual--entry)");
   const personalRocketVisualEntry = root.querySelector(".personal-rocket-visual--entry");
   const personalFishermanVisual = root.querySelector(".personal-fisherman-visual:not(.personal-fisherman-visual--entry)");
   const personalFishermanVisualEntry = root.querySelector(".personal-fisherman-visual--entry");
   const personalZenTerrariumVisual = root.querySelector(".personal-zen-terrarium-visual:not(.personal-zen-terrarium-visual--entry)");
   const personalZenTerrariumVisualEntry = root.querySelector(".personal-zen-terrarium-visual--entry");
-  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
-  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
+  const flatEntryVisualsOuter = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalSubmarineVisualEntry, "submarine"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+  const flatAllVisualsOuter = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalSubmarineVisual, "submarine"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
   const personalFullListToggle = root.querySelector(
     ".personal-full-list-toggle"
   );
@@ -2066,7 +2077,7 @@ async function mountTaskList(root) {
       if (stillVisible) {
         personalPlantEntry.hidden = false;
         const progress = personalOneActiveState(visibleTasks(), { reviewAll: personalFullListOpen }).progress;
-        const visualThemeNow = normalizeVisualTheme(personalVisualTheme);
+        const visualThemeNow = visualThemeSelection.resolve(personalVisualTheme);
         const basePlantVisibleNow = isPlantVisible({ tasks: visibleTasks(), presentationMode: document.body.dataset.presentation, personalPresentation, layout: personalTaskLayout, theme: personalPlantTheme });
         const isFishermanNow = visualThemeNow === "fisherman" || visualThemeNow === "zen-terrarium";
         const entryFishermanVisible = (() => {
@@ -2193,6 +2204,8 @@ async function mountTaskList(root) {
 
   function personalVisualThemeDescription(theme) {
     switch (theme) {
+      case "random":
+        return "One theme for the full list. A new list after completion gets the next shuffled theme.";
       case "fisherman":
         return "Fisherman catches fish as tasks complete, with a grand splash finale.";
       case "gumball":
@@ -2202,7 +2215,7 @@ async function mountTaskList(root) {
       case "mountain":
         return "Climber ascends as tasks complete.";
       case "dynamite":
-        return "Dynamite fuse burns as tasks complete.";
+        return "Bomb fuse burns as tasks complete.";
       case "coffee":
         return "Coffee pours as tasks complete.";
       case "battery":
@@ -2214,6 +2227,8 @@ async function mountTaskList(root) {
         return "Kite soars as tasks complete.";
       case "rocket":
         return "Rocket launches as tasks complete.";
+      case "submarine":
+        return "Submarine dives toward treasure as tasks complete.";
       case "plant":
       default:
         return "Plant grows with your progress. Empty shows no plant and adds no finale.";
@@ -2223,7 +2238,7 @@ async function mountTaskList(root) {
   function paintPersonalVisualTheme(value) {
     const current = normalizeVisualTheme(value);
     if (personalVisualThemeSelect) {
-      personalVisualThemeSelect.value = current;
+      personalVisualThemeSelect.value = pendingVisualTheme ?? current;
     }
     const note = root.querySelector(".personal-visual-theme-row + .personal-settings-note");
     if (note) {
@@ -2233,7 +2248,7 @@ async function mountTaskList(root) {
 
   function applyPersonalVisualTheme(value) {
     personalVisualTheme = normalizeVisualTheme(value);
-    document.body.dataset.personalVisualTheme = personalVisualTheme;
+    document.body.dataset.personalVisualTheme = visualThemeSelection.resolve(personalVisualTheme);
     paintPersonalVisualTheme(personalVisualTheme);
   }
 
@@ -3110,7 +3125,7 @@ async function mountTaskList(root) {
       String(personalFullListOpen)
     );
 
-    const visualTheme = normalizeVisualTheme(personalVisualTheme);
+    const visualTheme = visualThemeSelection.resolve(personalVisualTheme);
     const basePlantVisible = isPlantVisible({
       tasks: shown,
       presentationMode: document.body.dataset.presentation,
@@ -3140,9 +3155,10 @@ async function mountTaskList(root) {
         case "aquarium": return { stage: aquariumStageFromProgress(progress), desc: describeAquariumStage(progress) };
         case "kite":
         case "animal-puzzle": return { stage: kiteStageFromProgress(progress), desc: describeKiteStage(progress) };
-        case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
+        case "submarine": return { stage: submarineStageFromProgress(progress), desc: describeSubmarineStage(progress) };
+      case "rocket": return { stage: rocketStageFromProgress(progress), desc: describeRocketStage(progress) };
         case "fisherman": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
-        case "zen-terrarium": return { stage: fishermanStateFromProgress(progress)?.stage ?? null, desc: describeFishermanStage(progress) };
+        case "zen-terrarium": return { stage: zenTerrariumStageFromProgress(progress), desc: describeZenTerrariumStage(progress) };
         default: return { stage: plantStageFromProgress(progress), desc: describePlantStage(progress) };
       }
     }
@@ -3164,7 +3180,7 @@ async function mountTaskList(root) {
       [personalBatteryVisual, "battery"],
       [personalAquariumVisual, "aquarium"],
       [personalKiteVisual, "kite"],
-      [personalRocketVisual, "rocket"],
+      [personalRocketVisual, "rocket"], [personalSubmarineVisual, "submarine"],
       [personalFishermanVisual, "fisherman"],
       [personalZenTerrariumVisual, "zen-terrarium"],
     ];
@@ -3177,12 +3193,12 @@ async function mountTaskList(root) {
       [personalBatteryVisualEntry, "battery"],
       [personalAquariumVisualEntry, "aquarium"],
       [personalKiteVisualEntry, "kite"],
-      [personalRocketVisualEntry, "rocket"],
+      [personalRocketVisualEntry, "rocket"], [personalSubmarineVisualEntry, "submarine"],
       [personalFishermanVisualEntry, "fisherman"],
       [personalZenTerrariumVisualEntry, "zen-terrarium"],
     ];
-    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
-    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
+    const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalSubmarineVisual, "submarine"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
+    const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalSubmarineVisualEntry, "submarine"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
     const isFishermanForPlant = visualTheme === "fisherman" || visualTheme === "zen-terrarium";
     personalPlant.hidden = !plantVisible || activeStage == null || (!oneActive && !isFishermanForPlant);
     if (plantVisible && activeStage != null && activeDesc && (oneActive || isFishermanForPlant)) {
@@ -4032,7 +4048,11 @@ async function mountTaskList(root) {
 
   if (personalVisualThemeSelect) {
     personalVisualThemeSelect.addEventListener("change", () => {
-      const next = normalizeVisualTheme(personalVisualThemeSelect.value);
+      pendingVisualTheme = normalizeVisualTheme(personalVisualThemeSelect.value);
+    });
+    root.querySelector(".personal-visual-theme-done").addEventListener("click", () => {
+      const next = pendingVisualTheme ?? personalVisualTheme;
+      pendingVisualTheme = null;
       if (next === personalVisualTheme) {
         paintPersonalVisualTheme(next);
         return;
@@ -4040,7 +4060,10 @@ async function mountTaskList(root) {
 
       const previous = personalVisualTheme;
       void saveSetting({
-        save: savePersonalVisualTheme,
+        save: (value) => {
+          if (value === "random") visualThemeSelection.resolve(value);
+          return savePersonalVisualTheme(value, value === "random" ? visualThemeSelection.snapshot() : null);
+        },
         load: loadPersonalVisualTheme,
         value: next,
         apply: (value) => {
@@ -4151,7 +4174,12 @@ async function mountTaskList(root) {
     render();
   });
 
+  onPersonalRandomThemeChanged((value) => {
+    visualThemeSelection = createVisualThemeSelection(Math.random, value);
+    render();
+  });
   onPersonalVisualThemeChanged((value) => {
+    pendingVisualTheme = null;
     applyPersonalVisualTheme(value);
     render();
   });
@@ -4727,7 +4755,13 @@ async function mountTaskList(root) {
   applyPresentationMode(await loadPresentationMode());
   applyPersonalTaskLayout(await loadPersonalTaskLayout());
   applyPersonalPlantTheme(await loadPersonalPlantTheme());
+  visualThemeSelection = createVisualThemeSelection(Math.random, await loadPersonalRandomTheme());
   applyPersonalVisualTheme(await loadPersonalVisualTheme());
+  if (personalVisualTheme === "random") {
+    await savePersonalRandomTheme(visualThemeSelection.snapshot()).catch(() => {
+      showListError("CueDone could not save the Random theme. Try reopening Settings.");
+    });
+  }
   applyCompletionStyle(await loadCompletionStyle());
   applyCompletionSound(await loadCompletionSound());
   applyFinalSound(await loadFinalSound());

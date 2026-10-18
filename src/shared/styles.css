@@ -1149,6 +1149,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .personal-kite-visual[hidden],
 .personal-animal-puzzle-visual[hidden],
 .personal-rocket-visual[hidden],
+.personal-submarine-visual[hidden],
 .personal-fisherman-visual[hidden],
 .personal-zen-terrarium-visual[hidden],
 .personal-plant-visual--entry[hidden],
@@ -1178,6 +1179,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
   .personal-kite-visual,
   .personal-animal-puzzle-visual,
   .personal-rocket-visual,
+  .personal-submarine-visual,
   .personal-zen-terrarium-visual,
   .personal-one-active-fill,
   .personal-plant-stem,
@@ -1240,6 +1242,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .personal-kite-visual,
 .personal-animal-puzzle-visual,
 .personal-rocket-visual,
+.personal-submarine-visual,
 .personal-fisherman-visual,
 .personal-zen-terrarium-visual {
   display: inline-flex;
@@ -1659,11 +1662,55 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .carafe-spout { position:absolute; right:-3px; top:-5px; width:16px; height:15px; background:#e8b08a; border:1.7px solid #1a1a1a; border-bottom:0; border-radius:0 4px 0 0; clip-path:polygon(0 42%, 100% 0, 100% 62%, 42% 100%, 0 100%); box-shadow:1px -1px 2px rgba(0,0,0,0.08); overflow:visible; }
 .carafe-handle { position:absolute; left:-9px; top:8px; width:14px; height:26px; border:2.2px solid #1a1a1a; border-right:0; border-radius:11px 0 0 11px; background:#e8b08a; }
 .carafe-lid { position:absolute; left:2px; right:2px; top:-7px; height:7px; background:#e8b08a; border-radius:3px; border:1.4px solid #1a1a1a; box-shadow:0 1px 2px rgba(0,0,0,0.12); }
-/* pour stream removed — swirling steam into heart only, no rectangular block */
-.carafe-pour-inner,
-.carafe-spout .pour-stream { display:none !important; opacity:0 !important; pointer-events:none; }
-.carafe-pour-inner.is-pouring,
-.carafe-spout .pour-stream.is-pouring { display:none !important; opacity:0 !important; }
+/* Counter-rotate the stream so its curved fall stays upright under the tilted pot. */
+.coffee-feed {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 70px;
+  height: 56px;
+  overflow: visible;
+  pointer-events: none;
+}
+.coffee-feed.is-pouring { display: block; }
+.coffee-feed.is-pouring .coffee-feed-path {
+  animation: coffee-pour-pulse 1600ms ease-in-out infinite;
+}
+.carafe .pour-stream {
+  display: none;
+  position: absolute;
+  right: -33px;
+  top: 0;
+  width: 36px;
+  height: 42px;
+  overflow: visible;
+  transform: rotate(-28deg);
+  transform-origin: 2px 2px;
+  pointer-events: none;
+  z-index: 3;
+}
+.carafe .pour-stream.is-pouring { display: block; }
+.pour-stream.is-pouring .coffee-stream-core {
+  animation: coffee-pour-pulse 1600ms ease-in-out infinite;
+}
+.pour-stream.is-pouring .coffee-stream-shimmer {
+  animation: coffee-pour-shimmer 1000ms linear infinite;
+}
+@keyframes coffee-pour-pulse {
+  0%, 100% { opacity: 0.7; stroke-width: 2.6; }
+  50% { opacity: 1; stroke-width: 3.4; }
+}
+@keyframes coffee-pour-shimmer {
+  from { stroke-dashoffset: 0; opacity: 0.45; }
+  to { stroke-dashoffset: -20; opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pour-stream.is-pouring :is(.coffee-stream-core, .coffee-stream-shimmer),
+  .coffee-feed.is-pouring .coffee-feed-path {
+    animation: none;
+  }
+}
 .mug { position:relative; width:52px; height:36px; display:flex; align-items:flex-end; justify-content:center; flex-shrink:0; margin-bottom:0; overflow:visible; }
 .mug-body { position:relative; width:50px; height:30px; border:2px solid #1a1a1a; border-radius:7px 7px 15px 15px / 9px 9px 15px 15px; background:#b8e6d9; overflow:visible; box-shadow:0 2px 4px rgba(0,0,0,0.08); }
 .mug-body::before { content:""; position:absolute; left:1px; right:1px; top:0; height:9px; background:#f2fffc; border:1.4px solid #1a1a1a; border-bottom:0; border-radius:50% / 55%; pointer-events:none; z-index:2; }
@@ -1698,12 +1745,60 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .battery-bolt--top { left:calc(50% + 52px); top:50%; transform:translate(-3px, -92%); }
 .battery-bolt--bottom { left:calc(50% + 52px); top:50%; transform:translate(-3px, 8%); }
 .personal-battery-visual[data-stage="4"] .battery-bolt--top,
-.personal-battery-visual[data-stage="4"] .battery-bolt--bottom { animation:battery-bolt-pulse 720ms ease 1; }
+.personal-battery-visual[data-stage="4"] .battery-bolt--bottom { animation:battery-bolt-pulse 2200ms ease-in-out infinite; }
 .personal-battery-visual[data-stage="4"] .battery-bolt--top { animation-delay:120ms; }
 .personal-battery-visual[data-stage="4"] .battery-bolt--bottom { animation-delay:120ms; }
 @keyframes battery-bolt-pulse { 0%{opacity:0; transform:translate(-3px, var(--bolt-y, -92%)) scale(0.72)} 14%{opacity:1; transform:translate(-3px, var(--bolt-y, -92%)) scale(1.08)} 32%{opacity:1; transform:translate(-3px, var(--bolt-y, -92%)) scale(1)} 52%{opacity:0; transform:translate(-3px, var(--bolt-y, -92%)) scale(0.98)} 56%{opacity:0} 68%{opacity:1; transform:translate(-3px, var(--bolt-y, -92%)) scale(1.08)} 86%{opacity:1; transform:translate(-3px, var(--bolt-y, -92%)) scale(1)} 100%{opacity:0; transform:translate(-3px, var(--bolt-y, -92%)) scale(0.96)} }
 .battery-bolt--top { --bolt-y:-92%; }
 .battery-bolt--bottom { --bolt-y:8%; }
+
+/* The persisted stage on the existing visual container gates the entire pulse. */
+.personal-battery-visual[data-stage="4"] {
+  animation: battery-electric-pulse 2200ms ease-in-out infinite;
+}
+.personal-battery-visual[data-stage="4"] :is(.battery-body, .battery-tip) {
+  animation: battery-charge-glow 2200ms ease-in-out infinite;
+}
+@keyframes battery-electric-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12) saturate(1.08); }
+}
+@keyframes battery-charge-glow {
+  0%, 100% { box-shadow: inset 0 1px 3px rgba(255,255,255,0.3), 0 0 3px rgba(74,222,90,0.25); }
+  50% { box-shadow: inset 0 1px 3px rgba(255,255,255,0.6), 0 0 7px rgba(74,222,90,0.8), 0 0 12px rgba(34,197,94,0.45); }
+}
+.battery-charge-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.battery-charge-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(187,247,208,0.15) 40%, rgba(240,255,244,0.75) 50%, rgba(134,239,172,0.3) 60%, transparent 70%);
+  opacity: 0;
+}
+.personal-battery-visual[data-stage="4"] .battery-charge-shimmer::before {
+  animation: battery-green-shimmer 2200ms ease-in-out infinite;
+}
+@keyframes battery-green-shimmer {
+  0% { transform: translateX(-100%); opacity: 0; }
+  20%, 70% { opacity: 0.9; }
+  90%, 100% { transform: translateX(100%); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .personal-battery-visual[data-stage="4"],
+  .personal-battery-visual[data-stage="4"] :is(.battery-body, .battery-tip, .battery-bolt, .battery-fill),
+  .personal-battery-visual[data-stage="4"] .battery-charge-shimmer::before {
+    animation: none;
+  }
+  .personal-battery-visual[data-stage="4"] :is(.battery-body, .battery-tip) {
+    box-shadow: 0 0 4px rgba(74,222,90,0.45);
+  }
+}
 @keyframes battery-full { 0%{filter:brightness(1)} 50%{filter:brightness(1.18) saturate(1.08)} 100%{filter:brightness(1)} }
 
 .aquarium-scene { width:148px; height:64px; position:relative; display:flex; align-items:center; justify-content:center; background:#fffdf8; border-radius:11px; border:1.8px solid #c9d8e8; overflow:hidden; box-sizing:border-box; }
@@ -3440,6 +3535,91 @@ body[data-presentation="client"] .celebration-layer.is-visible {
       opacity 120ms ease;
   }
 }
+
+/* Submarine fills its card without a white inset or SVG letterboxing. */
+.personal-plant[data-visual-theme="submarine"] {
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.personal-submarine-visual,
+.personal-submarine-visual--entry {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  border-radius: 6px;
+  background: transparent;
+  overflow: hidden;
+}
+.submarine-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 148 / 64;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.personal-submarine-visual .sub-stage { display: none; }
+.personal-submarine-visual[data-stage="0"] .sub-stage--0,
+.personal-submarine-visual[data-stage="1"] .sub-stage--1,
+.personal-submarine-visual[data-stage="2"] .sub-stage--2,
+.personal-submarine-visual[data-stage="3"] .sub-stage--3,
+.personal-submarine-visual[data-stage="4"] .sub-stage--4 { display: inline; }
+
+/* Shared visual-theme card: scenes reach the edges in either task layout. */
+.personal-plant[data-visual-theme] {
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.personal-plant[data-visual-theme] > [role="img"] {
+  width: 100%;
+  min-height: 0;
+  border-radius: inherit;
+  background: transparent;
+}
+.personal-plant[data-visual-theme] > [role="img"] > :is(
+  .mountain-scene, .dynamite-scene, .coffee-scene, .battery-scene,
+  .aquarium-scene, .kite-scene, .rocket-scene, .fisherman-scene,
+  .zen-scene, .submarine-scene, .constellation-sky
+) {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: inherit;
+}
+/* Scale whole-scene SVGs, leaving smaller illustration details untouched. */
+.personal-plant[data-visual-theme] .mountain-scene,
+.personal-plant[data-visual-theme] .kite-scene {
+  height: auto;
+}
+.personal-plant[data-visual-theme] :is(.mountain-svg, .kite-svg) {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 148 / 64;
+  border-radius: inherit;
+}
+
+/* Keep the Aquarium's glass silhouette free of an outer rectangular frame. */
+.personal-plant[data-visual-theme="aquarium"],
+.personal-plant[data-visual-theme="aquarium"] > .personal-aquarium-visual,
+.personal-aquarium-visual,
+.personal-aquarium-visual--entry,
+.personal-aquarium-visual .aquarium-scene {
+  background: transparent;
+  border: none;
+  overflow: visible;
+}
+
+/* A zero-height liquid must not leave its surface highlight visible. */
+.carafe-fill { height: 0; overflow: hidden; }
+.carafe-fill[hidden] { display: none; }
+.personal-coffee-visual[data-stage="0"] .carafe-fill[hidden]::after { content: none; }
 
 /* Battery fill follows each task's exact share; stages select color and finale only. */
 .personal-battery-visual[data-stage] .battery-fill {

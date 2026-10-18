@@ -638,9 +638,10 @@ export function loadPersonalVisualTheme() {
   );
 }
 
-export function savePersonalVisualTheme(value) {
+export function savePersonalVisualTheme(value, randomState = null) {
   return setLocal({
     [PERSONAL_VISUAL_THEME_KEY]: normalizeVisualTheme(value),
+    ...(randomState === null ? {} : { [PERSONAL_RANDOM_THEME_KEY]: randomState }),
   });
 }
 
@@ -651,5 +652,19 @@ export function onPersonalVisualThemeChanged(callback) {
     }
 
     callback(normalizeVisualTheme(changes[PERSONAL_VISUAL_THEME_KEY].newValue));
+  });
+}
+
+
+export const PERSONAL_RANDOM_THEME_KEY = "cuedone.personalRandomTheme.v1";
+export function loadPersonalRandomTheme() {
+  return getLocal(PERSONAL_RANDOM_THEME_KEY).then(data => data[PERSONAL_RANDOM_THEME_KEY] ?? {});
+}
+export function savePersonalRandomTheme(value) {
+  return setLocal({ [PERSONAL_RANDOM_THEME_KEY]: value });
+}
+export function onPersonalRandomThemeChanged(callback) {
+  return onLocalChanged((changes, areaName) => {
+    if (areaName === "local" && changes[PERSONAL_RANDOM_THEME_KEY]) callback(changes[PERSONAL_RANDOM_THEME_KEY].newValue ?? {});
   });
 }

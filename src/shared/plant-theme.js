@@ -1,4 +1,4 @@
-import { progressStage, visualProgress } from "./progress.js";
+import { progressStage } from "./progress.js";
 import { isEmptyProgress, normalizeProgress } from "./progress.js";
 
 export const PLANT_THEME_VALUES = ["off", "plant"];
@@ -8,6 +8,7 @@ export function normalizePlantTheme(value) {
 }
 
 export const VISUAL_THEME_VALUES = [
+  "random",
   "plant",
   "gumball",
   "constellation",
@@ -20,12 +21,13 @@ export const VISUAL_THEME_VALUES = [
   "rocket",
   "zen-terrarium",
   "fisherman",
+  "submarine",
 ];
 
 export function normalizeVisualTheme(value) {
   if (VISUAL_THEME_VALUES.includes(value)) return value;
   if (value === "animal-puzzle") return "kite";
-  return "plant";
+  return value == null ? "random" : "plant";
 }
 
 export const PLANT_STAGE_COUNT = 5;
