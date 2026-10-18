@@ -152,6 +152,19 @@ The next native retest confirmed that the opt-in persisted and Chrome created an
 
 Native review also clarified that Chrome system notifications are delivered through the operating system rather than as an indicator inside Chrome’s extension toolbar. A due opted-in break now also places a privacy-safe `!` badge on the CueDone toolbar icon, including when a retained view receives the in-app due state. The badge contains no task or suggestion content and clears when the break advances, the timer or notification preference is disabled, the session is paused, or CueDone switches to Public or Client. The system-notification path remains in place.
 
+## Local animation checkpoint — October 18, 2026
+
+Local feature commit: `2ea727c` (`2ea727ced5fb7bc5ce78f32cde08cea56fa503a4`) — **Complete per-list Random selection, Submarine registration, and animation polish**. This checkpoint includes 15 intended source/test files. All 228 tests passed, along with JavaScript syntax and Git whitespace checks. Existing Clear List/Clear All wiring was preserved. Nothing was pushed.
+
+Verified location:
+
+- Repository root and active linked worktree: `/Users/truthbetold/Desktop/CueDone/cuedone-chrome-personal-lists`.
+- Current branch containing the feature commit: `chrome-personal-public-private`.
+- Shared repository and Git object storage: `/Users/truthbetold/Desktop/CueDone/cuedone-extension/.git` (main worktree: `/Users/truthbetold/Desktop/CueDone/cuedone-extension`, currently on the separate `vr-personal-prototype` branch).
+- Linked-worktree Git metadata: `/Users/truthbetold/Desktop/CueDone/cuedone-extension/.git/worktrees/cuedone-chrome-personal-lists`.
+
+To locate the feature again, open the linked worktree above and run `git show 2ea727c`. The feature commit was HEAD when this checkpoint was recorded; this documentation is saved in a separate subsequent local commit without amending the feature commit. The untracked `/Users/truthbetold/Desktop/CueDone/cuedone-chrome-personal-lists/cuedone-extension-copy.js` remains untouched and outside both commits.
+
 ## Development roadmap (planned, not implemented)
 
 The CueDone Development Blueprint records the following delivery order. It is planning context only: each roadmap step requires separate, explicit authorization before implementation. Documentation of a step does not approve its code, dependencies, architecture, or external services.
