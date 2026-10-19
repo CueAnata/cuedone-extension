@@ -102,7 +102,7 @@ test("Personal message extras are Private-only", () => {
 test("affirmations default Off and Custom text is plain and capped", () => {
   const next = normalizeAffirmation();
   assert.equal(next.enabled, false);
-  assert.equal(next.choice, "one-step");
+  assert.equal(next.choice, "random");
   assert.equal(formatAffirmationText(next), "");
   assert.equal(normalizeMessageText("  hello  "), "hello");
   assert.equal(normalizeMessageText("x".repeat(200)).length, PERSONAL_MESSAGE_MAX_LENGTH);
@@ -136,11 +136,11 @@ test("Random affirmation chooses once when enabled and stays stable afterward", 
   assert.equal(formatAffirmationText(disableAffirmation(enabled)), "");
 });
 
-test("unfinished endings default to Good progress today while completed endings stay independent", () => {
-  assert.equal(normalizeCompleteMessage().choice, "none");
-  assert.equal(normalizePauseMessage().choice, "good-progress");
+test("ending choices default to Random while explicit pause presets remain available", () => {
+  assert.equal(normalizeCompleteMessage().choice, "random");
+  assert.equal(normalizePauseMessage().choice, "random");
   assert.equal(DEFAULT_UNFINISHED_ENDING_TEXT, "Good progress today.");
-  assert.deepEqual(createEndingState("pause"), {
+  assert.deepEqual(createEndingState("pause", {choice:"good-progress"}), {
     kind: "pause",
     text: "Good progress today.",
   });
@@ -285,4 +285,12 @@ test("a completed ending restores only for its exact completed list", () => {
     endingMatchesTasks({ kind: "complete", text: "Legacy ending" }, complete),
     false
   );
+});
+
+test("Random message defaults preserve explicit saved None, preset, Custom and Off choices",()=>{
+ assert.equal(normalizeAffirmation({enabled:false,choice:"one-step"}).choice,"one-step");
+ assert.equal(normalizeAffirmation({enabled:false}).enabled,false);
+ assert.equal(normalizeCompleteMessage({choice:"none"}).choice,"none");
+ assert.equal(normalizePauseMessage({choice:"good-progress"}).choice,"good-progress");
+ assert.equal(normalizePauseMessage({choice:"custom",customText:"Rest"}).customText,"Rest");
 });

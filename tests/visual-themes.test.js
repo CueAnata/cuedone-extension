@@ -158,3 +158,12 @@ test("Horse Race uses inline SVG climber poses without external assets", () => {
   assert.match(ui, /mountainSceneMarkup\(\)/);
   assert.doesNotMatch(ui, /mountain-range|mountain-flag/);
 });
+
+test("hidden visual wrappers cannot be revived by Fisherman styles after Clear All", () => {
+  const css=readFileSync(new URL('../src/shared/styles.css',import.meta.url),'utf8');
+  const ui=readFileSync(new URL('../src/shared/task-list.js',import.meta.url),'utf8');
+  assert.match(css,/\.personal-plant\[hidden\]\s*\{\s*display:\s*none !important/);
+  assert.match(css,/\.personal-plant--entry\[data-visual-theme="fisherman"\]:not\(\[hidden\]\)\s*\{/);
+  assert.match(ui,/delete personalPlantEntry\.dataset\.visualTheme/);
+  assert.match(ui,/const plantVisible = personalPlantTheme === "plant" &&/);
+});

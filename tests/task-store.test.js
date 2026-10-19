@@ -250,7 +250,7 @@ test("unfinished pause, task checks, and order restore until Continue list", asy
     createTask("Still waiting", 2, "waiting"),
   ];
   const store = mockChromeStorage({ [TASKS_STORAGE_KEY]: tasks });
-  await savePersonalEnding(createEndingState("pause"));
+  await savePersonalEnding(createEndingState("pause", {choice:"good-progress"}));
 
   const reopenedTasks = await loadTasks();
   const reopenedEnding = await loadPersonalEnding();

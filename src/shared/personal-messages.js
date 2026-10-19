@@ -81,7 +81,7 @@ export function normalizeAffirmation(value) {
   const enabled = stored.enabled === true;
   let choice = stored.choice;
   if (choice !== "custom" && choice !== "random" && !AFFIRMATION_IDS.includes(choice)) {
-    choice = "one-step";
+    choice = "random";
   }
 
   const resolvedId = AFFIRMATION_IDS.includes(stored.resolvedId)
@@ -116,11 +116,11 @@ export function normalizeEndingChoice(value, presets, defaultChoice = "none") {
 }
 
 export function normalizeCompleteMessage(value) {
-  return normalizeEndingChoice(value, COMPLETE_MESSAGE_PRESETS);
+  return normalizeEndingChoice(value, COMPLETE_MESSAGE_PRESETS, "random");
 }
 
 export function normalizePauseMessage(value) {
-  return normalizeEndingChoice(value, PAUSE_MESSAGE_PRESETS, "good-progress");
+  return normalizeEndingChoice(value, PAUSE_MESSAGE_PRESETS, "random");
 }
 
 export function normalizeEndingState(value) {

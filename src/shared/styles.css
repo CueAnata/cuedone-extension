@@ -950,7 +950,7 @@ body[data-presentation="personal"][data-personal-presentation="private"][data-pe
 .personal-plant--entry[data-visual-theme="fisherman"]:not([hidden]) {
   display: block;
 }
-.personal-plant--entry[data-visual-theme="fisherman"] {
+.personal-plant--entry[data-visual-theme="fisherman"]:not([hidden]) {
   height: auto !important;
   max-height: none !important;
   min-height: 0 !important;
@@ -3783,3 +3783,28 @@ body[data-presentation="client"] .client-sequence-active > .task-entry-row,
 body[data-presentation="client"] .client-sequence-active > .add-task-toggle { display: none !important; }
 
 .client-sequence-settings[hidden], .client-sequence-help[hidden] { display: none !important; }
+
+.client-activity-group-label { grid-column: 1 / -1; margin: 8px 0 2px; font-size: .76rem; font-weight: 750; color: var(--muted); }
+.client-routines { display: grid; gap: 8px; margin: 12px 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.client-routines label { display: grid; gap: 4px; font-size: .8rem; }
+.client-routines input, .client-routines select { min-width: 0; width: 100%; box-sizing: border-box; }
+.client-routines button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: .8rem; }
+.client-routine-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.client-routine-confirm[hidden] { display: none !important; }
+.client-routine-status { margin: 0; font-size: .8rem; }
+
+/* The CSS plant needs its own canvas height: its stem/leaves are absolute. */
+.personal-plant[data-visual-theme="plant"] > .personal-plant-visual {
+  min-height: 96px;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* Theme-specific display rules must never revive a hidden scene wrapper. */
+.personal-plant[hidden] { display: none !important; }
+
+/* Personal Settings is a setup surface; keep working tasks on the home view. */
+body[data-presentation="personal"] .personal-settings-open > .task-list,
+body[data-presentation="personal"] .personal-settings-open > .empty-state,
+body[data-presentation="personal"] .personal-settings-open > .personal-one-active,
+body[data-presentation="personal"] .personal-settings-open > .list-lifecycle { display: none !important; }

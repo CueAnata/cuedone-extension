@@ -97,3 +97,27 @@ test("one Random theme stays with the entire list, including reopen and unchecki
   assert.deepEqual(themeSelectionForList(state, tasks, [], "random", () => 0), state);
   assert.deepEqual(themeSelectionForList(state, previous, [], "coffee", () => 0), state);
 });
+
+test("successive completed lists consume the full Random bag without theme repeats", async () => {
+  const { themeSelectionForList }=await import("../src/shared/random-visual-theme.js");
+  let state;let previous=[];const chosen=[];
+  for(let index=0;index<RANDOM_VISUAL_THEME_VALUES.length;index++) {
+    const tasks=[{id:`list-${index}`,completed:false}];
+    state=themeSelectionForList(state,previous,tasks,"random",()=>.2);
+    chosen.push(state.active);
+    previous=tasks.map(task=>({...task,completed:true}));
+    state=themeSelectionForList(state,tasks,previous,"random",()=>.2);
+    state=themeSelectionForList(state,previous,[],"random",()=>.2);
+    previous=[];
+  }
+  assert.equal(new Set(chosen).size,RANDOM_VISUAL_THEME_VALUES.length);
+});
+
+test("Settings Save captures the pending theme before queued writes and ignores unchanged sync",()=>{
+ const ui=readFileSync(new URL('../src/shared/task-list.js',import.meta.url),'utf8');
+ const start=ui.indexOf('personalSettingsToggle.addEventListener("click"');
+ const handler=ui.slice(start,ui.indexOf('for (const button of personalPresentationButtons)',start));
+ assert.ok(handler.indexOf('const selectedVisualTheme')<handler.indexOf('await saveSetting.flush()'));
+ assert.match(handler,/savePendingVisualTheme\(selectedVisualTheme\)/);
+ assert.match(ui,/onPersonalVisualThemeChanged\(\(value\) => \{\s*if \(value === personalVisualTheme\) return;/);
+});

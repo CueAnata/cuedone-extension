@@ -399,12 +399,12 @@ test("Personal affirmation and ending preferences persist separately from Client
   const store = mockChromeStorage();
   assert.deepEqual(await loadPersonalAffirmation(), {
     enabled: false,
-    choice: "one-step",
+    choice: "random",
     customText: "",
     resolvedId: null,
   });
-  assert.equal((await loadPersonalCompleteMessage()).choice, "none");
-  assert.equal((await loadPersonalPauseMessage()).choice, "good-progress");
+  assert.equal((await loadPersonalCompleteMessage()).choice, "random");
+  assert.equal((await loadPersonalPauseMessage()).choice, "random");
   assert.deepEqual(await loadPersonalEnding(), { kind: "none", text: "" });
   await saveCompletionSound("on");
   await savePersonalAffirmation({

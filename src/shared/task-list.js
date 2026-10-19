@@ -1,4 +1,6 @@
-import { CLIENT_ACTIVITIES, clientActivity, clientActivityIconMarkup } from "./client-activities.js";
+import { captureClientRoutine, instantiateClientRoutine } from "./client-routines.js";
+import { loadClientRoutines, saveClientRoutines } from "./task-store.js";
+import { GROUPED_CLIENT_ACTIVITIES, clientActivity, clientActivityIconMarkup } from "./client-activities.js";
 import { normalizeClientSequence, reconcileClientSequence, assignClientSequencePart, clientSequenceState, assignClientPartActivity, assignClientTaskActivity } from "./client-sequence.js";
 import { loadClientSequence, saveClientSequence, onClientSequenceChanged } from "./task-store.js";
 import { savePersonalSettingsSnapshot, loadPersonalRandomTheme, savePersonalRandomTheme, onPersonalRandomThemeChanged } from "./preferences.js";
@@ -1563,6 +1565,14 @@ async function mountTaskList(root) {
               <option value="sequence">First / Then sequence</option>
             </select>
           </div>
+          <div class="client-routines" role="group" aria-label="Local routines">
+            <label>Routine name <input class="client-routine-name" maxlength="80" placeholder="Name this routine" /></label>
+            <button type="button" class="client-routine-save">Save as Routine</button>
+            <label>Saved routines <select class="client-routine-select"><option value="">Choose a routine</option></select></label>
+            <div class="client-routine-actions"><button type="button" class="client-routine-load">Load routine</button><button type="button" class="client-routine-delete">Delete routine</button></div>
+            <div class="client-routine-confirm" hidden><p>Replace current tasks with this routine? All completion checks will start unchecked.</p><button type="button" class="client-routine-replace">Replace list</button><button type="button" class="client-routine-cancel">Cancel</button></div>
+            <p class="client-routine-status" role="status"></p>
+          </div>
           <div class="client-pref-row client-sequence-settings">
             <label class="client-pref-label" for="client-sequence-mode">Parts</label>
             <select id="client-sequence-mode" class="client-sequence-mode">
@@ -2052,14 +2062,13 @@ async function mountTaskList(root) {
   );
 
   function fillMessageOptions(select, presets, { includeNone = false } = {}) {
-    const options = [];
+    const options = [{ id: "random", text: "Random" }];
     if (includeNone) {
       options.push({ id: "none", text: "None" });
     }
     options.push(
       ...presets.map((item) => ({ id: item.id, text: item.text })),
-      { id: "custom", text: "Custom" },
-      { id: "random", text: "Random" }
+      { id: "custom", text: "Custom" }
     );
     select.replaceChildren(
       ...options.map((item) => {
@@ -2145,7 +2154,7 @@ async function mountTaskList(root) {
           if (!isPrivate || !isLayout) return false;
           return Number(progress?.total) > 0;
         })();
-        const plantVisibleNow = isFishermanNow ? entryFishermanVisible : basePlantVisibleNow;
+        const plantVisibleNow = personalPlantTheme === "plant" && (isFishermanNow ? entryFishermanVisible : basePlantVisibleNow);
         if (plantVisibleNow) {
           const { stage, desc } = getThemeStage(visualThemeNow, progress);
           if (stage != null && desc) {
@@ -2210,6 +2219,7 @@ async function mountTaskList(root) {
   function setPersonalSettingsPanelOpen(isOpen) {
     const expanded = isOpen === true;
     personalSettingsPanel.hidden = !expanded;
+    root.classList.toggle("personal-settings-open", expanded);
     personalSettingsToggle.setAttribute("aria-expanded", String(expanded));
     personalSettingsToggle.classList.toggle("is-open", expanded);
     personalSettingsToggleIcon.textContent = expanded ? "✓" : "⚙";
@@ -3244,7 +3254,7 @@ async function mountTaskList(root) {
       const total = Number(p?.total) || 0;
       return total > 0;
     })();
-    const plantVisible = isFishermanSelected ? fishermanGateVisible : basePlantVisible;
+    const plantVisible = personalPlantTheme === "plant" && (isFishermanSelected ? fishermanGateVisible : basePlantVisible);
     function themeStage(theme, progress) {
       switch (theme) {
         case "gumball": return { stage: gumballStageFromProgress(progress), desc: describeGumballStage(progress) };
@@ -3349,6 +3359,7 @@ async function mountTaskList(root) {
       for (const [el, key] of flatEntryVisuals) if (el) { el.hidden = key !== visualTheme; if (key === visualTheme) { el.dataset.stage = String(activeStage); el.setAttribute("aria-label", activeDesc.accessibleText); if (key === "plant") el.dataset.bloom = activeStage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
       personalPlantStatusEntry.textContent = activeDesc.accessibleText;
     } else {
+      delete personalPlantEntry.dataset.visualTheme;
       for (const [el] of flatEntryVisuals) if (el) { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); el.hidden = el === personalPlantVisualEntry ? false : true; }
       personalPlantStatusEntry.textContent = "";
       if (personalPlantVisualEntry) personalPlantVisualEntry.hidden = false;
@@ -3476,7 +3487,11 @@ async function mountTaskList(root) {
       const picker = document.createElement("div"); picker.className = "client-activity-picker";
       picker.id = `client-activity-picker-${group.index}`; picker.hidden = openClientActivityPart !== group.index;
       picker.setAttribute("role", "group"); picker.setAttribute("aria-label", `${group.label} activities`);
-      for (const activity of [...CLIENT_ACTIVITIES, { id: "", label: "Custom" }]) {
+      for (const activity of GROUPED_CLIENT_ACTIVITIES) {
+        if (activity.heading) {
+          const heading = document.createElement("p"); heading.className = "client-activity-group-label";
+          heading.textContent = activity.heading; picker.append(heading); continue;
+        }
         const choice = document.createElement("button"); choice.type = "button"; choice.className = "client-activity-choice";
         choice.dataset.part = String(group.index); choice.dataset.activity = activity.id;
         choice.setAttribute("aria-pressed", String((group.activity?.id ?? "") === activity.id));
@@ -3567,7 +3582,11 @@ async function mountTaskList(root) {
         const picker = document.createElement("div"); picker.className = "client-activity-picker";
         picker.id = `client-task-activity-${index}`; picker.hidden = true;
         picker.setAttribute("role", "group"); picker.setAttribute("aria-label", `Activities for ${task.text}`);
-        for (const option of [...CLIENT_ACTIVITIES, { id: "", label: "Custom task only" }]) {
+        for (const option of GROUPED_CLIENT_ACTIVITIES) {
+          if (option.heading) {
+            const heading = document.createElement("p"); heading.className = "client-activity-group-label";
+            heading.textContent = option.heading; picker.append(heading); continue;
+          }
           const choice = document.createElement("button"); choice.type = "button"; choice.className = "client-activity-choice";
           choice.dataset.taskId = task.id; choice.dataset.activity = option.id;
           choice.setAttribute("aria-pressed", String((activity?.id ?? "") === option.id));
@@ -3625,6 +3644,60 @@ async function mountTaskList(root) {
       render();
     }
   }
+  const routinePanel = root.querySelector(".client-routines");
+  const routineSelect = root.querySelector(".client-routine-select");
+  const routineName = root.querySelector(".client-routine-name");
+  const routineStatus = root.querySelector(".client-routine-status");
+  const routineConfirm = root.querySelector(".client-routine-confirm");
+  let routineReview = null;
+  let routineBusy = false;
+  async function refreshRoutineChoices(selected = routineSelect.value) {
+    const routines = await loadClientRoutines();
+    routineSelect.replaceChildren(new Option("Choose a routine", ""), ...routines.map(r=>new Option(r.name,r.id)));
+    routineSelect.value = routines.some(r=>r.id===selected) ? selected : "";
+    return routines;
+  }
+  routineSelect.addEventListener("change",()=>{routineReview=null;routineConfirm.hidden=true;routineStatus.textContent="";});
+  routinePanel.addEventListener("click", async event => {
+    const button=event.target.closest("button");
+    if (!button || routineBusy || !isClientMode()) return;
+    if (button.classList.contains("client-routine-cancel")) {routineReview=null;routineConfirm.hidden=true;return;}
+    routineBusy=true;
+    routinePanel.querySelectorAll("button").forEach(b=>b.disabled=true);
+    try {
+      await pendingClientSequenceSave;
+      const routines=await loadClientRoutines();
+      if (button.classList.contains("client-routine-save")) {
+        const routine=captureClientRoutine(routineName.value,visibleTasks(),clientSequence);
+        await saveClientRoutines([...routines,routine]);
+        await refreshRoutineChoices(routine.id);routineStatus.textContent="Routine saved locally.";
+      } else {
+        const routine=routines.find(r=>r.id===routineSelect.value);
+        if (!routine) throw new Error("Choose a saved routine first.");
+        if (button.classList.contains("client-routine-delete")) {
+          await saveClientRoutines(routines.filter(r=>r.id!==routine.id));
+          await refreshRoutineChoices();routineConfirm.hidden=true;routineReview=null;routineStatus.textContent="Routine deleted. Current tasks are unchanged.";
+        } else {
+          const current=await loadList("private");
+          if (button.classList.contains("client-routine-load") && current.length) {
+            routineReview={id:routine.id,tasks:JSON.stringify(current)};
+            routineConfirm.hidden=false;routineStatus.textContent="Confirm replacement below.";return;
+          }
+          if (button.classList.contains("client-routine-replace") && (!routineReview || routineReview.id!==routine.id || routineReview.tasks!==JSON.stringify(current))) {
+            routineReview=null;routineConfirm.hidden=true;throw new Error("Tasks changed. Load the routine again to review replacement.");
+          }
+          const restored=instantiateClientRoutine(routine);
+          await saveList("private",restored.tasks,{clientSequence:restored.sequence,clearEnding:true});
+          clientSequence=restored.sequence;tasks=restored.tasks;tasksKind="private";
+          clearPreviousCompletionState();setCarryoverOpen(false);openCustomPart=null;openClientActivityPart=null;
+          routineReview=null;routineConfirm.hidden=true;render();
+          routineStatus.textContent="Routine loaded. All tasks start unchecked.";
+        }
+      }
+    } catch(error) {routineStatus.textContent=error.message || "CueDone could not save the routine. Try again.";}
+    finally {routineBusy=false;routinePanel.querySelectorAll("button").forEach(b=>b.disabled=false);}
+  });
+  await refreshRoutineChoices().catch(()=>{routineStatus.textContent="Saved routines could not be loaded.";});
   clientListLayout.addEventListener("change", () => {
     const layout = clientListLayout.value;
     void persistClientSequence({ ...clientSequence, enabled: layout === "sequence",
@@ -3930,8 +4003,8 @@ async function mountTaskList(root) {
     });
   }
 
-  async function savePendingVisualTheme() {
-    const nextTheme = pendingVisualTheme ?? personalVisualTheme;
+  async function savePendingVisualTheme(selectedTheme = pendingVisualTheme ?? personalVisualTheme) {
+    const nextTheme = normalizeVisualTheme(selectedTheme);
     if (nextTheme !== personalVisualTheme) {
       const previousTheme = personalVisualTheme;
       pendingVisualTheme = null;
@@ -4352,6 +4425,7 @@ async function mountTaskList(root) {
   });
 
   settingsToggle.addEventListener("click", () => {
+    void refreshRoutineChoices().catch(() => { routineStatus.textContent = "Saved routines could not be loaded."; });
     setSettingsPanelOpen(
       settingsToggle.getAttribute("aria-expanded") !== "true"
     );
@@ -4385,10 +4459,11 @@ async function mountTaskList(root) {
       return;
     }
     personalSettingsToggle.disabled = true;
+    const selectedVisualTheme = pendingVisualTheme ?? personalVisualTheme;
     try {
       while (pendingPersonalWrites.size) await Promise.all([...pendingPersonalWrites]);
       await saveSetting.flush();
-      if (!await savePendingVisualTheme()) return;
+      if (!await savePendingVisualTheme(selectedVisualTheme)) return;
       try {
         await savePersonalSettingsSnapshot({
           presentation: personalPresentation, layout: personalTaskLayout,
@@ -4600,6 +4675,7 @@ async function mountTaskList(root) {
     render();
   });
   onPersonalVisualThemeChanged((value) => {
+    if (value === personalVisualTheme) return;
     pendingVisualTheme = null;
     applyPersonalVisualTheme(value);
     render();

@@ -151,7 +151,9 @@ test("activity choices have visible labels and local pictograms for all requeste
   const { CLIENT_ACTIVITIES, clientActivityIconMarkup } = await import("../src/shared/client-activities.js");
   assert.deepEqual(CLIENT_ACTIVITIES.map(activity=>activity.label),[
     "Listening","Answering Questions","Story","Music","Work Activity","Movement","Sensory",
-    "Play","Chat/Talk","Practice","Computer","Greetings","Goodbye","Reward",
+    "Structured Play","Chat/Talk","Practice","Computer","Greetings","Goodbye","Reward",
+    "Reading","Worksheet","Flash Cards","Free Play","Writing","Math","Speech","OT","PT","Outside Play","Special Activity",
+    "Quiz","Art","Puzzles","Daily Living",
   ]);
   for (const activity of CLIENT_ACTIVITIES) {
     const icon=clientActivityIconMarkup(activity.id);

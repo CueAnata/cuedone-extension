@@ -394,7 +394,7 @@ test("Personal Private One Active Task is persistent, reviewable, and presentati
 
   const renderStart = taskListJs.indexOf("function render()");
   const renderEnd = taskListJs.indexOf(
-    'form.addEventListener("submit"',
+    'function persistClientSequence',
     renderStart
   );
   const render = taskListJs.slice(renderStart, renderEnd);
@@ -635,4 +635,11 @@ test("empty Client lists reopen with task entry visible in either sequence layou
 
 test("Client sequence hides global entry without changing full-list entry preferences", () => {
   assert.match(taskListJs, /classList\.toggle\("client-sequence-active", client && clientSequence\.enabled\)/);
+});
+
+test("Personal Settings hides working list presentation without modifying tasks",()=>{
+ const start=taskListJs.indexOf("function setPersonalSettingsPanelOpen");
+ const handler=taskListJs.slice(start,taskListJs.indexOf("function paintPersonalPresentation",start));
+ assert.match(handler,/classList\.toggle\("personal-settings-open", expanded\)/);
+ assert.doesNotMatch(handler,/saveList|deleteTask|resetCompletedTasks/);
 });

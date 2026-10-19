@@ -1,3 +1,4 @@
+import { normalizeClientRoutines } from "./client-routines.js";
 import { normalizeClientSequence, reconcileClientSequence } from "./client-sequence.js";
 import { themeSelectionForList } from "./random-visual-theme.js";
 import {
@@ -123,4 +124,14 @@ export function onClientSequenceChanged(callback) {
   return onLocalChanged((changes, areaName) => {
     if (areaName === "local" && changes[CLIENT_SEQUENCE_KEY]) callback(normalizeClientSequence(changes[CLIENT_SEQUENCE_KEY].newValue));
   });
+}
+
+export const CLIENT_ROUTINES_KEY = "cuedone.clientRoutines.v1";
+export async function loadClientRoutines() {
+  return normalizeClientRoutines((await getLocal(CLIENT_ROUTINES_KEY))[CLIENT_ROUTINES_KEY]);
+}
+export async function saveClientRoutines(routines) {
+  const normalized=normalizeClientRoutines(routines);
+  await setLocal({[CLIENT_ROUTINES_KEY]:normalized});
+  return normalized;
 }
