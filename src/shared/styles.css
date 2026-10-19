@@ -3808,3 +3808,15 @@ body[data-presentation="personal"] .personal-settings-open > .task-list,
 body[data-presentation="personal"] .personal-settings-open > .empty-state,
 body[data-presentation="personal"] .personal-settings-open > .personal-one-active,
 body[data-presentation="personal"] .personal-settings-open > .list-lifecycle { display: none !important; }
+
+/* Client shares the existing theme markup, physics and stage selectors. */
+body[data-presentation="client"] .personal-plant:not(.personal-plant--entry):not([hidden]) {
+  display: block;
+  width: 148px;
+  max-width: 100%;
+  margin: 12px 0;
+}
+body[data-presentation="client"] .client-settings-open > .personal-plant { display: none !important; }
+.client-visual-theme-row[hidden], .client-visual-progress-note[hidden],
+.client-completion-style-row[hidden], .client-final-celebration-row[hidden] { display: none !important; }
+.client-visual-progress-note { font-size: .8rem; color: var(--muted); margin: 6px 0 12px; }

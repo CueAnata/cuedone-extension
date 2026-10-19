@@ -165,5 +165,5 @@ test("hidden visual wrappers cannot be revived by Fisherman styles after Clear A
   assert.match(css,/\.personal-plant\[hidden\]\s*\{\s*display:\s*none !important/);
   assert.match(css,/\.personal-plant--entry\[data-visual-theme="fisherman"\]:not\(\[hidden\]\)\s*\{/);
   assert.match(ui,/delete personalPlantEntry\.dataset\.visualTheme/);
-  assert.match(ui,/const plantVisible = personalPlantTheme === "plant" &&/);
+  assert.match(ui,/const plantVisible = clientProgressActive \? shown\.length > 0 : personalPlantTheme === "plant" &&/);
 });

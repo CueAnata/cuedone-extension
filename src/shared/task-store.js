@@ -1,3 +1,4 @@
+import { CLIENT_VISUAL_PROGRESS_KEY, normalizeClientVisualProgress, clientVisualForList } from "./client-visual-progress.js";
 import { normalizeClientRoutines } from "./client-routines.js";
 import { normalizeClientSequence, reconcileClientSequence } from "./client-sequence.js";
 import { themeSelectionForList } from "./random-visual-theme.js";
@@ -49,6 +50,11 @@ export async function saveTasks(
   if (preference === "random" || (preference == null && saved?.active)) {
     const previous = listFromStorage((await getLocal(TASKS_STORAGE_KEY))[TASKS_STORAGE_KEY]);
     values[PERSONAL_RANDOM_THEME_KEY] = themeSelectionForList(saved, previous, tasks, preference);
+  }
+  const clientVisual = (await getLocal(CLIENT_VISUAL_PROGRESS_KEY))[CLIENT_VISUAL_PROGRESS_KEY];
+  if (clientVisual?.enabled && clientVisual.theme === "random") {
+    const previous = listFromStorage((await getLocal(TASKS_STORAGE_KEY))[TASKS_STORAGE_KEY]);
+    values[CLIENT_VISUAL_PROGRESS_KEY] = clientVisualForList(clientVisual, previous, tasks);
   }
   await setLocal(values);
 }
@@ -134,4 +140,16 @@ export async function saveClientRoutines(routines) {
   const normalized=normalizeClientRoutines(routines);
   await setLocal({[CLIENT_ROUTINES_KEY]:normalized});
   return normalized;
+}
+
+export async function loadClientVisualProgress() {
+  return normalizeClientVisualProgress((await getLocal(CLIENT_VISUAL_PROGRESS_KEY))[CLIENT_VISUAL_PROGRESS_KEY]);
+}
+export function saveClientVisualProgress(value) {
+  return setLocal({[CLIENT_VISUAL_PROGRESS_KEY]:normalizeClientVisualProgress(value)});
+}
+export function onClientVisualProgressChanged(callback) {
+  return onLocalChanged((changes,area)=>{
+    if(area === "local" && changes[CLIENT_VISUAL_PROGRESS_KEY]) callback(normalizeClientVisualProgress(changes[CLIENT_VISUAL_PROGRESS_KEY].newValue));
+  });
 }

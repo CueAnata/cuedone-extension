@@ -1,3 +1,5 @@
+import { normalizeClientVisualProgress, clientVisualSettings, clientCompletionStyle } from "./client-visual-progress.js";
+import { loadClientVisualProgress, saveClientVisualProgress, onClientVisualProgressChanged } from "./task-store.js";
 import { captureClientRoutine, instantiateClientRoutine } from "./client-routines.js";
 import { loadClientRoutines, saveClientRoutines } from "./task-store.js";
 import { GROUPED_CLIENT_ACTIVITIES, clientActivity, clientActivityIconMarkup } from "./client-activities.js";
@@ -268,6 +270,8 @@ async function mountTaskList(root) {
   let openClientActivityPart = null;
   let openCustomPart = null;
   let pendingClientSequenceSave = Promise.resolve();
+  let clientVisualProgress = normalizeClientVisualProgress();
+  let clientVisualSelection = createVisualThemeSelection();
   let personalPlantTheme = "off";
   let personalVisualTheme = "random";
   let visualThemeSelection = createVisualThemeSelection();
@@ -451,7 +455,7 @@ async function mountTaskList(root) {
       scene.classList.remove("is-catching");
       void scene.offsetWidth;
       scene.classList.add("is-catching");
-      try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
+      try { if (!isClientMode() && typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
       setTimeout(() => scene.classList.remove("is-catching"), 680);
       // Intermediate cane pole yank — runs 1.1s with bounce overshoot 1.28, anchored at hand (10% 90%) and rig pull stroke (-28deg hold 25-65% on #fisherman-rig); unified articulated arm rig #fisherman-arms-rig
       {
@@ -490,7 +494,7 @@ async function mountTaskList(root) {
         }
       }
     } else if (isFinale && !previousFishermanWasFinal && !isFirst && !prefersReducedMotion()) {
-      try { if (typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
+      try { if (!isClientMode() && typeof playTaskSound === "function") playTaskSound(); } catch (_) {}
       // Grand finale belly flop & dock splash — Frame 2-4 sequence
       try {
         const fish = visualEl.querySelector("#finale-fish");
@@ -1565,14 +1569,6 @@ async function mountTaskList(root) {
               <option value="sequence">First / Then sequence</option>
             </select>
           </div>
-          <div class="client-routines" role="group" aria-label="Local routines">
-            <label>Routine name <input class="client-routine-name" maxlength="80" placeholder="Name this routine" /></label>
-            <button type="button" class="client-routine-save">Save as Routine</button>
-            <label>Saved routines <select class="client-routine-select"><option value="">Choose a routine</option></select></label>
-            <div class="client-routine-actions"><button type="button" class="client-routine-load">Load routine</button><button type="button" class="client-routine-delete">Delete routine</button></div>
-            <div class="client-routine-confirm" hidden><p>Replace current tasks with this routine? All completion checks will start unchecked.</p><button type="button" class="client-routine-replace">Replace list</button><button type="button" class="client-routine-cancel">Cancel</button></div>
-            <p class="client-routine-status" role="status"></p>
-          </div>
           <div class="client-pref-row client-sequence-settings">
             <label class="client-pref-label" for="client-sequence-mode">Parts</label>
             <select id="client-sequence-mode" class="client-sequence-mode">
@@ -1582,7 +1578,20 @@ async function mountTaskList(root) {
             </select>
           </div>
           <p class="client-sequence-help">Choose an activity on each part, then add your own tasks. Each part can hold any number of tasks. Use Move to… to move a task. Empty parts are skipped; reducing parts keeps later assignments for re-expansion.</p>
-          <div class="client-pref-row">
+          <div class="client-pref-row client-visual-progress-row">
+            <p class="client-pref-label" id="client-visual-progress-label">Visual progress</p>
+            <div class="mode-switch" role="group" aria-labelledby="client-visual-progress-label">
+              <button type="button" class="view-switch-button" data-client-visual-progress="off">Off</button>
+              <button type="button" class="view-switch-button" data-client-visual-progress="on">On</button>
+            </div>
+          </div>
+          <div class="client-pref-row client-visual-theme-row" hidden>
+            <label class="client-pref-label" for="client-visual-theme">Animation</label>
+            <select id="client-visual-theme" class="client-visual-theme-select"></select>
+          </div>
+          <p class="client-visual-progress-note" hidden>The animation provides the visual feedback and finale. Sound stays independent. Random keeps one theme for the list.</p>
+
+          <div class="client-pref-row client-completion-style-row">
             <p class="client-pref-label" id="completion-style-label">On complete</p>
             <div
               class="mode-switch"
@@ -1640,7 +1649,7 @@ async function mountTaskList(root) {
               <button class="final-sound-preview sound-preview-button" type="button">Preview</button>
             </div>
           </div>
-          <div class="client-pref-row">
+          <div class="client-pref-row client-final-celebration-row">
             <p class="client-pref-label" id="final-celebration-label">
               Final celebration
             </p>
@@ -1655,6 +1664,14 @@ async function mountTaskList(root) {
               <option value="cars">Cars</option>
               <option value="butterflies">Butterflies</option>
             </select>
+          </div>
+          <div class="client-routines" role="group" aria-label="Local routines">
+            <label>Routine name <input class="client-routine-name" maxlength="80" placeholder="Name this routine" /></label>
+            <button type="button" class="client-routine-save">Save as Routine</button>
+            <label>Saved routines <select class="client-routine-select"><option value="">Choose a routine</option></select></label>
+            <div class="client-routine-actions"><button type="button" class="client-routine-load">Load routine</button><button type="button" class="client-routine-delete">Delete routine</button></div>
+            <div class="client-routine-confirm" hidden><p>Replace current tasks with this routine? All completion checks will start unchecked.</p><button type="button" class="client-routine-replace">Replace list</button><button type="button" class="client-routine-cancel">Cancel</button></div>
+            <p class="client-routine-status" role="status"></p>
           </div>
         </div>
       </div>
@@ -1859,6 +1876,9 @@ async function mountTaskList(root) {
     </div>
   `;
 
+  const clientVisualThemeSelect = root.querySelector(".client-visual-theme-select");
+  clientVisualThemeSelect.replaceChildren(...[...root.querySelector(".personal-visual-theme-select").options].map(option=>option.cloneNode(true)));
+  const clientVisualButtons = [...root.querySelectorAll("[data-client-visual-progress]")];
   const clientListLayout = root.querySelector(".client-list-layout");
   const clientSequenceSettings = root.querySelector(".client-sequence-settings");
   const clientSequenceHelp = root.querySelector(".client-sequence-help");
@@ -3009,6 +3029,7 @@ async function mountTaskList(root) {
   }
 
   function maybeCelebrate(plan) {
+    if (isClientMode() && clientVisualProgress.enabled) return;
     if (!plan || (!plan.playVisualCelebration && !plan.playSound)) {
       return;
     }
@@ -3105,6 +3126,15 @@ async function mountTaskList(root) {
     const progress = taskProgress(visibleTasks());
     const label = formatProgressLabel(progress);
 
+    root.querySelector(".client-visual-theme-row").hidden = !clientVisualProgress.enabled;
+    root.querySelector(".client-visual-progress-note").hidden = !clientVisualProgress.enabled;
+    root.querySelector(".client-completion-style-row").hidden = clientVisualProgress.enabled;
+    root.querySelector(".client-final-celebration-row").hidden = clientVisualProgress.enabled;
+    clientVisualThemeSelect.value = clientVisualProgress.theme;
+    for(const button of clientVisualButtons) {
+      const selected=(button.dataset.clientVisualProgress === "on") === clientVisualProgress.enabled;
+      button.classList.toggle("is-current",selected);button.setAttribute("aria-pressed",String(selected));
+    }
     progressSection.hidden = !client;
     motivatorSection.hidden = !client || clientSequence.enabled;
     progressLabel.textContent = label;
@@ -3236,8 +3266,18 @@ async function mountTaskList(root) {
       String(personalFullListOpen)
     );
 
-    const visualTheme = visualThemeSelection.resolve(personalVisualTheme);
-    const basePlantVisible = isPlantVisible({
+    const clientProgressActive = isClientMode() && clientVisualProgress.enabled;
+    // Reuse the existing scene node, keeping all SVG/physics state intact.
+    if (isClientMode()) {
+      if (personalPlant.parentElement !== root) root.insertBefore(personalPlant, clientSequenceStatus);
+      personalPlant.setAttribute("aria-hidden", String(!clientProgressActive || shown.length === 0));
+    } else {
+      if (personalPlant.parentElement !== personalOneActive) personalOneActive.insertBefore(personalPlant, personalPlantStatus);
+      personalPlant.setAttribute("aria-hidden", "true");
+    }
+    const useMainVisual = oneActive || clientProgressActive;
+    const visualTheme = isClientMode() ? clientVisualSelection.resolve(clientVisualProgress.theme) : visualThemeSelection.resolve(personalVisualTheme);
+    const basePlantVisible = clientProgressActive ? shown.length > 0 : isPlantVisible({
       tasks: shown,
       presentationMode: document.body.dataset.presentation,
       personalPresentation,
@@ -3254,7 +3294,7 @@ async function mountTaskList(root) {
       const total = Number(p?.total) || 0;
       return total > 0;
     })();
-    const plantVisible = personalPlantTheme === "plant" && (isFishermanSelected ? fishermanGateVisible : basePlantVisible);
+    const plantVisible = clientProgressActive ? shown.length > 0 : personalPlantTheme === "plant" && (isFishermanSelected ? fishermanGateVisible : basePlantVisible);
     function themeStage(theme, progress) {
       switch (theme) {
         case "gumball": return { stage: gumballStageFromProgress(progress), desc: describeGumballStage(progress) };
@@ -3311,10 +3351,10 @@ async function mountTaskList(root) {
     const flatAllVisuals = [[personalPlantVisual, "plant"], [personalGumballVisual, "gumball"], [personalConstellationVisual, "constellation"], [personalMountainVisual, "mountain"], [personalDynamiteVisual, "dynamite"], [personalCoffeeVisual, "coffee"], [personalBatteryVisual, "battery"], [personalAquariumVisual, "aquarium"], [personalKiteVisual, "kite"], [personalRocketVisual, "rocket"], [personalSubmarineVisual, "submarine"], [personalFishermanVisual, "fisherman"], [personalZenTerrariumVisual, "zen-terrarium"]];
     const flatEntryVisuals = [[personalPlantVisualEntry, "plant"], [personalGumballVisualEntry, "gumball"], [personalConstellationVisualEntry, "constellation"], [personalMountainVisualEntry, "mountain"], [personalDynamiteVisualEntry, "dynamite"], [personalCoffeeVisualEntry, "coffee"], [personalBatteryVisualEntry, "battery"], [personalAquariumVisualEntry, "aquarium"], [personalKiteVisualEntry, "kite"], [personalRocketVisualEntry, "rocket"], [personalSubmarineVisualEntry, "submarine"], [personalFishermanVisualEntry, "fisherman"], [personalZenTerrariumVisualEntry, "zen-terrarium"]];
     const isFishermanForPlant = visualTheme === "fisherman" || visualTheme === "zen-terrarium";
-    personalPlant.hidden = !plantVisible || activeStage == null || (!oneActive && !isFishermanForPlant);
-    if (plantVisible && activeStage != null && activeDesc && (oneActive || isFishermanForPlant)) {
+    personalPlant.hidden = !plantVisible || activeStage == null || (!useMainVisual && !isFishermanForPlant);
+    if (plantVisible && activeStage != null && activeDesc && (useMainVisual || isFishermanForPlant)) {
       personalPlant.dataset.visualTheme = visualTheme;
-      document.body.dataset.personalVisualTheme = visualTheme;
+      if (!isClientMode()) document.body.dataset.personalVisualTheme = visualTheme;
       for (const [el, key] of flatAllVisuals) if (el) { el.hidden = key !== visualTheme; if (key === visualTheme) { el.dataset.stage = String(activeStage); el.setAttribute("aria-label", activeDesc.accessibleText); if (key === "plant") el.dataset.bloom = activeStage === PLANT_STAGE_COUNT - 1 ? "true" : "false"; } else { el.removeAttribute("data-stage"); el.removeAttribute("data-bloom"); el.setAttribute("aria-label", ""); } }
       personalPlantStatus.textContent = activeDesc.accessibleText;
     } else {
@@ -3325,7 +3365,7 @@ async function mountTaskList(root) {
     }
 
     const shouldHideForEntry = !oneActive && plantVisible && activeStage != null && entryOpen;
-    const entryPlantVisible = !oneActive && plantVisible && !shouldHideForEntry;
+    const entryPlantVisible = !isClientMode() && !oneActive && plantVisible && !shouldHideForEntry;
     personalPlantEntry.hidden = !entryPlantVisible || activeStage == null;
     // Suppress completion animation when graphic reappears after entry form
     if (shouldHideForEntry) {
@@ -3371,7 +3411,7 @@ async function mountTaskList(root) {
     const isGumballTheme = visualTheme === "gumball";
     const gumballActive = plantVisible && activeStage != null;
     if (gumballActive && isGumballTheme) {
-      if (oneActive) syncGumballVisual(personalGumballVisual, gumballProgress, isFirstGumballRender);
+      if (useMainVisual) syncGumballVisual(personalGumballVisual, gumballProgress, isFirstGumballRender);
       if (entryPlantVisible) syncGumballVisual(personalGumballVisualEntry, gumballProgress, isFirstGumballRender);
     } else {
       for (const el of [personalGumballVisual, personalGumballVisualEntry]) {
@@ -3394,7 +3434,7 @@ async function mountTaskList(root) {
     const isDynamiteTheme = visualTheme === "dynamite";
     const dynamiteActive = plantVisible && activeStage != null;
     if (isDynamiteTheme && dynamiteActive) {
-      if (oneActive) syncDynamiteVisual(personalDynamiteVisual, oneActiveState.progress);
+      if (useMainVisual) syncDynamiteVisual(personalDynamiteVisual, oneActiveState.progress);
       if (entryPlantVisible) syncDynamiteVisual(personalDynamiteVisualEntry, oneActiveState.progress);
     }
     const dynamiteIsFinal = dynamiteActive && activeStage === 4;
@@ -3428,7 +3468,7 @@ async function mountTaskList(root) {
     const isFishermanTheme = visualTheme === "fisherman";
     const fishermanActive = plantVisible && activeStage != null;
     if (isFishermanTheme && fishermanActive) {
-      if (oneActive) syncFishermanVisual(personalFishermanVisual, oneActiveState.progress, isFirstFishermanRender);
+      if (useMainVisual) syncFishermanVisual(personalFishermanVisual, oneActiveState.progress, isFirstFishermanRender);
       if (entryPlantVisible) syncFishermanVisual(personalFishermanVisualEntry, oneActiveState.progress, isFirstFishermanRender);
     } else {
       for (const el of [personalFishermanVisual, personalFishermanVisualEntry]) {
@@ -3452,7 +3492,7 @@ async function mountTaskList(root) {
     const isCoffeeTheme = visualTheme === "coffee";
     const coffeeActive = plantVisible && activeStage != null;
     if (isCoffeeTheme && coffeeActive) {
-      if (oneActive) syncCoffeeVisual(personalCoffeeVisual, oneActiveState.progress);
+      if (useMainVisual) syncCoffeeVisual(personalCoffeeVisual, oneActiveState.progress);
       if (entryPlantVisible) syncCoffeeVisual(personalCoffeeVisualEntry, oneActiveState.progress);
     } else {
       // Ensure no stale pouring/steaming when hidden or other theme
@@ -3698,6 +3738,35 @@ async function mountTaskList(root) {
     finally {routineBusy=false;routinePanel.querySelectorAll("button").forEach(b=>b.disabled=false);}
   });
   await refreshRoutineChoices().catch(()=>{routineStatus.textContent="Saved routines could not be loaded.";});
+  function applyClientVisualProgress(value) {
+    clientVisualProgress=normalizeClientVisualProgress(value);
+    clientVisualSelection=createVisualThemeSelection(Math.random,clientVisualProgress.randomState);
+    render();
+  }
+  function changeClientVisualProgress(changes) {
+    const previous=clientVisualProgress;
+    const next=clientVisualSettings(clientVisualProgress,changes);
+    clearCelebrationFeedback(root);finalCelebrationActive=false;
+    isFirstDynamiteRender=true;isFirstFishermanRender=true;isFirstGumballRender=true;
+    return saveSetting({save:saveClientVisualProgress,load:loadClientVisualProgress,value:next,
+      apply:applyClientVisualProgress,restore:()=>applyClientVisualProgress(previous)});
+  }
+  for(const button of clientVisualButtons) button.addEventListener("click",()=>{
+    void changeClientVisualProgress({enabled:button.dataset.clientVisualProgress === "on"});
+  });
+  clientVisualThemeSelect.addEventListener("change",()=>{
+    void changeClientVisualProgress({theme:clientVisualThemeSelect.value});
+  });
+  onClientVisualProgressChanged(value=>{
+    const configurationChanged = clientVisualProgress.enabled !== value.enabled || clientVisualProgress.theme !== value.theme;
+    if (configurationChanged && isClientMode()) {
+      clearCelebrationFeedback(root); finalCelebrationActive=false;
+      isFirstDynamiteRender=true; isFirstFishermanRender=true; isFirstGumballRender=true;
+    }
+    clientVisualProgress=normalizeClientVisualProgress(value);
+    clientVisualSelection=createVisualThemeSelection(Math.random,clientVisualProgress.randomState);
+    if(isClientMode()) render();
+  });
   clientListLayout.addEventListener("change", () => {
     const layout = clientListLayout.value;
     void persistClientSequence({ ...clientSequence, enabled: layout === "sequence",
@@ -4082,7 +4151,7 @@ async function mountTaskList(root) {
       id,
       completed: checkbox.checked,
       presentation: document.body.dataset.presentation,
-      style: document.body.dataset.completionStyle,
+      style: clientCompletionStyle(document.body.dataset.completionStyle, isClientMode() && clientVisualProgress.enabled),
       sound: document.body.dataset.completionSound,
     });
     if (oneActiveCompletion) {
@@ -4100,7 +4169,7 @@ async function mountTaskList(root) {
         if (nextActive) sequenceFocusId = nextActive.id;
       }
     }
-    if (plan?.kind === "final" && plan.playVisualCelebration) {
+    if (plan?.kind === "final" && plan.playVisualCelebration && !clientVisualProgress.enabled) {
       finalCelebrationActive = true;
     }
     if (plan?.playSound) {
@@ -5246,6 +5315,8 @@ async function mountTaskList(root) {
     rewardSelect.focus();
   });
 
+  clientVisualProgress = await loadClientVisualProgress();
+  clientVisualSelection = createVisualThemeSelection(Math.random,clientVisualProgress.randomState);
   clientSequence = await loadClientSequence();
   applyEntryMode(true);
   personalPresentation = await loadPersonalPresentation();
