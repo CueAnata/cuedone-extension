@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
         working-directory: prototypes/meta-iwsdk
       - run: npm run build
+        env:
+          VR_BASE_PATH: /cuedone-extension/
         working-directory: prototypes/meta-iwsdk
       - uses: actions/upload-pages-artifact@v3
         with:
