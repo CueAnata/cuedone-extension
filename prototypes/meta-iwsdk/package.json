@@ -1,0 +1,42 @@
+{
+  "name": "meta-iwsdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "iwsdk dev restart --open --foreground",
+    "dev:runtime": "vite",
+    "dev:down": "iwsdk dev down",
+    "dev:status": "iwsdk dev status",
+    "reference:status": "iwsdk reference status",
+    "reference:warmup": "iwsdk reference warmup",
+    "test": "node --test src/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build && node scripts/self-contained-worker.mjs",
+    "preview": "vite preview",
+    "package:submission": "npm run build && node scripts/package-submission.mjs"
+  },
+  "dependencies": {
+    "@iwsdk/core": "1.0.1",
+    "@pmndrs/uikit": "1.0.76",
+    "@pmndrs/uikit-horizon": "1.0.76",
+    "@pmndrs/uikit-lucide": "1.0.76",
+    "three": "npm:super-three@0.181.0"
+  },
+  "devDependencies": {
+    "@iwsdk/reference": "1.0.1",
+    "@iwsdk/cli": "1.0.1",
+    "@iwsdk/vite-plugin-dev": "1.0.1",
+    "@types/node": "26.6.4",
+    "@types/three": "0.181.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  },
+  "overrides": {
+    "sharp": "0.35.4",
+    "three": "npm:super-three@0.181.0"
+  },
+  "engines": {
+    "node": ">=20.19.0 <21.0.0-0 || >=22.12.0 <23.0.0-0 || >=24.0.0"
+  }
+}

@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <link rel="icon" href="data:," />
+    <title>CueDone Personal VR Prototype</title>
+  </head>
+  <body style="margin: 0">
+    <div id="scene-container"></div>
+    <main id="browser-panel" class="browser-panel" hidden aria-busy="true">
+      <header class="browser-header">
+        <div>
+          <p class="browser-eyebrow">Personal VR prototype</p>
+          <h1>CueDone</h1>
+        </div>
+        <span class="browser-local-badge">Local only</span>
+      </header>
+
+      <section class="browser-now-card" aria-labelledby="browser-now-heading">
+        <p id="browser-now-heading" class="browser-eyebrow">Now</p>
+        <p id="browser-task-text" class="browser-task-text">Loading...</p>
+        <div class="browser-summary" aria-label="Task progress">
+          <span id="browser-progress-text">0 of 0 complete</span>
+          <span id="browser-waiting-text">0 tasks waiting</span>
+        </div>
+      </section>
+
+      <form id="browser-task-form" class="browser-task-form">
+        <label for="browser-task-input">Add a task</label>
+        <input
+          id="browser-task-input"
+          type="text"
+          maxlength="200"
+          autocomplete="off"
+          enterkeyhint="done"
+          placeholder="Type a short task"
+        />
+        <div class="browser-action-row">
+          <button id="browser-add-button" class="browser-button browser-secondary" type="submit">Add</button>
+          <button id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
+        </div>
+      </form>
+
+      <p id="browser-status-text" class="browser-status" role="status" aria-live="polite">
+        Loading your local list...
+      </p>
+
+      <div class="browser-list-actions">
+        <button id="browser-new-list-button" class="browser-button browser-outline" type="button">New List</button>
+        <button id="browser-retry-button" class="browser-button browser-outline" type="button" hidden>Retry loading</button>
+      </div>
+
+      <section
+        id="browser-new-list-review"
+        class="browser-new-list-review"
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="browser-new-list-title"
+        hidden
+      >
+        <h2 id="browser-new-list-title">Start a new list?</h2>
+        <p id="browser-new-list-copy">Completed tasks will not carry forward.</p>
+        <button id="browser-carry-button" class="browser-button browser-primary" type="button">
+          Carry unfinished tasks forward
+        </button>
+        <div class="browser-action-row">
+          <button id="browser-empty-button" class="browser-button browser-secondary" type="button">Start empty</button>
+          <button id="browser-cancel-new-list" class="browser-button browser-quiet" type="button">Cancel</button>
+        </div>
+      </section>
+
+      <section class="browser-new-list-review" aria-label="VR appearance and comfort">
+        <h2>VR appearance &amp; comfort</h2>
+        <button id="browser-spatial-theme" class="browser-button browser-outline" type="button">Theme: Constellation</button>
+        <button id="browser-spatial-scale" class="browser-button browser-outline" type="button">Panel size: Standard</button>
+        <button id="browser-spatial-placement" class="browser-button browser-outline" type="button">Panel: Head relative</button>
+        <button id="browser-spatial-motion" class="browser-button browser-outline" type="button">Ambient motion: On</button>
+        <button id="browser-spatial-sound" class="browser-button browser-outline" type="button">Garden sound: Off</button>
+        <button id="browser-spatial-recenter" class="browser-button browser-outline" type="button">Recenter panel</button>
+        <button id="browser-spatial-retry" class="browser-button browser-outline" type="button" hidden>Retry appearance</button>
+        <p id="browser-spatial-input-status" role="status">Hands only: aim and pinch, or touch.</p>
+        <p id="browser-spatial-status" role="status" aria-live="polite"></p>
+        <p>Stay seated or within your Quest boundary. Hand placement falls back to your head when hands are not tracked. Handheld controllers are disabled. Zen Garden frames your board with a living trellis. Garden sound defaults Off. Companion windows synchronize only within the same browser profile and origin.</p>
+      </section>
+      <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter VR</button>
+    </main>
+    <script type="module" src="/src/index.ts"></script>
+  </body>
+</html>

@@ -158,3 +158,137 @@ Those remain outside the implemented product. Some appear in the planning roadma
 - The local windowed companion imports the shared pure task operations while keeping its UI and `cuedone.vr.windowed.tasks.v1` storage adapter inside `prototypes/meta-windowed`; it does not share storage automatically with the immersive prototype or extension
 - No unnecessary dependencies
 - No build toolchain required to load the unpacked extension
+
+## Bounded Personal VR spatial extension — October 19, 2026
+
+The user explicitly authorized extending the existing `vr-personal-prototype`
+IWSDK/WebXR package with Constellation, Zen Garden ambient nodes, readable panel
+scaling, stationary/seated comfort behavior, and persistent-anchor/local-storage
+recovery. This approval applies only to `prototypes/meta-iwsdk`, with independent
+origin-local storage; Chrome/Edge presentation and task storage are unchanged.
+
+The prototype now provides two procedural spatial themes driven by saved task
+progress, three panel sizes, head-relative/controller-relative/room-anchor
+placement, Recenter, and ambient-motion control that honors reduced motion.
+Locomotion remains disabled. It prefers bounded-floor tracking and falls back to
+local-floor/local; the Quest system boundary remains authoritative. A brief fade
+covers session entry/resume and recentering. The existing pure task operations
+and save-before-display behavior remain shared and unchanged.
+
+Tasks retain `cuedone.vr.personal.tasks.v1`. Versioned appearance preferences use
+`cuedone.vr.personal.spatial.v1`; an opaque same-device anchor handle uses
+`cuedone.vr.personal.anchor.v1`. Anchors restore spatial placement only. Unsupported
+or rejected anchors fall back to seated/session placement without changing task
+data. Corrupt preferences offer Retry instead of overwriting saved settings;
+failed saves preserve the displayed saved appearance. Session end invalidates
+pending anchor work, and restoration failures create anchors only on a fresh XR
+frame. Loading and resuming do not replay progress tweens. Empty lists show no
+progress scene or finale.
+
+Validation passes 28 prototype tests, TypeScript checking, a production build,
+and an isolated headless Chrome/IWER interaction check with synthetic data.
+Emulator checks cover entry/completion, appearance persistence/failure, immersive
+panel placement, theme selection, placement modes, recenter, exit/reload,
+corrupt-preference retry and narrow browser layout. Actual Quest comfort,
+hands/controller targeting, keyboard, 72/90Hz performance, boundary/suspension
+behavior, and persistent-anchor restoration across headset sessions remain
+hardware verification items. No accounts, backend, sync, handoff, Client View,
+audio, or deployment is added. See `prototypes/meta-iwsdk/README.md` for controls
+and storage details.
+
+
+## Living Trellis Garden and local companion integration — October 19, 2026
+
+The user explicitly authorized two-way local companion/VR synchronization and the
+Living Trellis Garden MVP. Inside the existing Personal-only IWSDK package, Zen
+Garden now frames the board with an organic rectangular wooden lattice. Two
+flowering vines grow with saved completed/total task progress and meet at the
+top center. A new final completion of the same nonempty list triggers twelve
+outward-flying butterflies and optional local synthesized spatial bird chirps
+once the tips join. Failed saves, loading, reopening, suspension recovery,
+settings/theme changes, list replacement, task removal and empty lists never
+create a finale. Reduced motion or Ambient motion Off suppresses flight and
+restores the flowering completed state directly.
+
+Garden sound has its own persisted VR-only Off/On gate, default Off, in the
+existing spatial preference envelope. On permits a soft arrival chime when Zen
+is deliberately selected and bird chirps at a new final completion. Sound never
+blocks task saving. It requires local browser activation in the rendering
+window; storage events cannot grant it. Off, leaving Zen, hiding/suspending VR,
+and XR exit stop active/scheduled sources. No recordings, network audio service,
+extension sound preference, or general task-completion audio is added.
+
+Same-origin windows in one browser profile now synchronize the VR task and
+appearance keys with storage events, reread current storage without echo writes,
+and reconcile on visibility/pageshow without replay. Preference patches merge
+with current saved state; task writes reject stale expected lists and restore
+the latest list for review. Cooperating writers use Web Locks where available;
+without locks the optimistic check is not a guarantee against truly simultaneous
+writes. Incoming task changes cancel stale New List reviews. Constellation binds
+actual task identities and active/completed status to batched nodes and links.
+All data stays separate from extension and windowed-experiment storage.
+
+The companion designation covers the existing responsive 2D surface and does
+not authorize desktop/phone-to-Quest networking or handoff: localStorage does not
+cross devices, profiles or origins. No accounts, pairing infrastructure, cloud
+service, Client View, deployment, or extension behavior change is included.
+
+Validation passes 45 unit tests, TypeScript checking, production build, and
+isolated Chrome/IWER checks of two-way settings/tasks, completion in either
+view, growth/finale lifecycle, failed-save silence and remote Sound Off.
+Desktop callback measurements stayed near 60Hz even when IWER reported a 72Hz or
+90Hz target. Stable 72/90fps, native hands/controllers, comfort, spatial audio,
+suspension and durable anchors remain Quest hardware verification items. See
+`prototypes/meta-iwsdk/README.md` for controls, boundaries and validation details.
+
+
+### VR hands-only input checkpoint — October 19, 2026
+The bounded Personal VR prototype now requires tracked hands and excludes handheld
+controller input and visuals. Pinch rays and direct fingertip touch share the
+existing UI interaction path. Trellis contact highlights without task mutation.
+Head-relative distance is 0.65m; hand-relative replaces controller-relative
+placement, including silent in-memory normalization of old preferences. Missing
+tracking never falls back to controllers. The emulator defaults to hands.
+Garden collision checks exclude hidden instances and unrevealed vine segments.
+Emulator interaction verification uses isolated data; real Quest comfort,
+tracking loss, keyboard behavior and performance remain hardware checks.
+
+### Explicit Bezier/constellation activation checkpoint — October 19, 2026
+The user authorized cubic Bezier vine geometry and vertex-shader growth uniforms,
+completion-event particle transfer from trellis nodes to background dome stars,
+and spatial alignment cues. Both themes continue to share task completion state.
+Particle transfer is bounded to 32 simultaneous twelve-particle streams. New
+forward saved completions may emit; loading, duplicate sync, replacement and
+reset never replay. Theme changes, reduced motion and suspension cancel streams.
+The existing default-Off VR sound preference gates theme-exclusive finale audio.
+Individual-star and theme-selection sounds have been removed. Local gesture
+activation is required in the rendering document. No backend or extension behavior
+is added. Physical Quest audio/comfort/performance verification remains pending.
+
+
+### Theme-exclusive finale sonification — October 19, 2026
+The user refined audio scope: garden birds play only at the Living Trellis
+completion animation; no individual star activation or theme-selection sounds
+remain. Constellation plays procedural plasma/pulsar-like buffered audio only
+after a successful nonempty final task completion AND completion of its particle
+streams. Restore, duplicate sync, reset, replacement and cancellation never replay.
+Reduced motion completes visuals immediately before one optional finale cue.
+A Three.js PositionalAudio manager follows the star coordinates and tracked-head
+AudioListener. Bounded voices, soft sample edges, conservative gain and a local
+compressor provide headroom. These are original synthesized buffers, not actual
+NASA/Voyager/pulsar recordings. The existing preference is labeled Garden sound
+or Space sound by theme, defaults Off, and is separate from extension audio.
+Theme changes, Sound Off, hiding/suspension and XR exit stop both audio paths.
+63 tests, TypeScript and production build pass; offline browser audio mixing is
+non-clipping. Audible Quest playback/comfort/performance remain unverified.
+
+### Local competition distribution preparation — October 19, 2026
+The requested web distribution now has a reproducible package:submission script,
+asset/checksum manifest, ZIP integrity checks and a physical Quest verification
+report. A build post-step makes IWSDK's otherwise unbundled default font worker
+self-contained by reusing the SDK's bundled worker and inline WASM; dependencies
+and product behavior are unchanged. Production browser startup is verified at
+root and subdirectory paths with external HTTP(S) blocked. Physical Quest
+72/90Hz performance, perceived spatial audio and hands-only system keyboard
+entry remain pending. No deployment, upload, portal submission or hardware
+certification is implied.

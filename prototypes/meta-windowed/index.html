@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6eee0" />
+    <link rel="icon" href="data:," />
+    <title>CueDone Windowed Companion</title>
+  </head>
+  <body>
+    <main id="app" class="app-shell" data-view="compact" aria-busy="true">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Personal companion</p>
+          <h1>CueDone</h1>
+        </div>
+        <nav class="view-switcher" aria-label="Companion view">
+          <button type="button" data-view-button="compact" aria-pressed="true">Compact</button>
+          <button type="button" data-view-button="expanded" aria-pressed="false">Expanded</button>
+          <button type="button" data-view-button="planning" aria-pressed="false">Planning</button>
+        </nav>
+      </header>
+
+      <section class="progress-summary" aria-label="Task progress">
+        <div class="progress-copy">
+          <span id="progress-text">0 of 0 complete</span>
+          <span id="waiting-text">0 tasks waiting</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <span id="progress-bar"></span>
+        </div>
+      </section>
+
+      <section class="now-card" aria-labelledby="now-heading">
+        <p id="now-heading" class="eyebrow">Now</p>
+        <p id="task-text" class="task-text">Loading your local list...</p>
+        <button id="complete-button" class="button primary" type="button">Complete</button>
+      </section>
+
+      <p id="status-text" class="status" role="status" aria-live="polite">Loading your local list...</p>
+
+      <section id="task-entry" class="task-entry" aria-labelledby="add-heading">
+        <div>
+          <p id="add-heading" class="eyebrow">Add task</p>
+          <label class="sr-only" for="task-input">Task text</label>
+          <input id="task-input" maxlength="200" autocomplete="off" placeholder="What comes next?" />
+        </div>
+        <button id="add-button" class="button accent" type="button">Add</button>
+      </section>
+
+      <section id="planning-section" class="planning-section" aria-labelledby="planning-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Full list</p>
+            <h2 id="planning-heading">Review and organize</h2>
+          </div>
+          <p class="planning-help">Move or remove tasks without changing the active task until saving succeeds.</p>
+        </div>
+        <ol id="planning-list" class="planning-list"></ol>
+      </section>
+
+      <div class="list-actions">
+        <button id="new-list-button" class="button secondary" type="button">New List</button>
+        <button id="retry-button" class="button secondary" type="button" hidden>Retry load</button>
+      </div>
+
+      <section id="new-list-review" class="new-list-review" role="dialog" aria-modal="false" aria-labelledby="new-list-title" hidden>
+        <p class="eyebrow">Review</p>
+        <h2 id="new-list-title">Start a new list?</h2>
+        <p id="new-list-copy"></p>
+        <div class="review-actions">
+          <button id="carry-button" class="button primary" type="button">Carry unfinished tasks forward</button>
+          <button id="empty-button" class="button secondary" type="button">Start empty</button>
+          <button id="cancel-new-list" class="button quiet" type="button">Cancel</button>
+        </div>
+      </section>
+
+      <footer>
+        <span>Local windowed experiment</span>
+        <span>No cloud or extension data</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

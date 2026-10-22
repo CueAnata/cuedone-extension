@@ -1,0 +1,275 @@
+:root {
+  color: #241b13;
+  background: #e6d5bd;
+  font-family: Inter, ui-rounded, "SF Pro Rounded", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(10px, 2.5vw, 24px);
+  background:
+    radial-gradient(circle at top right, rgb(255 175 54 / 28%), transparent 32rem),
+    linear-gradient(145deg, #f6ecdf, #d9c4a7);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+#scene-container {
+  position: fixed;
+  inset: 0;
+}
+
+.browser-panel {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid rgb(83 57 31 / 20%);
+  border-radius: 24px;
+  background: rgb(255 251 244 / 97%);
+  box-shadow: 0 18px 52px rgb(58 38 20 / 18%);
+}
+
+.browser-header,
+.browser-summary,
+.browser-action-row,
+.browser-list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.browser-header {
+  align-items: flex-start;
+}
+
+.browser-eyebrow {
+  margin: 0 0 4px;
+  color: #96550c;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 5vw, 2.2rem);
+  line-height: 1;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.browser-local-badge {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: #713f08;
+  background: #ffe4b3;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.browser-now-card {
+  margin-top: 18px;
+  padding: 18px;
+  border: 2px solid #efa343;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #fff8e9, #ffedcf);
+}
+
+.browser-task-text {
+  min-height: 1.25em;
+  margin: 7px 0 15px;
+  font-size: clamp(1.45rem, 6vw, 2.25rem);
+  font-weight: 820;
+  line-height: 1.15;
+}
+
+.browser-summary {
+  color: #665240;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.browser-task-form {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 17px;
+  background: #f1e7d9;
+}
+
+.browser-task-form label {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.browser-task-form input {
+  width: 100%;
+  min-height: 50px;
+  padding: 11px 13px;
+  border: 2px solid #bda483;
+  border-radius: 12px;
+  color: #241b13;
+  background: #fffdf8;
+  font-size: 1rem;
+}
+
+.browser-button {
+  min-height: 48px;
+  padding: 10px 15px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.browser-action-row .browser-button {
+  flex: 1 1 0;
+}
+
+.browser-primary {
+  color: #fff;
+  background: #d86f09;
+}
+
+.browser-secondary {
+  color: #2c2118;
+  background: #ffb13f;
+}
+
+.browser-outline {
+  color: #3d2d20;
+  border-color: #b99a74;
+  background: #fffaf2;
+}
+
+.browser-quiet {
+  color: #554536;
+  background: transparent;
+}
+
+.browser-enter {
+  width: 100%;
+  margin-top: 14px;
+  color: #fff;
+  background: #24201b;
+}
+
+.browser-button:focus-visible,
+.browser-task-form input:focus-visible {
+  outline: 4px solid rgb(246 119 18 / 28%);
+  outline-offset: 2px;
+}
+
+.browser-button:disabled,
+.browser-task-form input:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.browser-status {
+  min-height: 42px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #5c5143;
+  background: #f1e9de;
+  font-weight: 750;
+}
+
+.browser-status[data-kind="success"] {
+  color: #6d3e08;
+  background: #ffe5b4;
+}
+
+.browser-status[data-kind="error"] {
+  color: #8f2430;
+  background: #f9dfe2;
+}
+
+.browser-list-actions {
+  justify-content: flex-start;
+}
+
+.browser-new-list-review {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 2px solid #e89a3b;
+  border-radius: 17px;
+  background: #fff3dc;
+}
+
+.browser-new-list-review p {
+  margin: 0;
+  color: #5c5143;
+  line-height: 1.42;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 440px) {
+  body {
+    padding: 7px;
+  }
+
+  .browser-panel {
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .browser-summary,
+  .browser-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .browser-action-row .browser-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+/* VR readability preference also applies to the accessible browser controls. */
+.browser-panel .browser-task-text { font-size: calc(1.5rem * var(--readable-scale, 1)); }
+.browser-panel .browser-button { font-size: calc(1rem * var(--readable-scale, 1)); }
