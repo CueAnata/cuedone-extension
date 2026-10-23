@@ -17,18 +17,25 @@
           <p class="browser-eyebrow">Personal VR prototype</p>
           <h1>CueDone</h1>
         </div>
-        <span class="browser-local-badge">Local only</span>
+        <button id="browser-settings-toggle" class="browser-button browser-settings-toggle" type="button" aria-label="Settings" aria-expanded="false" aria-controls="browser-settings-panel"><span aria-hidden="true">⚙️</span></button>
       </header>
 
       <section class="browser-now-card" aria-labelledby="browser-now-heading">
-        <p id="browser-now-heading" class="browser-eyebrow">Now</p>
-        <p id="browser-task-text" class="browser-task-text">Loading...</p>
+        <p id="browser-now-heading" class="browser-eyebrow">To-do list</p>
+        <div id="browser-task-list" role="list" aria-label="To-do list"></div>
+        <p hidden id="browser-task-text" class="browser-task-text">Loading...</p>
         <div class="browser-summary" aria-label="Task progress">
           <span id="browser-progress-text">0 of 0 complete</span>
           <span id="browser-waiting-text">0 tasks waiting</span>
         </div>
       </section>
 
+      <div class="browser-list-actions browser-bottom-bar">
+        <button id="browser-reset-button" class="browser-button browser-outline" type="button">Reset</button>
+        <button id="browser-clear-button" class="browser-button browser-outline" type="button">Clear All</button>
+        <button id="browser-show-add-button" class="browser-button browser-secondary" type="button">Add Task</button>
+      </div>
+      <button id="browser-done-button" class="browser-button browser-primary browser-done" type="button" hidden>Done</button>
       <form id="browser-task-form" class="browser-task-form">
         <label for="browser-task-input">Add a task</label>
         <input
@@ -41,7 +48,7 @@
         />
         <div class="browser-action-row">
           <button id="browser-add-button" class="browser-button browser-secondary" type="submit">Add</button>
-          <button id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
+          <button hidden id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
         </div>
       </form>
 
@@ -73,7 +80,7 @@
         </div>
       </section>
 
-      <section class="browser-new-list-review" aria-label="VR appearance and comfort">
+      <section id="browser-settings-panel" class="browser-new-list-review" aria-label="VR appearance and comfort" hidden>
         <h2>VR appearance &amp; comfort</h2>
         <button id="browser-spatial-theme" class="browser-button browser-outline" type="button">Theme: Constellation</button>
         <button id="browser-spatial-scale" class="browser-button browser-outline" type="button">Panel size: Standard</button>

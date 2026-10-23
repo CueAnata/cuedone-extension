@@ -273,3 +273,38 @@ h2 {
 /* VR readability preference also applies to the accessible browser controls. */
 .browser-panel .browser-task-text { font-size: calc(1.5rem * var(--readable-scale, 1)); }
 .browser-panel .browser-button { font-size: calc(1rem * var(--readable-scale, 1)); }
+
+/* Compact companion; every task remains reachable in the list. */
+.browser-panel { width: min(100%, 420px); margin-right: 0; }
+#browser-task-list { display: grid; gap: 8px; max-height: 48vh; overflow-y: auto; padding: 4px; }
+.browser-task-row { position: relative; width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid #dbbf91; border-radius: 10px; text-align: left; color: #332d25; background: #fffaf0; overflow-wrap: anywhere; cursor: pointer; }
+.browser-task-row[data-completed="true"] { color: #716348; background: #f3ebdd; }
+.browser-task-row:focus-visible { outline: 3px solid #d97706; outline-offset: 1px; }
+.pollen-line { position: absolute; pointer-events: none; left: 8%; right: 6%; top: 50%; height: 2px; background: #ecba28; box-shadow: 0 0 6px #ffd651; transform: scaleX(0); transform-origin: left; }
+[data-completed="true"] .pollen-line { transform: scaleX(1); }
+.task-bee { display: none; position: absolute; left: 7%; top: 25%; pointer-events: none; }
+.pollinating .pollen-line { animation: pollen 1.1s linear both; }
+.pollinating .task-bee { display: block; animation: bee 1.1s linear both; }
+.browser-bottom-bar { flex-wrap: wrap; margin-top: 12px; }
+.browser-bottom-bar button { flex: 1; padding: 8px; }
+.browser-done { width: 100%; margin-top: 12px; font-size: 1.3rem; }
+@keyframes pollen { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes bee { 0% { left: 7%; transform: translateY(0); } 25% { transform: translateY(-4px); } 50% { transform: translateY(3px); } 75% { transform: translateY(-3px); } 99% { opacity: 1; } 100% { left: 90%; opacity: 0; } }
+.motion-off .task-bee { display: none; }
+.motion-off .pollen-line { animation: none; }
+@media (prefers-reduced-motion: reduce) { .task-bee { display: none !important; } .pollinating .pollen-line { animation: none; } }
+
+.browser-panel .browser-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 12px;
+  min-width: 48px;
+  border-radius: 12px;
+  background: #fef3c7;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -2px rgb(0 0 0 / 10%);
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+.browser-settings-toggle:hover { background: #fde68a; }

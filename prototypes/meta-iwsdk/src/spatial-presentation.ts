@@ -39,7 +39,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private fadeMesh!: Mesh<SphereGeometry, MeshBasicMaterial>;
   private readonly position = new Vector3();
   private readonly rotation = new Quaternion();
-  private readonly offset = new Vector3(0, -0.1, -0.65);
+  private readonly offset = new Vector3(0.7, -0.15, -2.5);
   private readonly matrix = new Matrix4();
   private readonly unit = new Vector3(1,1,1);
   private readonly media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -128,9 +128,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.audio.stop();this.spaceAudio.stop();this.themes.activation.cancel();this.finaleAudioTheme=null;this.themes.trellis.cancel();
       this.activeSession = undefined;
       this.fadeMesh.visible = false;
-      this.root.position.set(0, 1.45, -1.05);
+      this.root.position.set(0.7, 1.3, -2.5);
       this.root.quaternion.identity();
-      this.panel.position.set(0, 1.45, -1.05);
+      this.panel.position.set(0.7, 1.3, -2.5);
       this.panel.quaternion.identity();
     };
     this.world.renderer.xr.addEventListener('sessionend', ended);
@@ -153,7 +153,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.anchors ??= new AnchorRecovery(this.storage);
       this.ready = true;
       this.applySettings(next);
-      this.message = 'Appearance saved locally. Finale sound needs activation in this VR window.';
+      this.message = 'Appearance saved locally. Sound needs activation in this VR window.';
     } catch {
       this.ready = false;
       this.message = 'Could not restore appearance. Retry appearance to keep saved settings safe.';
@@ -249,8 +249,11 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const head = this.world.playerSpaceEntities.head.object3D!;
     head.getWorldPosition(this.position);
     head.getWorldQuaternion(this.rotation);
-    this.root.position.copy(this.offset).applyQuaternion(this.rotation).add(this.position);
-    this.root.quaternion.copy(this.rotation);
+    // Keep the board upright: head tilt must not tilt the task text.
+    const forward = new Vector3(0,0,-1).applyQuaternion(this.rotation);
+    const yaw = Math.atan2(-forward.x, -forward.z);
+    this.root.rotation.set(0, yaw, 0);
+    this.root.position.copy(this.offset).applyQuaternion(this.root.quaternion).add(this.position);
   }
 
   private frame(frame: XRFrame): void {
@@ -269,7 +272,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
     }
     if (this.settings.placement === 'head') {
-      this.placeFromHead();
+      // Seated companion stays put between deliberate recenter/session entry.
     } else if (this.settings.placement === 'hand') {
       // Prefer a left-hand anchor so the right index finger can touch the board.
       const input=this.world.input.xr;
@@ -339,6 +342,8 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.revision = progress.revision;
     }
     if (!motion) this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+    this.audio.setAmbient(this.ready && this.settings.zenSound && this.settings.theme === 'zen');
+    this.audio.tick(delta);
     this.themes.update(this.settings.theme, this.tween.tick(delta), progress.total > 0, delta, motion);
     if(this.themes.trellis.update(delta,motion))this.playGardenCue();
     this.fade = Math.max(0, this.fade - Math.min(delta, 1/30));
@@ -351,7 +356,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const labels: Record<string, string> = {
       'spatial-theme': `Theme: ${this.settings.theme === 'zen' ? 'Living Trellis / Zen Garden' : 'Constellation'}`,
       'spatial-scale': `Panel size: ${this.settings.scale === 1 ? 'Standard' : this.settings.scale === 1.25 ? 'Large' : 'Extra large'}`,
-      'spatial-placement': `Panel: ${this.settings.placement === 'head' ? 'Head relative' : this.settings.placement === 'hand' ? 'Hand relative' : 'Room anchor'}`,
+      'spatial-placement': `Panel: ${this.settings.placement === 'head' ? 'Seated companion' : this.settings.placement === 'hand' ? 'Hand relative' : 'Room anchor'}`,
       'spatial-sound': `${this.settings.theme==='zen'?'Garden':'Space'} sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
       'spatial-motion': `Ambient motion: ${this.settings.motion ? 'On' : 'Off'}`,
     };

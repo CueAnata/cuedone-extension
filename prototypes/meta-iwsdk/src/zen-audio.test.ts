@@ -32,3 +32,23 @@ test('audio unavailability does not throw into task saving or garden rendering',
   assert.equal(await audio.unlock(),false);assert.equal(audio.play(),false);audio.dispose();
 });
 
+
+test('ambient birds require activation, repeat with bounded voices, and stop when disabled', async () => {
+  const {audio,sources}=context();
+  audio.setAmbient(true);
+  audio.tick(1/30);
+  assert.equal(sources.length,0);
+  await audio.unlock();
+  audio.tick(1/30);
+  assert.equal(sources.length,4);
+  // Finish the chirp phrase; no queued oscillator or background timer is retained.
+  for(const source of sources.slice())source.onended?.();
+  for(let i=0;i<240;i++)audio.tick(1/30);
+  assert.equal(sources.length,8);
+  audio.setAmbient(false);
+  const count=sources.length;
+  for(let i=0;i<1000;i++)audio.tick(1/30);
+  assert.equal(sources.length,count);
+  assert.equal(sources.every(source=>source.stopped),true);
+  audio.dispose();
+});

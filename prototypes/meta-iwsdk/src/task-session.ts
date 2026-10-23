@@ -88,7 +88,11 @@ export class PersonalTaskSession {
   }
 
   async completeActive(at = this.now()): Promise<boolean> {
-    const active = this.activeTask;
+    return this.completeTask(this.activeTask?.id, at);
+  }
+
+  async completeTask(id: string | undefined, at = this.now()): Promise<boolean> {
+    const active = this.tasks.find(task => task.id === id && !task.completed);
     if (active == null || this.phase !== 'ready') {
       return false;
     }
@@ -102,6 +106,13 @@ export class PersonalTaskSession {
     if (!saved) {
       this.lastCompletionAt = Number.NEGATIVE_INFINITY;
     }
+    return saved;
+  }
+
+  async reset(): Promise<boolean> {
+    if (this.phase !== 'ready' || !this.completedCount) return false;
+    const saved = await this.saveThenApply(this.tasks.map(task => ({...task, completed: false})), 'List reset.');
+    if (saved) this.lastCompletionAt = Number.NEGATIVE_INFINITY;
     return saved;
   }
 

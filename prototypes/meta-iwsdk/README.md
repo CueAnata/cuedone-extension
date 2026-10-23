@@ -273,3 +273,40 @@ bundled worker/embedded WASM, without editing dependencies. See
 [distribution instructions](docs/distribution.md) and the
 [verification checklist](docs/submission-verification.md). Physical Quest
 72/90Hz, spatial audio and hands-only keyboard checks remain pending.
+
+
+## Quest compact companion update — October 22, 2026
+
+The default seated placement now puts the upright board 0.7 m to the right,
+0.15 m below eye level and 2.5 m forward. It stays stationary until Recenter or
+session entry, rather than following every head turn. Standard width is about
+0.58 m (roughly one quarter of a 2.3 m virtual desktop); saved larger size and
+hand/room placement options remain available. This is a sizing target, not a
+hardware comfort claim.
+
+Every task has a visible row and can be completed independently. Long lists
+scroll within the bounded board instead of dropping tasks or growing above the
+headset view. A new saved completion gets a brief bee pass and glowing pollen
+strike-out; restored completions show the strike-out without replay. Motion Off,
+reduced motion and suspension suppress bee motion. Living Trellis vines still
+grow along the margins when the garden theme is selected. Side scenery is smaller
+to stay close to the compact board.
+
+Settings start closed behind the gear button in VR and the browser companion.
+The list action bar offers Reset (unchecks, keeps tasks), Clear All (confirmation,
+then saved deletion), and Add Task (opens task entry). Done appears only for a
+nonempty completed list; it acknowledges completion and exits immersive VR while
+retaining the saved list. Existing New List carryover remains available.
+
+Garden sound On now permits quiet repeating procedural bird phrases during
+visible immersive garden use, after activation in that window. Existing saved
+sound choices and the default Off remain respected. No background timer is used;
+sound stops on Off, theme change, hidden/suspended VR, or exit. The garden finale
+can replace an ambient phrase without overlapping it. Constellation sound remains
+its existing separate theme-specific finale.
+
+Validation: 66 unit tests, TypeScript, production build, and browser interaction
+checks on isolated localhost test data (multiple rows, out-of-order completion,
+Done visibility, Reset, settings, Clear All cancellation and confirmation).
+Quest 3 readability, pinch targets at 2.5 m, native keyboard, finale clipping,
+perceived audio and comfort still require physical headset verification.

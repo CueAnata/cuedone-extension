@@ -1,4 +1,4 @@
-/** Original local synthesized birds, used only by the Living Trellis finale. */
+/** Original local synthesized birds, for the Living Trellis and its ambient bird loop. */
 export class ZenAudio {
   private context: AudioContext | null = null;
   private sources: OscillatorNode[] = [];
@@ -6,6 +6,24 @@ export class ZenAudio {
   private panner: PannerNode | null = null;
   private envelope: GainNode | null = null;
   private generation = 0;
+  private ambient = false;
+  private ambientWait = 0;
+
+  setAmbient(enabled: boolean): void {
+    if(enabled === this.ambient)return;
+    this.ambient = enabled;
+    this.ambientWait = 0;
+    if(!enabled)this.stop();
+  }
+
+  /** Frame-driven scheduling avoids background timers and never accumulates missed chirps. */
+  tick(delta: number): void {
+    if(!this.ambient || !this.context || this.context.state !== 'running')return;
+    this.ambientWait -= Math.max(0, Math.min(delta, 1/30));
+    if(this.ambientWait <= 0 && this.sources.length === 0) {
+      if(this.play())this.ambientWait = 7;
+    }
+  }
   private readonly createContext: () => AudioContext;
   constructor(createContext: () => AudioContext = () => new AudioContext()) { this.createContext = createContext; }
 

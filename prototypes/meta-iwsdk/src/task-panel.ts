@@ -4,6 +4,7 @@ import {
   UIKitMLAsset,
   VisibilityState,
 } from '@iwsdk/core';
+import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
@@ -63,6 +64,15 @@ function browserPanelElements(): BrowserPanelElements {
 export class TaskPanelSystem extends createSystem({}) {
   private readonly session = new PersonalTaskSession(new LocalTaskStore());
   private readonly browser = browserPanelElements();
+  private settingsOpen = false;
+  private entryOpen = false;
+  private reviewingClear = false;
+  private rowSignature = '';
+  private readonly rows: Array<{row: UIKit.Container; pollen: UIKit.Container; bee: UIKit.Container; id: string; elapsed: number}> = [];
+  private emptyRow?: UIKit.Text;
+  private previousTasks = new Map<string, boolean>();
+  private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  private motionEnabled = true;
   private draft = '';
   private reviewingNewList = false;
   private remotePending = false;
@@ -72,6 +82,12 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    const gear = new Settings({width: 3, height: 3, color: '#332D25'});
+    const settingsButton = panel.requireElementById<UIKit.Container>('settings-toggle');
+    settingsButton.name = 'Settings';
+    settingsButton.setProperties({hover: {backgroundColor: '#FDE68A'}});
+    settingsButton.add(gear);
+    this.cleanupFuncs.push(() => {gear.removeFromParent(); gear.dispose();});
     const taskInput = panel.requireElementById<TaskInput>('task-input');
     const addButton = panel.requireElementById('add-button');
     const completeButton = panel.requireElementById('complete-button');
@@ -82,6 +98,26 @@ export class TaskPanelSystem extends createSystem({}) {
     const retryButton = panel.requireElementById('retry-button');
     const xrButton = panel.requireElementById('xr-button');
     const exitButton = panel.requireElementById('exit-button');
+
+    const bind = (id: string, action: () => void) => {
+      const spatial = panel.requireElementById(id);
+      const browser = required<HTMLElement>(`#browser-${id}`);
+      spatial.addEventListener('click', action);
+      browser.addEventListener('click', action);
+      this.cleanupFuncs.push(() => {spatial.removeEventListener('click', action); browser.removeEventListener('click', action);});
+    };
+    bind('settings-toggle', () => {this.settingsOpen = !this.settingsOpen; this.render(panel);});
+    bind('show-add-button', () => {this.entryOpen = !this.entryOpen; this.render(panel); if(this.isBrowser() && this.entryOpen)this.browser.input.focus();});
+    bind('reset-button', () => {void this.resetList(panel);});
+    bind('clear-button', () => {
+      this.openNewListReview(panel, taskInput, true);
+    });
+    bind('done-button', () => {
+      this.session.message = 'All done. Your completed list is saved.';
+      this.render(panel);
+      if(!this.isBrowser())void this.world.exitXR();
+    });
+    this.cleanupFuncs.push(() => this.disposeRows());
 
     taskInput.name = 'TaskInput';
     addButton.name = 'AddTask';
@@ -241,16 +277,17 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
   }
 
-  private async completeTask(panel: UIKitMLAsset): Promise<void> {
-    const pending = this.session.completeActive();
+  private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
+    const pending = this.session.completeTask(id ?? this.session.activeTask?.id);
     this.render(panel);
     await pending;
     this.render(panel);
   }
 
-  private openNewListReview(panel: UIKitMLAsset, input: TaskInput): void {
+  private openNewListReview(panel: UIKitMLAsset, input: TaskInput, clear = false): void {
     if (this.session.phase !== 'ready') return;
     this.reviewingNewList = true;
+    this.reviewingClear = clear;
     input.input.blur();
     this.browser.input.blur();
     this.render(panel);
@@ -275,6 +312,8 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
     if (await pending) {
       this.reviewingNewList = false;
+      this.entryOpen = true;
+      this.reviewingClear = false;
       if (this.draft === submittedDraft) {
         this.draft = '';
         input.input.uncontrolledSignal.value = '';
@@ -283,6 +322,89 @@ export class TaskPanelSystem extends createSystem({}) {
     }
     this.render(panel);
     if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
+  }
+
+  private async resetList(panel: UIKitMLAsset): Promise<void> {
+    const pending = this.session.reset();
+    this.render(panel);
+    await pending;
+    this.reviewingClear = false;
+    this.render(panel);
+  }
+
+  private disposeRows(): void {
+    this.emptyRow?.removeFromParent();
+    this.emptyRow?.dispose();
+    this.emptyRow = undefined;
+    for(const {row} of this.rows) {
+      const components: Array<{dispose(): void}> = [];
+      row.traverse(object => {if(object instanceof UIKit.Container || object instanceof UIKit.Text)components.push(object);});
+      row.removeFromParent();
+      components.reverse().forEach(component => component.dispose());
+    }
+    this.rows.length = 0;
+  }
+
+  private renderRows(panel: UIKitMLAsset, disabled: boolean): void {
+    const signature = JSON.stringify([this.session.tasks, disabled]);
+    if(signature === this.rowSignature)return;
+    this.rowSignature = signature;
+    const animate = this.session.message === 'Task complete.' || this.remoteFeedback;
+    this.disposeRows();
+    const list = panel.requireElementById<UIKit.Container>('task-list');
+    const browserList = required<HTMLElement>('#browser-task-list');
+    browserList.replaceChildren();
+    for(const task of this.session.tasks) {
+      const fresh = animate && this.previousTasks.get(task.id) === false && task.completed;
+      const row = new UIKit.Container({width: '100%', minHeight: 7, flexShrink: 0, padding: 1.5, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'column'});
+      row.name = `Task-${task.id}`;
+      const text = new UIKit.Text({text: `${task.completed ? '[x]' : '[ ]'} ${task.text}`, fontSize: 2.8, color: '#332D25', width: '100%'});
+      row.add(text);
+      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: '7%', positionTop: '50%', height: 0.35, width: task.completed && !fresh ? '86%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
+      pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
+      const bee = new UIKit.Container({positionType: 'absolute', positionTop: '35%', positionLeft: '7%', width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
+      for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
+      for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
+      row.add(pollen, bee);
+      row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
+      list.add(row);
+      this.rows.push({row, pollen, bee, id: task.id, elapsed: fresh ? 0 : -1});
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'browser-task-row';
+      button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
+      button.disabled = disabled || task.completed;
+      button.dataset.completed = String(task.completed);
+      const label = document.createElement('span'); label.textContent = `${task.completed ? '✓' : '○'} ${task.text}`;
+      const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
+      const beeIcon = document.createElement('span'); beeIcon.className = 'task-bee'; beeIcon.textContent = '🐝'; beeIcon.setAttribute('aria-hidden', 'true');
+      button.append(label, line, beeIcon);
+      if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
+      button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
+      const item = document.createElement('div'); item.setAttribute('role', 'listitem'); item.append(button);
+      browserList.append(item);
+    }
+    if(!this.session.tasks.length) {
+      const message = this.session.phase === 'loading' ? 'Loading…' : 'Add a task when you are ready.';
+      this.emptyRow = new UIKit.Text({text: message, fontSize: 2.8, color: '#5C5143'});
+      list.add(this.emptyRow);
+      browserList.textContent = message;
+    }
+    this.previousTasks = new Map(this.session.tasks.map(task => [task.id, task.completed]));
+  }
+
+  update(delta: number): void {
+    const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
+    const motion = this.motionEnabled && !this.reducedMotion.matches;
+    this.browser.root.classList.toggle('motion-off', !motion);
+    for(const entry of this.rows) {
+      if(entry.elapsed < 0)continue;
+      const visible = this.world.visibilityState.value === VisibilityState.Visible;
+      entry.elapsed = motion && visible ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/1.1) : 1;
+      entry.pollen.setProperties({width: `${entry.elapsed*86}%`});
+      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${7+entry.elapsed*86}%`, positionTop: `${35+Math.sin(entry.elapsed*40)*8}%`});
+      if(entry.elapsed === 1)entry.elapsed = -1;
+    }
   }
 
   private isBrowser(): boolean {
@@ -335,6 +457,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'No unfinished tasks remain. Start empty to remove completed tasks.'
           : `${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'task' : 'tasks'}. Carry forward only unfinished tasks, or start empty. Completed tasks will be removed.`,
     });
+    if(this.reviewingClear)panel.requireElementById('new-list-copy').setProperties({text: 'Delete every task? This clears the saved list. Cancel keeps all tasks.'});
     const statusMessage = this.session.message;
     const statusIsError =
       loadFailed ||
@@ -374,7 +497,7 @@ export class TaskPanelSystem extends createSystem({}) {
         active == null,
     });
     panel.requireElementById('task-controls').setProperties({
-      display: this.reviewingNewList ? 'none' : 'flex',
+      display: this.reviewingNewList || !this.entryOpen ? 'none' : 'flex',
     });
     panel.requireElementById('new-list-button').setProperties({
       display: this.reviewingNewList ? 'none' : 'flex',
@@ -384,10 +507,11 @@ export class TaskPanelSystem extends createSystem({}) {
       display: this.reviewingNewList ? 'flex' : 'none',
     });
     panel.requireElementById('carry-button').setProperties({
-      display: unfinishedCount > 0 ? 'flex' : 'none',
+      display: unfinishedCount > 0 && !this.reviewingClear ? 'flex' : 'none',
       disabled: isSaving,
     });
     panel.requireElementById('empty-button').setProperties({
+      text: this.reviewingClear ? 'Clear All' : 'Start empty',
       disabled: isSaving,
     });
     panel.requireElementById('cancel-new-list').setProperties({
@@ -403,6 +527,22 @@ export class TaskPanelSystem extends createSystem({}) {
       display: this.world.xrEnabled && !isBrowser ? 'flex' : 'none',
     });
 
+    const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList;
+    const done = !disabled && this.session.tasks.length > 0 && this.session.unfinishedTaskCount === 0;
+    panel.requireElementById('settings-panel').setProperties({display: this.settingsOpen ? 'flex' : 'none'});
+    required<HTMLElement>('#browser-settings-panel').hidden = !this.settingsOpen;
+    required<HTMLElement>('#browser-settings-toggle').setAttribute('aria-expanded', String(this.settingsOpen));
+    for(const id of ['reset-button', 'clear-button', 'show-add-button']) {
+      const unavailable = disabled || (id === 'reset-button' ? !this.session.completedCount : id === 'clear-button' ? !this.session.tasks.length : false);
+      panel.requireElementById(id).setProperties({disabled: unavailable});
+      required<HTMLButtonElement>(`#browser-${id}`).disabled = unavailable;
+    }
+    const reviewTitle = this.reviewingClear ? 'Clear all tasks?' : 'Start a new list?';
+    panel.requireElementById('new-list-title').setProperties({text: reviewTitle});
+    required<HTMLElement>('#browser-new-list-title').textContent = reviewTitle;
+    panel.requireElementById('done-button').setProperties({display: done ? 'flex' : 'none'});
+    required<HTMLElement>('#browser-done-button').hidden = !done;
+    this.renderRows(panel, disabled);
     this.renderBrowser(isLoading, isSaving, loadFailed);
     this.queueRemoteRefresh(panel);
   }
@@ -433,7 +573,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.reviewingNewList;
+    this.browser.form.hidden = this.reviewingNewList || !this.entryOpen;
     this.browser.input.disabled = busy || loadFailed || this.reviewingNewList;
     this.browser.addButton.disabled =
       busy ||
@@ -449,8 +589,10 @@ export class TaskPanelSystem extends createSystem({}) {
       unfinishedCount === 0
         ? 'No unfinished tasks remain. Start empty to remove completed tasks, or Cancel to keep this list.'
         : `${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'task' : 'tasks'} can carry forward in the same order. Completed tasks will be removed. Start empty removes every task. Cancel changes nothing.`;
-    this.browser.carryButton.hidden = unfinishedCount === 0;
+    this.browser.carryButton.hidden = unfinishedCount === 0 || this.reviewingClear;
     this.browser.carryButton.disabled = isSaving;
+    this.browser.emptyButton.textContent = this.reviewingClear ? 'Clear All' : 'Start empty';
+    if(this.reviewingClear)this.browser.reviewCopy.textContent = 'Delete every task? This clears the saved list. Cancel keeps all tasks.';
     this.browser.emptyButton.disabled = isSaving;
     this.browser.cancelButton.disabled = isSaving;
     this.browser.retryButton.hidden = !loadFailed;

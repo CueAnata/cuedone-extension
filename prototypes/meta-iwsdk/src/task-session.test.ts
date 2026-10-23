@@ -240,3 +240,28 @@ test('a stale companion completion refreshes the latest list without checking a 
   assert.deepEqual(session.tasks,store.stored);assert.equal(session.activeTask?.id,'a');
   assert.equal(session.phase,'ready');assert.match(session.message,/another window/);
 });
+
+test('full list can complete a chosen later task without advancing an earlier task', async () => {
+  const store = new MemoryStore([task('a'), task('b'), task('c')]);
+  const session = new PersonalTaskSession(store);
+  await session.load();
+  assert.equal(await session.completeTask('c', 1000), true);
+  assert.equal(session.activeTask?.id, 'a');
+  assert.deepEqual(session.tasks.map(t => t.completed), [false, false, true]);
+  assert.equal(await session.completeTask('missing', 2000), false);
+  assert.equal(await session.completeTask('c', 2000), false);
+});
+
+test('reset saves first, preserves task identity/order, and never clears tasks on failure', async () => {
+  const original = [task('a', true), task('b')];
+  const store = new MemoryStore(original);
+  const session = new PersonalTaskSession(store);
+  await session.load();
+  store.failSave = true;
+  assert.equal(await session.reset(), false);
+  assert.deepEqual(session.tasks, original);
+  store.failSave = false;
+  assert.equal(await session.reset(), true);
+  assert.deepEqual(session.tasks, [task('a'), task('b')]);
+  assert.equal(session.message, 'List reset.');
+});

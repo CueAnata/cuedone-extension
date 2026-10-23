@@ -39,7 +39,7 @@ export class SpatialThemes {
     this.taskNodes.name = 'Task constellation nodes';
     this.taskLinks.name = 'Task constellation connections';
 
-    this.constellation.position.set(-0.87, 0.18, -0.35);
+    this.constellation.position.set(-0.45, 0.05, -0.15);
     const positions = STARS.flatMap(([x,y]) => [(x - 120) / 200, (85 - y) / 200, 0]);
     this.stars = new Points(new BufferGeometry().setAttribute('position',
       new Float32BufferAttribute(positions, 3)),
@@ -50,7 +50,8 @@ export class SpatialThemes {
       new LineBasicMaterial({ color: 0xffdca0, transparent: true, opacity: 0.9 }));
     this.constellation.add(this.stars, this.lines, this.taskNodes, this.taskLinks);
 
-    this.zen.position.set(0.9, -0.18, -0.35);
+    this.zen.position.set(0.45, -0.12, -0.15);
+    this.zen.scale.setScalar(0.3);
     const sand = new Mesh(new CylinderGeometry(0.42, 0.45, 0.045, 32),
       new MeshBasicMaterial({ color: 0xd4ba8d }));
     sand.position.y = -0.23;
@@ -120,7 +121,7 @@ export class SpatialThemes {
     this.zen.visible = theme === 'zen' && hasTasks;
     this.lines.geometry.setDrawRange(0, Math.floor(ratio * EDGES.length) * 2);
     this.stars.material.opacity = 0.3 + ratio * 0.7;
-    this.constellation.scale.setScalar(0.95 + ratio * 0.05);
+    this.constellation.scale.setScalar(0.3);
     this.stones.forEach((stone,i) => {
       const fill = Math.max(0, Math.min(1, ratio * 5 - i));
       stone.visible = fill > 0;
