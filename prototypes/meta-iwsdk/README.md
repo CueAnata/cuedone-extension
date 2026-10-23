@@ -1,6 +1,38 @@
 # CueDone Personal VR prototype
 
 
+## Tight card and movable companion — October 22, 2026
+
+The browser card now has 2 px page padding and 8 px card/inner-section padding,
+with its centered 448 px maximum retained. At a 320 px viewport the card measures
+316 px wide with no horizontal page overflow.
+
+In immersive AR, aim a tracked-hand ray at **Hold pinch here to move**, pinch and
+hold, move the hand ray, then release to place the panel. The header captures
+that ray; a second hand cannot take over. The panel preserves the grab offset
+and orientation, damps ray jitter, and holds its last displayed position on
+release. The task list, garden margins and finale move together. The gesture
+never completes tasks or moves the camera. Pointer cancellation, loss of hand
+tracking, suspension, Recenter and session exit cancel an active move and restore
+its starting position. No handheld-controller fallback is introduced.
+
+New preferences default to Room anchor; existing saved placement choices remain
+respected. A successful drop saves Room placement and creates its new anchor on
+a fresh XR frame, skipping restoration of the previous handle. Older pending
+anchor work is invalidated at grab time. Restored durable handles are reused
+without requesting another handle or rewriting local storage. Failed preference
+saves retain the dropped position for the current session and report that it
+could not be saved. Unsupported anchors similarly retain session-local placement.
+Restoration across sessions requires persistent-anchor support in the same
+browser profile and origin on the same device. This is an active WebXR companion,
+not an OS overlay over other apps.
+
+Validation: 69 tests (including movement math, single-pointer ownership,
+cancellation, bounded frame steps, stale anchors and handle reuse), TypeScript,
+production build and wide/320 px browser layout checks. Native Quest ray-pinch
+capture, perceived smoothing and durable physical-room restoration still require
+headset verification. No commit, push or deployment is included.
+
 ## Current AR companion — October 22, 2026
 
 The current prototype requests **immersive-ar** for Quest passthrough, with an

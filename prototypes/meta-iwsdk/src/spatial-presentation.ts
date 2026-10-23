@@ -1,10 +1,11 @@
-import { createSystem, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
+import { createSystem, UIKit, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
 import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion, Matrix4 } from 'three';
 import { AnchorRecovery, DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
   SPATIAL_KEY, type SpatialSettings } from './spatial-state.js';
 import { SpatialThemes } from './spatial-themes.js';
 import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
+import { PanelDrag } from './panel-drag.js';
 import { ZenAudio } from './zen-audio.js';
 
 const progress = new GardenProgress();
@@ -14,6 +15,13 @@ export function publishSpatialProgress(tasks: readonly SpatialTask[], animate: b
 
 export class SpatialPresentationSystem extends createSystem({}) {
   private readonly root = new Group();
+  private readonly drag = new PanelDrag(this.root);
+  private dragHand: 'left' | 'right' | null = null;
+  private handle!: UIKit.Container;
+  private roomOverride = false;
+  private savingPlacement = false;
+  private placementGeneration = 0;
+  private lastDragTick = 0;
   private readonly themes = new SpatialThemes();
   private readonly tween = new ProgressTween();
   private readonly audio = new ZenAudio();
@@ -47,6 +55,44 @@ export class SpatialPresentationSystem extends createSystem({}) {
   init(): void {
     this.panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     this.root.name = 'CueDone personal spatial dashboard';
+    this.handle = this.panel.requireElementById<UIKit.Container>('grab-handle');
+    this.handle.name = 'PanelGrabHandle';
+    this.handle.setProperties({
+      hover: {backgroundColor: '#FFD28A'},
+      onPointerDown: event => {
+        if(!this.ready || this.savingPlacement || this.drag.owner !== null ||
+          this.world.visibilityState.value !== VisibilityState.Visible)return;
+        const hand = (['left','right'] as const).find(hand =>
+          this.world.input.xr.multiPointers[hand].getPointer('ray').id === event.pointerId &&
+          this.world.input.xr.getPrimaryInputSource(hand)?.hand);
+        if(!hand || !this.drag.begin(event.pointerId,event.ray,event.point))return;
+        event.stopPropagation();
+        this.dragHand = hand;
+        this.anchors.end(); // Invalidate old/in-flight anchors before moving the board.
+        this.handle.setPointerCapture(event.pointerId);
+        this.message = 'Moving panel. Release pinch to place it.';
+        this.renderControls();
+      },
+      onPointerMove: event => {
+        if(this.drag.owner !== event.pointerId)return;
+        event.stopPropagation();
+        this.drag.move(event.pointerId,event.ray);
+      },
+      onPointerUp: event => {
+        if(this.drag.owner !== event.pointerId)return;
+        event.stopPropagation();
+        const id = event.pointerId;
+        this.drag.end(id);
+        this.dragHand = null;
+        this.handle.releasePointerCapture(id);
+        this.roomOverride = true;
+        void this.saveDraggedPlacement();
+      },
+      onPointerCancel: event => {
+        if(this.drag.owner === event.pointerId) {event.stopPropagation(); this.cancelDrag();}
+      },
+      onClick: event => event.stopPropagation(),
+    });
     this.world.scene.add(this.root);
     this.root.position.copy(this.panel.position);
     // Keep the authored panel under its ECS parent. IWSDK restores that parent
@@ -99,14 +145,28 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.cleanupFuncs.push(this.world.visibilityState.subscribe(() => {
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
       this.root.visible = visible;
+      const interruptedSave = this.savingPlacement;
+      this.cancelDrag();
+      this.placementGeneration++;
+      this.savingPlacement = false;
+      if(interruptedSave) {
+        this.roomOverride = false;
+        if(this.activeSession)this.anchors.begin(this.activeSession,true);
+        this.message = 'Placement interrupted. Restoring saved room placement.';
+      }
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
         this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
         this.fade = 0.3;
       }
+      this.renderControls();
     }));
     const ended = () => {
+      this.cancelDrag();
+      this.placementGeneration++;
+      this.savingPlacement = false;
+      this.roomOverride = false;
       this.anchors?.end();
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       this.activeSession = undefined;
@@ -119,6 +179,8 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.world.renderer.xr.addEventListener('sessionend', ended);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', ended));
     this.cleanupFuncs.push(() => {
+      this.cancelDrag();
+      this.placementGeneration++;
       this.anchors?.end();
       this.audio.dispose();
       this.themes.dispose();
@@ -181,7 +243,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.renderControls();
   }
 
-  private applySettings(next: SpatialSettings): void {
+  private applySettings(next: SpatialSettings, preservePose = false): void {
     const previous=this.settings;
     const changedPlacement=previous.placement!==next.placement;
     this.settings=next;
@@ -190,7 +252,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if(!next.motion) this.themes.trellis.cancel();
     this.applyScale();
     this.message='Appearance synchronized locally.';
-    if(changedPlacement)this.recenter();
+    if(changedPlacement && !preservePose)this.recenter();
   }
 
   private playGardenCue(): void {
@@ -213,6 +275,10 @@ export class SpatialPresentationSystem extends createSystem({}) {
 
   private recenter(restoreAnchor = true): void {
     if (!this.ready) return;
+    this.cancelDrag();
+    this.placementGeneration++;
+    this.savingPlacement = false;
+    this.roomOverride = false;
     this.anchors.end();
     this.activeSession = undefined;
     this.restoreAnchor = restoreAnchor;
@@ -220,6 +286,50 @@ export class SpatialPresentationSystem extends createSystem({}) {
     // The next live XR frame places the panel; never reuse a previous-session pose.
     this.message = restoreAnchor ? 'Placement saved locally.' : 'Recentering on the next VR frame.';
     this.renderControls();
+  }
+
+  private cancelDrag(): void {
+    const id = this.drag.owner;
+    if(id === null)return;
+    this.drag.cancel();
+    this.dragHand = null;
+    if(this.handle.hasPointerCapture(id))this.handle.releasePointerCapture(id);
+    if(this.activeSession)this.anchors.begin(this.activeSession, true);
+    this.message = 'Move cancelled. Previous panel position retained.';
+    this.renderControls();
+  }
+
+  private async saveDraggedPlacement(): Promise<void> {
+    const session = this.world.xrSession;
+    if(!session)return;
+    const generation = ++this.placementGeneration;
+    this.savingPlacement = true;
+    this.message = 'Panel placed. Saving room placement…';
+    this.renderControls();
+    try {
+      const next = await withLocalLock(SPATIAL_KEY, () => {
+        if(generation !== this.placementGeneration)return null;
+        const next = {...readSpatial(this.storage), placement: 'room' as const};
+        saveSpatial(this.storage,next);
+        return next;
+      });
+      if(!next || generation !== this.placementGeneration || session !== this.world.xrSession)return;
+      this.applySettings(next, true);
+      this.roomOverride = false;
+      // Begin without restoring the old handle. The next live XR frame creates
+      // the replacement at the released pose, never from an expired frame.
+      this.anchors.begin(session, false);
+      this.lastAnchorStatus = '';
+      this.message = 'Panel placed. Saving anchor on the next tracked frame.';
+    } catch {
+      if(generation === this.placementGeneration)
+        this.message = 'Panel held for this session. Could not save room placement.';
+    } finally {
+      if(generation === this.placementGeneration) {
+        this.savingPlacement = false;
+        this.renderControls();
+      }
+    }
   }
 
   private placeFromHead(): void {
@@ -247,7 +357,18 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.revision = progress.revision;
       this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
     }
-    if (this.settings.placement === 'head') {
+    if(this.drag.owner !== null) {
+      const source = this.dragHand && this.world.input.xr.getPrimaryInputSource(this.dragHand);
+      if(!source?.hand || !frame.getPose(source.targetRaySpace,space))this.cancelDrag();
+      else {
+        const now = performance.now();
+        this.drag.tick(this.lastDragTick ? (now-this.lastDragTick)/1000 : 1/90);
+        this.lastDragTick = now;
+      }
+    } else this.lastDragTick = 0;
+    if(this.drag.owner !== null || this.roomOverride || this.savingPlacement) {
+      // Drag owns the world pose. Never apply a stale anchor or wrist transform.
+    } else if (this.settings.placement === 'head') {
       // Seated companion stays put between deliberate recenter/session entry.
     } else if (this.settings.placement === 'hand') {
       // Prefer a left-hand anchor so the right index finger can touch the board.
@@ -327,6 +448,11 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   private renderControls(): void {
+    this.panel.requireElementById('grab-handle').setProperties({
+      text: this.drag.owner !== null ? 'Moving… Release pinch to place' : this.savingPlacement ? 'Saving placement…' : 'Hold pinch here to move',
+      backgroundColor: this.drag.owner !== null ? '#FFD28A' : '#FFE4B3',
+      disabled: !this.ready || this.savingPlacement,
+    });
     const labels: Record<string, string> = {
       'spatial-scale': `Panel size: ${this.settings.scale === 1 ? 'Standard' : this.settings.scale === 1.25 ? 'Large' : 'Extra large'}`,
       'spatial-placement': `Panel: ${this.settings.placement === 'head' ? 'Seated companion' : this.settings.placement === 'hand' ? 'Hand relative' : 'Room anchor'}`,

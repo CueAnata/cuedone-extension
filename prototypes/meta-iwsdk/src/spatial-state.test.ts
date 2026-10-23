@@ -133,3 +133,30 @@ test('legacy Constellation choice resolves to permanent Zen without rewriting st
   assert.deepEqual(readSpatial(store), {...legacy,theme:'zen'});
   assert.equal(store.data.get(SPATIAL_KEY),raw);
 });
+
+test('restoring a durable room anchor reuses its handle without additional storage writes', async () => {
+  const store=storage(); store.data.set(ANCHOR_KEY,'existing-handle');
+  const restored={delete(){},async requestPersistentHandle(){throw Error('must reuse existing handle');}};
+  const recovery=new AnchorRecovery({...store,setItem(){throw Error('must not rewrite storage');}});
+  recovery.begin({async restorePersistentAnchor(){return restored;}});
+  await recovery.restoreOrCreate();
+  assert.equal(recovery.anchor,restored);
+  assert.match(recovery.status,/restored/);
+  assert.equal(store.data.get(ANCHOR_KEY),'existing-handle');
+});
+
+test('a new drag invalidates an old in-flight anchor creation before it can replace the released pose', async () => {
+  const store=storage();const recovery=new AnchorRecovery(store);
+  let finish!:(anchor:SpatialAnchor)=>void;
+  recovery.begin({},false);
+  const stale=recovery.restoreOrCreate(()=>new Promise(resolve=>{finish=resolve;}));
+  recovery.end(); // pinch started moving the panel
+  const old=anchor();finish(old);await stale;
+  assert.equal(old.deleted,true);
+  assert.equal(recovery.anchor,null);
+  assert.equal(store.data.has(ANCHOR_KEY),false);
+  recovery.begin({},false); // release, on a later live frame
+  const placed=anchor();await recovery.restoreOrCreate(async()=>placed);
+  assert.equal(recovery.anchor,placed);
+  assert.equal(store.data.get(ANCHOR_KEY),'saved-room');
+});

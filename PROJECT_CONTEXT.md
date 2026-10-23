@@ -319,3 +319,28 @@ commit, push or deployment is authorized by this implementation request.
 Automated validation covers 63 tests, TypeScript and production build; native
 Quest passthrough, DOM-overlay support, hands/keyboard, audio, comfort and frame
 pacing remain physical-headset verification items.
+
+
+### Movable AR companion and tight browser card — October 22, 2026
+
+The user authorized tighter browser-card spacing, a ray/pinch draggable spatial
+header, and stable environment placement in `prototypes/meta-iwsdk`. Page padding
+is 2 px; card and inner-section padding is 8 px, with the centered 448 px maximum
+retained. The immersive header captures one tracked-hand ray and applies a
+bounded, damped translation to the board and garden together. Release retains
+the displayed pose and saves Room placement before creating an anchor on a fresh
+XR frame. Dragging does not change task data, camera position, or panel size.
+Cancellation, tracking loss, suspension, Recenter and exit cancel an active drag
+and restore its starting position.
+
+Room anchor is the default for new preferences; existing saved choices remain
+valid. Stale anchor work is cancelled before moving. A restored persistent handle
+is reused without minting or rewriting it on every entry. Storage/anchor failures
+retain session-local placement with visible status; cross-session restoration
+remains conditional on same-device/browser persistent-anchor support. This does
+not add an OS-level cross-app overlay, networking, cloud sync or handoff.
+
+Validation: 69 prototype tests, TypeScript, production build, and wide/320 px
+browser spacing checks. Native Quest hand capture, smoothing, suspend/resume and
+durable room restoration remain headset checks. Extension behavior is unchanged;
+no commit, push or deployment is part of this implementation request.

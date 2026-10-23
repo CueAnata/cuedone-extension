@@ -15,6 +15,19 @@
     border-radius: 4;
   }
 
+  .grab-handle {
+    width: 100%;
+    min-height: 6.5;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2;
+    background-color: #ffe4b3;
+    font-size: 2.3;
+    font-weight: 700;
+    color: #713f08;
+  }
+
   .brand-row {
     flex-direction: row;
     align-items: center;
@@ -273,6 +286,7 @@
   }
 </style>
 <Panel class="panel-root">
+  <button id="grab-handle" class="grab-handle">Hold pinch here to move</button>
   <div class="brand-row">
     <span class="brand">CueDone</span>
     <button id="settings-toggle" class="settings-toggle"></button>

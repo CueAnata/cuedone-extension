@@ -12,7 +12,7 @@ export interface SpatialSettings {
   zenSound: boolean;
 }
 export const DEFAULT_SPATIAL: SpatialSettings = {
-  version: 1, theme: 'zen', scale: 1, placement: 'head', motion: true, zenSound: false,
+  version: 1, theme: 'zen', scale: 1, placement: 'room', motion: true, zenSound: false,
 };
 
 export function readSpatial(storage: TaskStorage): SpatialSettings {
@@ -114,10 +114,11 @@ export class AnchorRecovery {
       return;
     }
     let anchor: SpatialAnchor | null = null;
+    let restored = false;
     try {
       if (handle && session.restorePersistentAnchor && !this.triedRestore) {
         this.triedRestore = true;
-        try { anchor = await session.restorePersistentAnchor(handle); } catch { /* recenter fallback */ }
+        try { anchor = await session.restorePersistentAnchor(handle); restored = !!anchor; } catch { /* recenter fallback */ }
         if (generation !== this.generation) { anchor?.delete(); return; }
         if (!anchor) {
           // A frame is only valid synchronously. Create on the NEXT live frame,
@@ -136,6 +137,10 @@ export class AnchorRecovery {
       }
       this.anchor = anchor;
       this.status = 'Room placement ready for this session.';
+      if(restored) {
+        this.status = 'Room placement restored on this device.';
+        return; // Reuse the durable handle instead of minting one per reopening.
+      }
       if (anchor.requestPersistentHandle) {
         const savedHandle = await anchor.requestPersistentHandle();
         if (generation !== this.generation) return;
