@@ -325,7 +325,6 @@
     Retry loading
   </button>
   <div id="settings-panel" style="display: none; flex-direction: column; width: 100%; gap: 1.4">
-  <button id="spatial-theme" class="new-list-button">Theme: Constellation</button>
   <button id="spatial-scale" class="new-list-button">Panel size: Standard</button>
   <div class="action-row">
     <button id="spatial-placement" class="action">Panel: Head relative</button>
@@ -338,9 +337,9 @@
   <span id="spatial-status" class="review-copy">Stay seated or within your Quest boundary.</span>
   </div>
   <div class="xr-row">
-    <button id="xr-button" class="small-button">Enter VR</button>
+    <button id="xr-button" class="small-button">Enter AR</button>
     <button id="exit-button" class="small-button" style="display: none">
-      Exit VR
+      Exit AR
     </button>
   </div>
 </Panel>

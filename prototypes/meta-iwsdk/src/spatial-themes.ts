@@ -1,55 +1,20 @@
-import { ConstellationActivation } from './constellation-activation.ts';
-import {
-  Group, BufferGeometry, Float32BufferAttribute, Points, PointsMaterial,
-  LineSegments, LineBasicMaterial, Mesh, MeshBasicMaterial, SphereGeometry,
-  CylinderGeometry, TorusGeometry, Color,
-} from 'three';
-
+import { Group, BufferGeometry, Float32BufferAttribute, Points, PointsMaterial,
+  Mesh, MeshBasicMaterial, SphereGeometry, CylinderGeometry, TorusGeometry } from 'three';
 import { TrellisGarden } from './trellis-garden.ts';
-import type { SpatialTask } from './garden-progress.ts';
 
-// Same seven Big Dipper nodes and edges as the approved 2D Constellation.
-const STARS = [[35,75], [72,62], [110,68], [148,70], [142,104], [198,108], [206,64]];
-const EDGES = [[0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,3]];
-
-/** Procedural geometry only: bounded particles, no textures, shadows, physics or downloads. */
+/** Fixed garden environment: no sky, stars, or opaque fullscreen scenery. */
 export class SpatialThemes {
   readonly root = new Group();
   readonly trellis = new TrellisGarden();
-  readonly activation = new ConstellationActivation((index,total)=>{
-    const point=this.trellis.vinePoint((index+1)/Math.max(1,total),index%2===0?-1:1);
-    this.trellis.root.updateWorldMatrix(true,false);
-    this.root.updateWorldMatrix(true,false);
-    return this.root.worldToLocal(this.trellis.root.localToWorld(point));
-  });
-  private readonly taskNodes = new Points(new BufferGeometry(),new PointsMaterial({size:0.052,vertexColors:true}));
-  private readonly taskLinks = new LineSegments(new BufferGeometry(),new LineBasicMaterial({vertexColors:true}));
-  readonly constellation = new Group();
   readonly zen = new Group();
-  private readonly stars: Points<BufferGeometry, PointsMaterial>;
-  private readonly lines: LineSegments;
   private readonly stones: Mesh[] = [];
   private readonly rings: Mesh[] = [];
   private readonly particles: Points;
   private phase = 0;
 
   constructor() {
-    this.root.name = 'CueDone spatial themes';
-    this.root.add(this.constellation, this.zen, this.trellis.root, this.activation.root);
-    this.taskNodes.name = 'Task constellation nodes';
-    this.taskLinks.name = 'Task constellation connections';
-
-    this.constellation.position.set(-0.45, 0.05, -0.15);
-    const positions = STARS.flatMap(([x,y]) => [(x - 120) / 200, (85 - y) / 200, 0]);
-    this.stars = new Points(new BufferGeometry().setAttribute('position',
-      new Float32BufferAttribute(positions, 3)),
-      new PointsMaterial({ color: 0xffc86b, size: 0.045, transparent: true, opacity: 0.3 }));
-    const linePositions = EDGES.flatMap(([a,b]) => [...positions.slice(a*3,a*3+3), ...positions.slice(b*3,b*3+3)]);
-    this.lines = new LineSegments(new BufferGeometry().setAttribute('position',
-      new Float32BufferAttribute(linePositions, 3)),
-      new LineBasicMaterial({ color: 0xffdca0, transparent: true, opacity: 0.9 }));
-    this.constellation.add(this.stars, this.lines, this.taskNodes, this.taskLinks);
-
+    this.root.name = 'Zen Garden';
+    this.root.add(this.zen, this.trellis.root);
     this.zen.position.set(0.45, -0.12, -0.15);
     this.zen.scale.setScalar(0.3);
     const sand = new Mesh(new CylinderGeometry(0.42, 0.45, 0.045, 32),
@@ -83,45 +48,10 @@ export class SpatialThemes {
     this.zen.add(this.particles);
   }
 
-
-  bindTasks(tasks: readonly SpatialTask[], feedback=false): void {
-    this.activation.bind(tasks,feedback);
-    const positions:number[]=[];const colors:number[]=[];const links:number[]=[];const linkColors:number[]=[];
-    const clusters=Math.max(1,Math.ceil(tasks.length/7));
-    const columns=Math.ceil(Math.sqrt(clusters));
-    const active=tasks.findIndex(task=>!task.completed);
-    tasks.forEach((task,i)=>{
-      const cluster=Math.floor(i/7);const [x,y]=STARS[i%7];
-      positions.push(((x-120)/200+(cluster%columns)*0.9)/columns,
-        ((85-y)/200-Math.floor(cluster/columns)*0.5)/columns,0.012);
-      const color=new Color(task.completed?0xffedb8:i===active?0xff970f:0x8d7854);
-      colors.push(color.r,color.g,color.b);
-      if(i>0) {
-        links.push(...positions.slice((i-1)*3,(i-1)*3+3),...positions.slice(i*3,i*3+3));
-        const lineColor=new Color(task.completed&&tasks[i-1].completed?0xffd58a:0x72624d);
-        linkColors.push(lineColor.r,lineColor.g,lineColor.b,lineColor.r,lineColor.g,lineColor.b);
-      }
-    });
-    const nodes=new BufferGeometry().setAttribute('position',new Float32BufferAttribute(positions,3))
-      .setAttribute('color',new Float32BufferAttribute(colors,3));
-    const edges=new BufferGeometry().setAttribute('position',new Float32BufferAttribute(links,3))
-      .setAttribute('color',new Float32BufferAttribute(linkColors,3));
-    this.taskNodes.geometry.dispose();this.taskLinks.geometry.dispose();
-    this.taskNodes.geometry=nodes;this.taskLinks.geometry=edges;
-    this.taskNodes.userData.taskIds=tasks.map(task=>task.id);
-    this.taskNodes.userData.activeTaskId=tasks[active]?.id??null;
-  }
-
-  update(theme: 'constellation' | 'zen', ratio: number, hasTasks: boolean, delta: number, motion: boolean): void {
-    this.activation.tick(delta,motion);
-    this.constellation.visible = theme === 'constellation' && hasTasks;
-    this.trellis.root.visible = theme === 'zen';
-    if(theme!=='zen')this.trellis.cancel();
+  update(ratio: number, hasTasks: boolean, delta: number, motion: boolean): void {
+    this.trellis.root.visible = true;
     this.trellis.setProgress(hasTasks ? ratio : 0);
-    this.zen.visible = theme === 'zen' && hasTasks;
-    this.lines.geometry.setDrawRange(0, Math.floor(ratio * EDGES.length) * 2);
-    this.stars.material.opacity = 0.3 + ratio * 0.7;
-    this.constellation.scale.setScalar(0.3);
+    this.zen.visible = hasTasks;
     this.stones.forEach((stone,i) => {
       const fill = Math.max(0, Math.min(1, ratio * 5 - i));
       stone.visible = fill > 0;
@@ -135,11 +65,10 @@ export class SpatialThemes {
   }
 
   dispose(): void {
-    this.activation.dispose();
     this.trellis.dispose();
     this.root.removeFromParent();
-    this.root.traverse(object => {
-      if (object instanceof Mesh || object instanceof Points || object instanceof LineSegments) {
+    this.zen.traverse(object => {
+      if (object instanceof Mesh || object instanceof Points) {
         object.geometry.dispose();
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         materials.forEach(material => material.dispose());

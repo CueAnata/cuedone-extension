@@ -5,14 +5,14 @@ export const ANCHOR_KEY = 'cuedone.vr.personal.anchor.v1';
 export type Placement = 'head' | 'hand' | 'room';
 export interface SpatialSettings {
   version: 1;
-  theme: 'constellation' | 'zen';
+  theme: 'zen';
   scale: 1 | 1.25 | 1.5;
   placement: Placement;
   motion: boolean;
   zenSound: boolean;
 }
 export const DEFAULT_SPATIAL: SpatialSettings = {
-  version: 1, theme: 'constellation', scale: 1, placement: 'head', motion: true, zenSound: false,
+  version: 1, theme: 'zen', scale: 1, placement: 'head', motion: true, zenSound: false,
 };
 
 export function readSpatial(storage: TaskStorage): SpatialSettings {
@@ -27,7 +27,7 @@ export function readSpatial(storage: TaskStorage): SpatialSettings {
       (value.zenSound !== undefined && typeof value.zenSound !== 'boolean')) {
     throw new Error('Unsupported spatial preferences.');
   }
-  return { version: 1, theme: value.theme, scale: value.scale,
+  return { version: 1, theme: 'zen', scale: value.scale,
     placement: value.placement === 'controller' ? 'hand' : value.placement, motion: value.motion, zenSound: value.zenSound ?? false };
 }
 

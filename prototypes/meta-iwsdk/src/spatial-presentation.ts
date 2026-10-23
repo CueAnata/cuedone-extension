@@ -1,4 +1,3 @@
-import { SpaceAudioManager } from './space-audio.js';
 import { createSystem, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
 import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion, Matrix4 } from 'three';
 import { AnchorRecovery, DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
@@ -18,10 +17,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private readonly themes = new SpatialThemes();
   private readonly tween = new ProgressTween();
   private readonly audio = new ZenAudio();
-  private spaceAudio!:SpaceAudioManager;
 
   private unlockAudio(): Promise<boolean> {
-    return Promise.all([this.audio.unlock(),this.spaceAudio.unlock()]).then(result=>result.every(Boolean));
+    return this.audio.unlock();
   }
   private readonly forward = new Vector3();
   private readonly up = new Vector3();
@@ -33,13 +31,13 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private ready = false;
   private message = '';
   private revision = -1;
-  private finaleAudioTheme:SpatialSettings['theme']|null=null;
+  private finaleAudioPending = false;
   private activeSession: XRSession | undefined;
   private fade = 0;
   private fadeMesh!: Mesh<SphereGeometry, MeshBasicMaterial>;
   private readonly position = new Vector3();
   private readonly rotation = new Quaternion();
-  private readonly offset = new Vector3(0.7, -0.15, -2.5);
+  private readonly offset = new Vector3(0.7, -0.15, -1.8);
   private readonly matrix = new Matrix4();
   private readonly unit = new Vector3(1,1,1);
   private readonly media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -49,20 +47,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
   init(): void {
     this.panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     this.root.name = 'CueDone personal spatial dashboard';
-    this.spaceAudio=new SpaceAudioManager(this.world.playerSpaceEntities.head.object3D!,this.themes.activation.root);
-    const constellationFinale=(event:{position:Vector3})=>{
-      if(this.finaleAudioTheme!=='constellation')return;
-      this.finaleAudioTheme=null;
-      if(!this.ready || !this.settings.zenSound || this.settings.theme!=='constellation' ||
-        this.world.visibilityState.value!==VisibilityState.Visible)return;
-      const position=this.themes.root.localToWorld(event.position.clone());
-      if(!this.spaceAudio.playAt(position)){
-        this.message='Space sound is blocked here. Enable sound in this VR window.';
-        this.renderControls();
-      }
-    };
-    this.themes.activation.addEventListener('finale',constellationFinale);
-    this.cleanupFuncs.push(()=>this.themes.activation.removeEventListener('finale',constellationFinale));
     this.world.scene.add(this.root);
     this.root.position.copy(this.panel.position);
     // Keep the authored panel under its ECS parent. IWSDK restores that parent
@@ -79,7 +63,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       trellis.object3D?.removeEventListener('pointerdown',highlight);
       trellis.dispose({disposeResources:false});dashboard.dispose({disposeResources:false});
     });
-    this.panel.scale.setScalar(0.72);
+    this.panel.scale.setScalar(0.792);
     this.fadeMesh = new Mesh(new SphereGeometry(0.3, 12, 8),
       new MeshBasicMaterial({color: 0x000000, side: BackSide, transparent: true,
         opacity: 0, depthTest: false, depthWrite: false}));
@@ -87,7 +71,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.world.scene.add(this.fadeMesh);
 
     const controls: Array<[string, () => void]> = [
-      ['spatial-theme', () => {void this.change({theme: this.settings.theme === 'zen' ? 'constellation' : 'zen'}, this.unlockAudio());}],
       ['spatial-scale', () => this.change({scale: this.settings.scale === 1 ? 1.25 : this.settings.scale === 1.25 ? 1.5 : 1})],
       ['spatial-placement', () => this.change({placement: this.settings.placement === 'head' ? 'hand' : this.settings.placement === 'hand' ? 'room' : 'head'})],
       ['spatial-motion', () => this.change({motion: !this.settings.motion})],
@@ -116,7 +99,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.cleanupFuncs.push(this.world.visibilityState.subscribe(() => {
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
       this.root.visible = visible;
-      this.audio.stop();this.spaceAudio.stop();this.themes.activation.cancel();this.finaleAudioTheme=null;this.themes.trellis.cancel();
+      this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
         this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
@@ -125,19 +108,19 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }));
     const ended = () => {
       this.anchors?.end();
-      this.audio.stop();this.spaceAudio.stop();this.themes.activation.cancel();this.finaleAudioTheme=null;this.themes.trellis.cancel();
+      this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       this.activeSession = undefined;
       this.fadeMesh.visible = false;
-      this.root.position.set(0.7, 1.3, -2.5);
+      this.root.position.set(0.7, 1.3, -1.8);
       this.root.quaternion.identity();
-      this.panel.position.set(0.7, 1.3, -2.5);
+      this.panel.position.set(0.7, 1.3, -1.8);
       this.panel.quaternion.identity();
     };
     this.world.renderer.xr.addEventListener('sessionend', ended);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', ended));
     this.cleanupFuncs.push(() => {
       this.anchors?.end();
-      this.audio.dispose();this.spaceAudio.dispose();
+      this.audio.dispose();
       this.themes.dispose();
       this.root.removeFromParent();
       this.fadeMesh.removeFromParent();
@@ -175,7 +158,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.renderControls();
     } catch {
       this.ready=false;
-      this.audio.stop();this.spaceAudio.stop();this.themes.activation.cancel();this.finaleAudioTheme=null;
+      this.audio.stop();this.finaleAudioPending=false;
       this.message='Could not restore appearance. Retry appearance to keep saved settings safe.';
       this.renderControls();
     }
@@ -200,26 +183,20 @@ export class SpatialPresentationSystem extends createSystem({}) {
 
   private applySettings(next: SpatialSettings): void {
     const previous=this.settings;
-    const changedTheme=previous.theme!==next.theme;
     const changedPlacement=previous.placement!==next.placement;
     this.settings=next;
     
-    if(!next.zenSound || next.theme!=='zen' || changedTheme) this.audio.stop();
-    if(!next.zenSound || changedTheme || !next.motion) {this.spaceAudio.stop();this.finaleAudioTheme=null;}
-    if(changedTheme || !next.motion)this.themes.activation.cancel();
-    if(changedTheme) {
-      this.themes.trellis.cancel();
-      this.tween.set(progress.ratio,false);
-    }
+    if(!next.zenSound) {this.audio.stop(); this.finaleAudioPending=false;}
+    if(!next.motion) this.themes.trellis.cancel();
     this.applyScale();
     this.message='Appearance synchronized locally.';
     if(changedPlacement)this.recenter();
   }
 
   private playGardenCue(): void {
-    if(this.finaleAudioTheme!=='zen')return;
-    this.finaleAudioTheme=null;
-    if(!this.ready || !this.settings.zenSound || this.settings.theme!=='zen' ||
+    if(!this.finaleAudioPending)return;
+    this.finaleAudioPending=false;
+    if(!this.ready || !this.settings.zenSound ||
       this.world.visibilityState.value!==VisibilityState.Visible)return;
     if(!this.audio.play()) {
       this.message='Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
@@ -228,7 +205,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   private applyScale(): void {
-    this.panel.scale.setScalar(0.72 * this.settings.scale);
+    this.panel.scale.setScalar(0.792 * this.settings.scale);
     const browser = document.getElementById('browser-panel')!;
     browser.style.fontSize = `${this.settings.scale}rem`;
     browser.style.setProperty('--readable-scale', String(this.settings.scale));
@@ -268,7 +245,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.placeFromHead();
       this.fade = 0.3;
       this.revision = progress.revision;
-      this.themes.bindTasks(progress.tasks);
       this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
     }
     if (this.settings.placement === 'head') {
@@ -329,22 +305,20 @@ export class SpatialPresentationSystem extends createSystem({}) {
   update(delta: number): void {
     const visible = this.world.visibilityState.value === VisibilityState.Visible;
     this.root.visible = visible;
-    if (!visible) { this.fadeMesh.visible = false; this.themes.trellis.cancel(); this.audio.stop();this.spaceAudio.stop();this.themes.activation.cancel();this.finaleAudioTheme=null; return; }
+    if (!visible) { this.fadeMesh.visible = false; this.themes.trellis.cancel(); this.audio.stop();this.finaleAudioPending=false; return; }
     const motion = this.settings.motion && !this.media.matches;
     if (this.revision !== progress.revision) {
-      this.finaleAudioTheme=this.revision>=0 && progress.finale && this.ready && this.settings.zenSound
-        ? this.settings.theme : null;
-      this.themes.bindTasks(progress.tasks,progress.animate);
-      if(progress.finale && this.revision>=0 && this.settings.theme==='zen') this.themes.trellis.celebrate();
+      this.finaleAudioPending=this.revision>=0 && progress.finale && this.ready && this.settings.zenSound;
+      if(progress.finale && this.revision>=0) this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
       this.tween.set(progress.total ? progress.complete / progress.total : 0,
         motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
     }
     if (!motion) this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
-    this.audio.setAmbient(this.ready && this.settings.zenSound && this.settings.theme === 'zen');
+    this.audio.setAmbient(this.ready && this.settings.zenSound);
     this.audio.tick(delta);
-    this.themes.update(this.settings.theme, this.tween.tick(delta), progress.total > 0, delta, motion);
+    this.themes.update(this.tween.tick(delta), progress.total > 0, delta, motion);
     if(this.themes.trellis.update(delta,motion))this.playGardenCue();
     this.fade = Math.max(0, this.fade - Math.min(delta, 1/30));
     this.fadeMesh.visible = this.fade > 0;
@@ -354,10 +328,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
 
   private renderControls(): void {
     const labels: Record<string, string> = {
-      'spatial-theme': `Theme: ${this.settings.theme === 'zen' ? 'Living Trellis / Zen Garden' : 'Constellation'}`,
       'spatial-scale': `Panel size: ${this.settings.scale === 1 ? 'Standard' : this.settings.scale === 1.25 ? 'Large' : 'Extra large'}`,
       'spatial-placement': `Panel: ${this.settings.placement === 'head' ? 'Seated companion' : this.settings.placement === 'hand' ? 'Hand relative' : 'Room anchor'}`,
-      'spatial-sound': `${this.settings.theme==='zen'?'Garden':'Space'} sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
+      'spatial-sound': `Garden sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
       'spatial-motion': `Ambient motion: ${this.settings.motion ? 'On' : 'Off'}`,
     };
     for (const [id, text] of Object.entries(labels)) {

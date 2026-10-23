@@ -16,7 +16,7 @@ test('load, synchronization echo and replacing a list never replay a finale',()=
   progress.publish([{id:'other',completed:true}],false);assert.equal(progress.finale,false);
   progress.publish([],true);assert.equal(progress.ratio,0);assert.equal(progress.finale,false);
 });
-test('unchanged counts with changed task identities update constellation bindings',()=>{
+test('unchanged counts with changed task identities update garden progress state',()=>{
   const p=new GardenProgress();p.publish(before,false);const rev=p.revision;
   p.publish([{id:'c',completed:true},{id:'d',completed:false}],false);
   assert.equal(p.revision,rev+1);assert.equal(p.animate,false);

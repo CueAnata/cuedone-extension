@@ -1,5 +1,42 @@
 # CueDone Personal VR prototype
 
+
+## Current AR companion — October 22, 2026
+
+The current prototype requests **immersive-ar** for Quest passthrough, with an
+optional `dom-overlay` feature and a transparent overlay root containing Exit AR.
+The overlay is enabled when supported; unsupported overlays do not force a VR
+fallback or prevent hands-only spatial controls. IWSDK creates an alpha renderer
+for AR; the authored sky dome has been removed so only local garden objects and
+the task board cover the passthrough view. Automatic SDK session offers are off;
+Enter AR uses `src/ar-session.ts` to add the DOM overlay while retaining the SDK
+feature builder and reference-space fallbacks. Permission/setup failure remains
+on the browser card with a retryable message. Duplicate entry is guarded, and XR
+exit restores the browser camera and hides the overlay.
+
+Zen Garden is the permanent environment. The Constellation scene, particle
+transfer, space audio and theme selector have been removed. Saved legacy theme
+choices resolve to Zen in memory without losing tasks, size, placement, motion,
+or sound preferences; the next explicit preference save records Zen.
+
+Standard seated placement is 0.7 m right, 0.15 m below eye level, and **1.8 m
+forward**, stationary until session entry or Recenter. Panel scale is **0.792**,
+10% above the previous 0.72 baseline, including existing readability multipliers.
+The browser card is centered at a maximum width of **448 px**, responsive to its
+available width. The full task list, bee/pollen completion feedback, settings
+gear, Reset, Clear All confirmation, Add Task, Done, local synchronization and
+Garden sound gate remain intact.
+
+Validation: 63 tests pass, including real SDK session-init construction with
+mocked native AR adoption, denial/duplicate/failure/exit recovery, legacy theme
+normalization, and fixed-budget garden rendering. TypeScript and the production
+build also pass. Quest passthrough composition, DOM-overlay availability, native
+keyboard, readability/comfort at 1.8 m and hardware frame pacing require headset
+verification. No commit, push or deployment is part of this change.
+
+The older checkpoint sections below are historical; this section supersedes their
+one-active-task layout, VR entry, theme choices, distances and scale descriptions.
+
 This nested package is the first local-only CueDone prototype built with Meta's
 Immersive Web SDK (IWSDK). It deliberately contains only the Personal
 productivity loop: enter a short task, add it, see one active task, and complete

@@ -11,6 +11,7 @@
   </head>
   <body style="margin: 0">
     <div id="scene-container"></div>
+    <div id="xr-overlay" hidden><button id="overlay-exit-button" class="browser-button browser-outline" type="button">Exit AR</button></div>
     <main id="browser-panel" class="browser-panel" hidden aria-busy="true">
       <header class="browser-header">
         <div>
@@ -82,7 +83,6 @@
 
       <section id="browser-settings-panel" class="browser-new-list-review" aria-label="VR appearance and comfort" hidden>
         <h2>VR appearance &amp; comfort</h2>
-        <button id="browser-spatial-theme" class="browser-button browser-outline" type="button">Theme: Constellation</button>
         <button id="browser-spatial-scale" class="browser-button browser-outline" type="button">Panel size: Standard</button>
         <button id="browser-spatial-placement" class="browser-button browser-outline" type="button">Panel: Head relative</button>
         <button id="browser-spatial-motion" class="browser-button browser-outline" type="button">Ambient motion: On</button>
@@ -93,7 +93,7 @@
         <p id="browser-spatial-status" role="status" aria-live="polite"></p>
         <p>Stay seated or within your Quest boundary. Hand placement falls back to your head when hands are not tracked. Handheld controllers are disabled. Zen Garden frames your board with a living trellis. Garden sound defaults Off. Companion windows synchronize only within the same browser profile and origin.</p>
       </section>
-      <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter VR</button>
+      <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter AR</button>
     </main>
     <script type="module" src="/src/index.ts"></script>
   </body>

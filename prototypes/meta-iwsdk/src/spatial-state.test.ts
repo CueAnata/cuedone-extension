@@ -124,3 +124,12 @@ test('legacy controller-relative placement becomes hand-relative without rewriti
   store.data.set(SPATIAL_KEY,raw);assert.equal(readSpatial(store).placement,'hand');
   assert.equal(store.data.get(SPATIAL_KEY),raw);
 });
+
+test('legacy Constellation choice resolves to permanent Zen without rewriting storage or losing preferences', () => {
+  const store = storage();
+  const legacy = {...DEFAULT_SPATIAL,theme:'constellation',scale:1.5,zenSound:true,placement:'room'};
+  const raw = JSON.stringify(legacy);
+  store.data.set(SPATIAL_KEY,raw);
+  assert.deepEqual(readSpatial(store), {...legacy,theme:'zen'});
+  assert.equal(store.data.get(SPATIAL_KEY),raw);
+});

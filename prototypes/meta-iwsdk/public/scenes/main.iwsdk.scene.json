@@ -2,16 +2,25 @@
   "version": "iwsdk.scene.v1",
   "units": "meters",
   "components": {
-    "com.iwsdk.components.DomeGradient": {
-      "sky": [0.984, 0.929, 0.8, 1],
-      "equator": [0.965, 0.784, 0.49, 1],
-      "ground": [0.267, 0.212, 0.153, 1],
-      "intensity": 0.85
-    },
     "com.iwsdk.components.IBLGradient": {
-      "sky": [1, 0.957, 0.855, 1],
-      "equator": [0.9, 0.67, 0.36, 1],
-      "ground": [0.22, 0.18, 0.14, 1],
+      "sky": [
+        1,
+        0.957,
+        0.855,
+        1
+      ],
+      "equator": [
+        0.9,
+        0.67,
+        0.36,
+        1
+      ],
+      "ground": [
+        0.22,
+        0.18,
+        0.14,
+        1
+      ],
       "intensity": 0.7
     }
   },
@@ -22,8 +31,16 @@
         "id": "hero",
         "role": "hero",
         "projection": "perspective",
-        "position": [0, 1.45, 0.8],
-        "target": [0, 1.45, -1.05],
+        "position": [
+          0,
+          1.45,
+          0.8
+        ],
+        "target": [
+          0.7,
+          1.3,
+          -1.8
+        ],
         "fov": 42
       }
     ]
@@ -37,8 +54,12 @@
         "asset": "task-panel"
       },
       "transform": {
-        "position": [0, 1.45, -1.05],
-        "scale": 0.72
+        "position": [
+          0.7,
+          1.3,
+          -1.8
+        ],
+        "scale": 0.792
       },
       "components": {
         "RayInteractable": {},

@@ -292,3 +292,30 @@ root and subdirectory paths with external HTTP(S) blocked. Physical Quest
 72/90Hz performance, perceived spatial audio and hands-only system keyboard
 entry remain pending. No deployment, upload, portal submission or hardware
 certification is implied.
+
+
+### Permanent Zen Garden AR companion — October 22, 2026
+
+The user explicitly authorized changing only `prototypes/meta-iwsdk` to request
+immersive-ar passthrough with DOM overlay, remove Constellation entirely, move
+the seated panel to z = -1.8 m, increase its base scale by 10% (0.72 to 0.792),
+and center the 2D companion at a responsive 448 px maximum width. This supersedes
+earlier VR-only entry, Constellation choice, and distance/scale descriptions.
+Zen Garden is permanent; legacy saved Constellation choices normalize to Zen
+without changing task storage or other appearance preferences. No automatic
+rewrite occurs on load. Constellation geometry, particle-transfer and audio
+modules and their controls are removed from this prototype. Extension themes
+and Chrome/Edge behavior are unchanged.
+
+AR entry preserves required hand tracking, optional anchors, and reference-space
+fallbacks. A transparent DOM overlay with Exit AR is requested as an optional
+feature so headset support limitations do not prevent passthrough or spatial hand
+controls. Unsupported AR is reported; it never silently falls back to immersive
+VR. The renderer is alpha-enabled and the authored sky dome is removed. The
+prototype-local launcher guards duplicate requests, handles failed setup, and
+restores the browser camera on exit. No backend, accounts, networking, handoff,
+commit, push or deployment is authorized by this implementation request.
+
+Automated validation covers 63 tests, TypeScript and production build; native
+Quest passthrough, DOM-overlay support, hands/keyboard, audio, comfort and frame
+pacing remain physical-headset verification items.

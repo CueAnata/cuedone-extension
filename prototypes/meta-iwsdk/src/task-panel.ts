@@ -5,6 +5,7 @@ import {
   VisibilityState,
 } from '@iwsdk/core';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
+import { launchAR } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
@@ -149,7 +150,14 @@ export class TaskPanelSystem extends createSystem({}) {
     const onEmpty = () => void this.createNewList(panel, taskInput, false);
     const onCancelNewList = () => this.cancelNewListReview(panel);
     const onRetry = () => void this.load(panel);
-    const onEnterXR = () => void this.world.launchXR();
+    const overlay = required<HTMLElement>('#xr-overlay');
+    const overlayExit = required<HTMLButtonElement>('#overlay-exit-button');
+    const onEnterXR = () => {
+      void launchAR(this.world, overlay).catch(error => {
+        this.session.message = `Could not start mixed reality: ${error instanceof Error ? error.message : 'Try again in Quest Browser.'}`;
+        this.render(panel);
+      });
+    };
     const onExitXR = () => void this.world.exitXR();
     const onBrowserInput = () => {
       this.draft = this.browser.input.value;
@@ -176,6 +184,13 @@ export class TaskPanelSystem extends createSystem({}) {
     retryButton.addEventListener('click', onRetry);
     xrButton.addEventListener('click', onEnterXR);
     exitButton.addEventListener('click', onExitXR);
+    overlayExit.addEventListener('click', onExitXR);
+    const preventXRSelect = (event: Event) => event.preventDefault();
+    overlayExit.addEventListener('beforexrselect', preventXRSelect);
+    this.cleanupFuncs.push(() => {
+      overlayExit.removeEventListener('click', onExitXR);
+      overlayExit.removeEventListener('beforexrselect', preventXRSelect);
+    });
     this.browser.input.addEventListener('input', onBrowserInput);
     this.browser.form.addEventListener('submit', onBrowserSubmit);
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
