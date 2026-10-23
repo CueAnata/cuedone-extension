@@ -1,6 +1,15 @@
 # CueDone Personal VR prototype
 
 
+## Browser card wrapper refinement — October 22, 2026
+
+The user-supplied wrapper styling now supersedes the earlier 448 px card width
+and 8 px card padding: the browser card is centered at 320 px maximum width,
+shrinks to the available width, and uses 12 px padding, a 90% white background,
+8 px backdrop blur, 16 px corners and a large soft shadow. The 2 px page gutter
+and existing inner-section spacing remain. Spatial panel size and dragging are
+unchanged.
+
 ## Tight card and movable companion — October 22, 2026
 
 The browser card now has 2 px page padding and 8 px card/inner-section padding,

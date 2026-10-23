@@ -344,3 +344,11 @@ Validation: 69 prototype tests, TypeScript, production build, and wide/320 px
 browser spacing checks. Native Quest hand capture, smoothing, suspend/resume and
 durable room restoration remain headset checks. Extension behavior is unchanged;
 no commit, push or deployment is part of this implementation request.
+
+
+### Browser wrapper styling refinement — October 22, 2026
+The user supplied an explicit 320 px centered browser-card wrapper with 12 px
+padding, 90% white background, backdrop blur, rounded corners and shadow. This
+supersedes the previous 448 px maximum and 8 px card padding for the prototype's
+2D card only. The implementation shrinks to narrower available widths; spatial
+panel sizing, task behavior and extension styling remain unchanged.

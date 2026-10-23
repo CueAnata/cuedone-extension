@@ -37,14 +37,16 @@ button {
 .browser-panel {
   position: relative;
   z-index: 2;
-  width: 100%;
-  max-width: 448px;
+  width: min(320px, 100%);
+  max-width: 320px;
   margin: 0 auto;
-  padding: 8px;
+  padding: 12px;
   border: 1px solid rgb(83 57 31 / 20%);
-  border-radius: 24px;
-  background: rgb(255 251 244 / 97%);
-  box-shadow: 0 18px 52px rgb(58 38 20 / 18%);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 90%);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
 }
 
 .browser-header,
@@ -246,11 +248,6 @@ h2 {
     padding: 2px;
   }
 
-  .browser-panel {
-    padding: 8px;
-    border-radius: 18px;
-  }
-
   .browser-summary,
   .browser-action-row {
     align-items: stretch;
@@ -276,7 +273,6 @@ h2 {
 .browser-panel .browser-button { font-size: calc(1rem * var(--readable-scale, 1)); }
 
 /* Compact companion; every task remains reachable in the list. */
-.browser-panel { width: 100%; max-width: 448px; margin-inline: auto; }
 #browser-task-list { display: grid; gap: 8px; max-height: 48vh; overflow-y: auto; padding: 4px; }
 .browser-task-row { position: relative; width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid #dbbf91; border-radius: 10px; text-align: left; color: #332d25; background: #fffaf0; overflow-wrap: anywhere; cursor: pointer; }
 .browser-task-row[data-completed="true"] { color: #716348; background: #f3ebdd; }
