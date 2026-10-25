@@ -320,6 +320,7 @@
   </div>
   <div id="panel-body" style="flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; flex-direction: column; width: 100%; gap: 1.6">
   <div id="body-content" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
+  <div id="task-view" style="flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
   <div id="task-list" style="flex-direction: column; width: 100%; flex-shrink: 0; max-height: 64; overflow: scroll; gap: 1"></div>
   <div class="task-card" style="display: none">
@@ -355,7 +356,15 @@
   <button id="retry-button" class="small-button" style="display: none">
     Retry loading
   </button>
+  <div class="xr-row">
+    <button id="xr-button" class="small-button">Enter AR</button>
+    <button id="exit-button" class="small-button" style="display: none">
+      Exit AR
+    </button>
+  </div>
+  </div>
   <div id="settings-panel" style="display: none; flex-direction: column; width: 100%; gap: 1.4">
+  <button id="settings-done" class="new-list-button">Done</button>
   <button id="spatial-scale" class="new-list-button">Panel size: Standard</button>
   <div class="action-row">
     <button id="spatial-placement" class="action">Panel: Head relative</button>
@@ -366,12 +375,6 @@
   <button id="spatial-retry" class="small-button" style="display: none">Retry appearance</button>
   <span id="spatial-input-status" class="review-copy">Hands only: aim and pinch, or touch.</span>
   <span id="spatial-status" class="review-copy">Stay seated or within your Quest boundary.</span>
-  </div>
-  <div class="xr-row">
-    <button id="xr-button" class="small-button">Enter AR</button>
-    <button id="exit-button" class="small-button" style="display: none">
-      Exit AR
-    </button>
   </div>
   </div>
   </div>

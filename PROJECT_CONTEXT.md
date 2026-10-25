@@ -510,3 +510,20 @@ session; exact OS window restoration, instant input availability and native
 keyboard/transition timing still require physical Quest 3 / Horizon OS 2.7 checks.
 No native app migration, desktop streaming work, commit or deployment is included
 in this implementation request.
+
+
+### Garden, pollen and Settings restoration — October 25, 2026
+The requested correction restores the original yellow pollen bee strike-through,
+not a green winding task line. The existing procedural Garden Trellis is rendered
+inside the standard card with the same renderer and geometry; saved task ratios
+drive fluid vine and flower growth. Settings opens its own view with a Done button
+that returns to tasks. Its enclosing frame scrolls independently of the five-row
+task list, and task-entry Done remains outside scrolling.
+Only the last unfinished task's deliberate local check-off requests AR. The
+existing 3D garden finale runs for 4.5 seconds from its first rendered frame and
+then ends that session. A separate 4.5-second watchdog is armed on native session
+creation, before asynchronous renderer/reference-space setup, so absent frames
+cannot leave an indefinitely open session. Failed saves, cancelled/stale data,
+manual exit and denied AR do not replay or lose tasks. Ordinary completions never
+request AR. This supersedes the earlier all-task automatic celebration design.
+No new theme, replacement garden, external service or auxiliary file is added.

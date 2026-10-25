@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera } from 'three';
 import { ReferenceSpaceType, type World } from '@iwsdk/core';
-import { arSessionInit, launchAR } from './ar-session.ts';
+import { arSessionInit, launchAR, FinalTaskAR, FINAL_AR_MS } from './ar-session.ts';
 
 function fixture(t: import('node:test').TestContext) {
   const original = Object.getOwnPropertyDescriptor(globalThis,'requestAnimationFrame');
@@ -88,4 +88,74 @@ test('failed renderer adoption ends the native session without leaving an active
   assert.equal(f.world.session,undefined);
   assert.equal(f.world.sessionRequestPending,false);
   assert.equal(f.overlay.hidden,true);
+});
+
+
+const finaleBefore=[{id:'one',completed:true},{id:'two',completed:false}];
+const finaleAfter=finaleBefore.map(task=>({...task,completed:true}));
+function finalFixture() {
+  let timer: (()=>void) | undefined, delay=0, ends=0;
+  const session=Object.assign(new EventTarget(),{async end(){ends++;session.dispatchEvent(new Event('end'));}});
+  const controller=new FinalTaskAR(
+    ((callback:()=>void,ms:number)=>{timer=callback;delay=ms;return 1;}) as unknown as typeof setTimeout,
+    (()=>{timer=undefined;}) as unknown as typeof clearTimeout,
+  );
+  return {controller,session,get timer(){return timer;},get delay(){return delay;},get ends(){return ends;}};
+}
+const settle=async()=>{await Promise.resolve();await Promise.resolve();};
+
+test('only the last unfinished task may prepare an AR finale',()=>{
+  const f=finalFixture();
+  assert.equal(f.controller.begin([]),undefined);
+  assert.equal(f.controller.begin(finaleAfter),undefined);
+  assert.equal(f.controller.begin(finaleBefore.map(task=>({...task,completed:false}))),undefined);
+  assert.ok(f.controller.begin(finaleBefore));
+  assert.equal(f.controller.begin(finaleBefore),undefined);
+});
+
+test('native session watchdog ends AR after 4500ms even if no animation frame ever arrives',async()=>{
+  const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
+  f.controller.attach(run,f.session);
+  assert.equal(f.delay,FINAL_AR_MS);assert.equal(f.delay,4500);
+  f.timer!();await settle();
+  assert.equal(f.ends,1);assert.equal(f.controller.busy,false);
+});
+
+test('finale starts only after saving and resets its 4500ms exit deadline on the first rendered frame',async()=>{
+  const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
+  f.controller.attach(run,f.session);
+  assert.equal(f.controller.start(f.session,finaleBefore),undefined);
+  f.controller.saved(run,finaleAfter);
+  assert.deepEqual(f.controller.start(f.session,finaleAfter),{before:finaleBefore,after:finaleAfter});
+  assert.equal(f.controller.start(f.session,finaleAfter),undefined);
+  assert.equal(f.delay,4500);
+  f.timer!();await settle();assert.equal(f.ends,1);
+});
+
+test('failed save, stale list, manual exit and late native adoption do not replay a finale',async()=>{
+  for(const mode of ['failed','stale','manual','late']) {
+    const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
+    if(mode==='late')f.controller.cancel(run);
+    f.controller.attach(run,f.session);
+    if(mode==='failed')f.controller.saved(run,finaleBefore);
+    if(mode==='stale'){f.controller.saved(run,finaleAfter);assert.equal(f.controller.start(f.session,finaleBefore),undefined);}
+    if(mode==='manual')await f.session.end();
+    await settle();
+    assert.equal(f.ends,1);assert.equal(f.timer,undefined);assert.equal(f.controller.busy,false);
+    assert.equal(f.controller.start(f.session,finaleAfter),undefined);
+  }
+});
+
+test('watchdog is attached before asynchronous reference-space setup can stall',async t=>{
+  const f=fixture(t);const c=finalFixture();const run=c.controller.begin(finaleBefore)!;
+  let release!:(space:XRReferenceSpace)=>void;
+  f.session.requestReferenceSpace=()=>new Promise(resolve=>{release=resolve;});
+  const pending=launchAR(f.world,f.overlay,{async requestSession(){return f.session;}},
+    session=>c.controller.attach(run,session));
+  await settle();assert.equal(c.delay,4500);
+  c.timer!();await settle();
+  assert.equal(f.overlay.hidden,true);
+  release({} as XRReferenceSpace);
+  assert.equal(await pending,false);
+  assert.equal(f.world.sessionRequestPending,false);
 });

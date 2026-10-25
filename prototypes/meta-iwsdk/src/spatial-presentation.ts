@@ -1,5 +1,5 @@
 import { createSystem, UIKit, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
-import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion } from 'three';
+import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion, Vector2 } from 'three';
 import { DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
   SPATIAL_KEY, type SpatialSettings } from './spatial-state.js';
 import { SpatialThemes } from './spatial-themes.js';
@@ -7,6 +7,8 @@ import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
 import { applyFixedPanelPose, faceCenterPanel } from './fixed-panel.js';
 import { PanelDrag } from './panel-drag.js';
+import { finalTaskAR } from './ar-session.js';
+import { taskRatio } from './spatial-state.js';
 import { ZenAudio } from './zen-audio.js';
 
 const progress = new GardenProgress();
@@ -40,6 +42,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private activeSession: XRSession | undefined;
   private fade = 0;
   private fadeMesh!: Mesh<SphereGeometry, MeshBasicMaterial>;
+  private readonly browserSize = new Vector2();
   private readonly position = new Vector3();
   private readonly rotation = new Quaternion();
   private readonly media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -123,7 +126,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
-        this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+        this.tween.set(finalTaskAR.waiting ? taskRatio(finalTaskAR.before) : (progress.total ? progress.complete / progress.total : 0), false);
         this.fade = 0.3;
       }
       this.renderControls();
@@ -249,7 +252,17 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.placeFixedPanel();
       this.fade = 0.3;
       this.revision = progress.revision;
-      this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+      this.tween.set(finalTaskAR.waiting ? taskRatio(finalTaskAR.before) : (progress.total ? progress.complete / progress.total : 0), false);
+    }
+    const finale = finalTaskAR.start(session, progress.tasks);
+    if(finale) {
+      const motion = this.settings.motion && !this.media.matches;
+      this.tween.set(taskRatio(finale.before), false);
+      this.tween.set(1, motion);
+      this.revision = progress.revision;
+      this.fade = 0;
+      this.finaleAudioPending = this.ready && this.settings.zenSound;
+      this.themes.trellis.celebrate();
     }
     if(this.drag.owner !== null) {
       const source=this.dragHand && this.world.input.xr.getPrimaryInputSource(this.dragHand);
@@ -268,27 +281,55 @@ export class SpatialPresentationSystem extends createSystem({}) {
 
   update(delta: number): void {
     this.drag.tick(delta);
-    const visible = this.world.visibilityState.value === VisibilityState.Visible;
-    this.root.visible = visible || this.world.visibilityState.value === VisibilityState.VisibleBlurred;
-    if (!visible) { this.fadeMesh.visible = false; this.themes.trellis.cancel(); this.audio.stop();this.finaleAudioPending=false; return; }
+    const state = this.world.visibilityState.value;
+    const standard = state === VisibilityState.NonImmersive && !this.world.renderer.xr.isPresenting;
+    const visible = state === VisibilityState.Visible;
+    this.root.visible = standard || visible || state === VisibilityState.VisibleBlurred;
+    if (!standard && !visible) {
+      this.fadeMesh.visible = false; this.themes.trellis.cancel();
+      this.audio.stop(); this.finaleAudioPending = false; return;
+    }
+    if(standard) {
+      const rect = document.getElementById('browser-garden')!.getBoundingClientRect();
+      this.root.visible = rect.width > 0 && rect.height > 0;
+      this.root.position.set(0,0,0); this.root.quaternion.identity();
+      this.themes.trellis.fit(0.8,1);
+      if(this.root.visible) {
+        const width = Math.round(rect.width), height = Math.round(rect.height);
+        this.world.renderer.getSize(this.browserSize);
+        if(this.browserSize.x !== width || this.browserSize.y !== height)
+          this.world.renderer.setSize(width,height,false);
+        this.world.camera.position.set(0,0,1.6);
+        this.world.camera.lookAt(0,0,0);
+        this.world.camera.fov = 50;
+        this.world.camera.aspect = width/height;
+        this.world.camera.updateProjectionMatrix();
+      }
+      this.fadeMesh.visible = false;
+    }
     const motion = this.settings.motion && !this.media.matches;
-    if (this.revision !== progress.revision) {
-      this.finaleAudioPending=this.revision>=0 && progress.finale && this.ready && this.settings.zenSound;
-      if(progress.finale && this.revision>=0) this.themes.trellis.celebrate();
+    if(this.revision !== progress.revision && !(visible && finalTaskAR.waiting)) {
+      const finalInAR = visible && !finalTaskAR.waiting && progress.finale;
+      this.finaleAudioPending = finalInAR && this.revision >= 0 && this.ready && this.settings.zenSound;
+      if(finalInAR && this.revision >= 0)this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
-      this.tween.set(progress.total ? progress.complete / progress.total : 0,
-        motion && this.revision >= 0 && progress.animate);
+      this.tween.set(progress.ratio, motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
     }
-    if (!motion) this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
-    this.audio.setAmbient(this.ready && this.settings.zenSound);
-    this.audio.tick(delta);
-    this.themes.update(this.tween.tick(delta), progress.total > 0, delta, motion);
-    if(this.themes.trellis.update(delta,motion))this.playGardenCue();
-    this.fade = Math.max(0, this.fade - Math.min(delta, 1/30));
-    this.fadeMesh.visible = this.fade > 0;
-    this.fadeMesh.material.opacity = this.fade / 0.3;
-    this.world.playerSpaceEntities.head.object3D!.getWorldPosition(this.fadeMesh.position);
+    if(!motion && !(visible && finalTaskAR.waiting))this.tween.set(progress.ratio,false);
+    if(visible) {
+      this.audio.setAmbient(this.ready && this.settings.zenSound); this.audio.tick(delta);
+    } else {
+      this.audio.setAmbient(false); this.audio.stop(); this.finaleAudioPending = false;
+    }
+    this.themes.update(this.tween.tick(delta),progress.total > 0,delta,motion);
+    if(this.themes.trellis.update(delta,motion) && visible)this.playGardenCue();
+    if(visible) {
+      this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
+      this.fadeMesh.visible = this.fade > 0;
+      this.fadeMesh.material.opacity = this.fade/0.3;
+      this.world.playerSpaceEntities.head.object3D!.getWorldPosition(this.fadeMesh.position);
+    }
   }
 
   private renderControls(): void {

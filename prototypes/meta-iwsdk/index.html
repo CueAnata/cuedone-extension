@@ -10,7 +10,6 @@
     <title>CueDone Personal VR Prototype</title>
   </head>
   <body style="margin: 0">
-    <div id="scene-container"></div>
     <form id="spatial-task-form" hidden><button type="submit">Add task</button></form>
     <div id="xr-overlay" hidden><button id="overlay-exit-button" class="browser-button browser-outline" type="button">Exit AR</button></div>
     <main id="browser-panel" class="browser-panel" hidden aria-busy="true">
@@ -25,7 +24,9 @@
       </header>
 
       <div id="browser-panel-body">
+      <div id="browser-task-view">
       <section class="browser-now-card" aria-labelledby="browser-now-heading">
+        <div id="browser-garden" role="img" aria-label="Garden Trellis task progress"><div id="scene-container"></div></div>
         <p id="browser-now-heading" class="browser-eyebrow">To-do list</p>
         <div id="browser-task-list" role="list" aria-label="To-do list"></div>
         <p hidden id="browser-task-text" class="browser-task-text">Loading...</p>
@@ -71,7 +72,12 @@
         </div>
       </section>
 
+
+      <p class="browser-entry-help">Garden progress follows each completed task. The final task opens the 4.5-second AR finale.</p>
+      <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter immersive AR</button>
+      </div>
       <section id="browser-settings-panel" class="browser-new-list-review" aria-label="VR appearance and comfort" hidden>
+        <button id="browser-settings-done" class="browser-button browser-secondary" type="button">Done</button>
         <h2>VR appearance &amp; comfort</h2>
         <button id="browser-spatial-scale" class="browser-button browser-outline" type="button">Panel size: Standard</button>
         <button id="browser-spatial-placement" class="browser-button browser-outline" type="button">Panel: Head relative</button>
@@ -83,8 +89,6 @@
         <p id="browser-spatial-status" role="status" aria-live="polite"></p>
         <p>Stay seated or within your Quest boundary. The separate immersive panel starts face-centered. Pinch its move bar to place it; Recenter returns it to your face. Handheld controllers are disabled. Zen Garden frames your board with a living trellis. Garden sound defaults Off. Companion windows synchronize only within the same browser profile and origin.</p>
       </section>
-      <p class="browser-entry-help">Task completion stays in this window. Enter AR only when you choose.</p>
-      <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter immersive AR</button>
       </div>
       <form id="browser-task-form" class="browser-task-form" hidden>
         <button type="submit" hidden>Add task</button>
