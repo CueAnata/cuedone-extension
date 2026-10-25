@@ -17,17 +17,68 @@ export const BREAK_NOTIFICATION_ALARM = "cuedone.breakNotification";
 export const BREAK_NOTIFICATION_ID = "cuedone.breakReady";
 const BREAK_CLOCK_VIEW_PORT = "cuedone.breakClockView";
 
+function isExtensionStorageAvailable() {
+  return typeof globalThis.chrome !== "undefined" && !!globalThis.chrome.storage?.local;
+}
+
+function webGetLocal(keys) {
+  const result = {};
+  const wantKeys = Array.isArray(keys) ? keys : typeof keys === "string" ? [keys] : keys ? Object.keys(keys) : [];
+  // If keys is an object with defaults, use defaults for missing values
+  const defaults = keys && !Array.isArray(keys) && typeof keys === "object" ? keys : null;
+  for (const key of wantKeys) {
+    try {
+      const raw = globalThis.localStorage?.getItem(key);
+      if (raw != null) result[key] = JSON.parse(raw);
+      else if (defaults && key in defaults) result[key] = defaults[key];
+    } catch {
+      if (defaults && key in defaults) result[key] = defaults[key];
+    }
+  }
+  // Also support string key
+  if (typeof keys === "string") {
+    if (!(keys in result) && defaults && keys in defaults) result[keys] = defaults[keys];
+  }
+  return Promise.resolve(result);
+}
+
+function webSetLocal(values) {
+  for (const [key, value] of Object.entries(values)) {
+    try {
+      globalThis.localStorage?.setItem(key, JSON.stringify(value));
+    } catch {}
+  }
+  // Notify web listeners
+  webNotifyChanged(values);
+  return Promise.resolve();
+}
+
+const webListeners = new Set();
+function webNotifyChanged(values) {
+  const changes = {};
+  for (const [key, value] of Object.entries(values)) changes[key] = { newValue: value };
+  for (const listener of webListeners) {
+    try { listener(changes, "local"); } catch {}
+  }
+}
+
 export function getLocal(keys) {
-  return chrome.storage.local.get(keys);
+  if (isExtensionStorageAvailable()) return globalThis.chrome.storage.local.get(keys);
+  return webGetLocal(keys);
 }
 
 export function setLocal(values) {
-  return chrome.storage.local.set(values);
+  if (isExtensionStorageAvailable()) return globalThis.chrome.storage.local.set(values);
+  return webSetLocal(values);
 }
 
 export function onLocalChanged(listener) {
-  chrome.storage.onChanged.addListener(listener);
-  return () => chrome.storage.onChanged.removeListener(listener);
+  if (isExtensionStorageAvailable()) {
+    globalThis.chrome.storage.onChanged.addListener(listener);
+    return () => globalThis.chrome.storage.onChanged.removeListener(listener);
+  }
+  webListeners.add(listener);
+  return () => webListeners.delete(listener);
 }
 
 export function scheduleBrowserAlarm(delayMs, handler) {
@@ -57,17 +108,17 @@ export function onBrowserViewResumed(handler) {
 }
 
 export function requestBreakNotificationPermission() {
-  if (typeof chrome.permissions?.request !== "function") {
+  if (typeof globalThis.chrome?.permissions?.request !== "function") {
     return Promise.resolve(false);
   }
 
-  return chrome.permissions
+  return globalThis.chrome.permissions
     .request({ permissions: ["notifications"] })
     .then((granted) => {
-      if (!granted || typeof chrome.notifications?.getPermissionLevel !== "function") {
+      if (!granted || typeof globalThis.chrome.notifications?.getPermissionLevel !== "function") {
         return granted;
       }
-      return chrome.notifications
+      return globalThis.chrome.notifications
         .getPermissionLevel()
         .then((level) => level === "granted");
     })
@@ -75,17 +126,17 @@ export function requestBreakNotificationPermission() {
 }
 
 export function hasBreakNotificationPermission() {
-  if (typeof chrome.permissions?.contains !== "function") {
+  if (typeof globalThis.chrome?.permissions?.contains !== "function") {
     return Promise.resolve(false);
   }
 
-  return chrome.permissions
+  return globalThis.chrome.permissions
     .contains({ permissions: ["notifications"] })
     .then((granted) => {
-      if (!granted || typeof chrome.notifications?.getPermissionLevel !== "function") {
+      if (!granted || typeof globalThis.chrome.notifications?.getPermissionLevel !== "function") {
         return granted;
       }
-      return chrome.notifications
+      return globalThis.chrome.notifications
         .getPermissionLevel()
         .then((level) => level === "granted");
     })
@@ -98,14 +149,15 @@ export function onBreakNotificationPermissionChanged(handler) {
       handler();
     }
   };
-  chrome.permissions?.onAdded?.addListener(onChanged);
-  chrome.permissions?.onRemoved?.addListener(onChanged);
+  globalThis.chrome.permissions?.onAdded?.addListener(onChanged);
+  globalThis.chrome.permissions?.onRemoved?.addListener(onChanged);
 }
 
 export function scheduleBreakNotificationAlarm(when) {
-  const result = chrome.alarms.create(BREAK_NOTIFICATION_ALARM, { when });
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.alarms?.create) return Promise.resolve(null);
+  const result = globalThis.chrome.alarms.create(BREAK_NOTIFICATION_ALARM, { when });
   return Promise.resolve(result)
-    .then(() => chrome.alarms.get(BREAK_NOTIFICATION_ALARM))
+    .then(() => globalThis.chrome.alarms.get(BREAK_NOTIFICATION_ALARM))
     .then((alarm) => {
       if (!alarm) {
         throw new Error("Chrome did not retain the CueDone break alarm.");
@@ -118,11 +170,13 @@ export function scheduleBreakNotificationAlarm(when) {
 }
 
 export function clearBreakNotificationAlarm() {
-  return chrome.alarms.clear(BREAK_NOTIFICATION_ALARM);
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.alarms?.clear) return Promise.resolve(false);
+  return globalThis.chrome.alarms.clear(BREAK_NOTIFICATION_ALARM);
 }
 
 export function onBreakNotificationAlarm(handler) {
-  chrome.alarms.onAlarm.addListener((alarm) => {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.alarms?.onAlarm) return () => {};
+  globalThis.chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === BREAK_NOTIFICATION_ALARM) {
       handler(alarm);
     }
@@ -130,16 +184,17 @@ export function onBreakNotificationAlarm(handler) {
 }
 
 export function showBreakNotification() {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.notifications?.create) return Promise.resolve(null);
   const iconUrl =
-    typeof chrome.runtime?.getURL === "function"
-      ? chrome.runtime.getURL("icons/icon128.png")
+    typeof globalThis.chrome.runtime?.getURL === "function"
+      ? globalThis.chrome.runtime.getURL("icons/icon128.png")
       : "icons/icon128.png";
   const fallbackIconUrl =
-    typeof chrome.runtime?.getURL === "function"
-      ? chrome.runtime.getURL("icons/icon48.png")
+    typeof globalThis.chrome.runtime?.getURL === "function"
+      ? globalThis.chrome.runtime.getURL("icons/icon48.png")
       : "icons/icon48.png";
   const createWithIcon = (url) =>
-    chrome.notifications
+    globalThis.chrome.notifications
       .create(BREAK_NOTIFICATION_ID, {
         type: "basic",
         iconUrl: url,
@@ -178,32 +233,35 @@ export function showBreakNotification() {
 }
 
 export function clearBreakNotification() {
-  if (typeof chrome.permissions?.contains !== "function") {
+  if (typeof globalThis.chrome?.permissions?.contains !== "function") {
     return Promise.resolve(false);
   }
-  return chrome.permissions
+  return globalThis.chrome.permissions
     .contains({ permissions: ["notifications"] })
     .then((granted) =>
-      granted ? chrome.notifications.clear(BREAK_NOTIFICATION_ID) : false
+      granted ? globalThis.chrome.notifications.clear(BREAK_NOTIFICATION_ID) : false
     )
     .catch(() => false);
 }
 
 export function showBreakToolbarBadge() {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.action?.setBadgeBackgroundColor) return Promise.resolve();
   return Promise.all([
-    chrome.action.setBadgeBackgroundColor({ color: "#f4a340" }),
-    chrome.action.setBadgeTextColor?.({ color: "#111111" }) ??
+    globalThis.chrome.action.setBadgeBackgroundColor({ color: "#f4a340" }),
+    globalThis.chrome.action.setBadgeTextColor?.({ color: "#111111" }) ??
       Promise.resolve(),
-    chrome.action.setBadgeText({ text: "!" }),
+    globalThis.chrome.action.setBadgeText({ text: "!" }),
   ]);
 }
 
 export function clearBreakToolbarBadge() {
-  return chrome.action.setBadgeText({ text: "" });
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.action?.setBadgeText) return Promise.resolve();
+  return globalThis.chrome.action.setBadgeText({ text: "" });
 }
 
 export function onBreakNotificationClicked(handler) {
-  chrome.notifications?.onClicked?.addListener((notificationId) => {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.notifications?.onClicked) return () => {};
+  globalThis.chrome.notifications?.onClicked?.addListener((notificationId) => {
     if (notificationId === BREAK_NOTIFICATION_ID) {
       handler();
     }
@@ -221,11 +279,11 @@ export function browserViewIsActive(documentRef = globalThis.document) {
 }
 
 export function connectBreakClockView() {
-  if (typeof chrome.runtime?.connect !== "function") {
+  if (typeof globalThis.chrome?.runtime?.connect !== "function") {
     return () => {};
   }
 
-  const port = chrome.runtime.connect({ name: BREAK_CLOCK_VIEW_PORT });
+  const port = globalThis.chrome.runtime.connect({ name: BREAK_CLOCK_VIEW_PORT });
   const documentRef = globalThis.document;
   const reportVisibility = () => {
     try {
@@ -266,6 +324,7 @@ export function connectBreakClockView() {
 }
 
 export function onBreakClockViewVisibilityChanged(handler) {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.runtime?.onConnect) return () => {};
   const viewVisibility = new Map();
   let sidePanelState = "unknown";
   const report = () =>
@@ -277,7 +336,7 @@ export function onBreakClockViewVisibilityChanged(handler) {
       )
     );
 
-  chrome.runtime.onConnect.addListener((port) => {
+  globalThis.chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== BREAK_CLOCK_VIEW_PORT) {
       return;
     }
@@ -297,31 +356,34 @@ export function onBreakClockViewVisibilityChanged(handler) {
     });
   });
 
-  chrome.sidePanel?.onOpened?.addListener(() => {
+  globalThis.chrome.sidePanel?.onOpened?.addListener(() => {
     sidePanelState = "open";
     report();
   });
-  chrome.sidePanel?.onClosed?.addListener(() => {
+  globalThis.chrome.sidePanel?.onClosed?.addListener(() => {
     sidePanelState = "closed";
     report();
   });
 }
 
 export function canOpenTopViewFromToolbar() {
-  return typeof chrome.action?.openPopup === "function";
+  if (typeof globalThis.chrome === "undefined") return false;
+  return typeof globalThis.chrome.action?.openPopup === "function";
 }
 
 export function canOpenSideViewFromToolbar() {
-  return typeof chrome.sidePanel?.open === "function";
+  if (typeof globalThis.chrome === "undefined") return false;
+  return typeof globalThis.chrome.sidePanel?.open === "function";
 }
 
 export function setToolbarPopup(enabled) {
-  const popupReady = chrome.action.setPopup({
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.action?.setPopup) return Promise.resolve();
+  const popupReady = globalThis.chrome.action.setPopup({
     popup: enabled ? POPUP_PATH : "",
   });
   const behaviorReady =
-    typeof chrome.sidePanel?.setPanelBehavior === "function"
-      ? chrome.sidePanel.setPanelBehavior({
+    typeof globalThis.chrome.sidePanel?.setPanelBehavior === "function"
+      ? globalThis.chrome.sidePanel.setPanelBehavior({
           openPanelOnActionClick: !enabled,
         })
       : Promise.resolve();
@@ -330,16 +392,19 @@ export function setToolbarPopup(enabled) {
 }
 
 export function onToolbarClick(handler) {
-  chrome.action.onClicked.addListener(handler);
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.action?.onClicked) return () => {};
+  globalThis.chrome.action.onClicked.addListener(handler);
 }
 
 export function onExtensionStart(handler) {
-  chrome.runtime.onInstalled.addListener(handler);
-  chrome.runtime.onStartup.addListener(handler);
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.runtime?.onInstalled) return () => {};
+  globalThis.chrome.runtime.onInstalled.addListener(handler);
+  globalThis.chrome.runtime.onStartup.addListener(handler);
 }
 
 export function onCloseSideViewRequest(handler) {
-  chrome.runtime.onMessage.addListener((message) => {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.runtime?.onMessage) return () => {};
+  globalThis.chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === CLOSE_SIDE_VIEW) {
       handler();
     }
@@ -347,40 +412,44 @@ export function onCloseSideViewRequest(handler) {
 }
 
 export function openTopView() {
+  if (typeof globalThis.chrome === "undefined") return Promise.resolve();
   return setToolbarPopup(true).then(() => {
     if (!canOpenTopViewFromToolbar()) {
       return;
     }
 
-    return chrome.action.openPopup().catch(() => undefined);
+    return globalThis.chrome.action.openPopup().catch(() => undefined);
   });
 }
 
 function windowIdFrom(windowId) {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.windows?.getCurrent) return Promise.resolve(undefined);
   if (windowId != null) {
     return Promise.resolve(windowId);
   }
 
-  return chrome.windows.getCurrent().then((currentWindow) => currentWindow.id);
+  return globalThis.chrome.windows.getCurrent().then((currentWindow) => currentWindow.id);
 }
 
 export function openSideView(windowId) {
+  if (typeof globalThis.chrome === "undefined" || !globalThis.chrome.sidePanel?.open) return Promise.resolve();
   return windowIdFrom(windowId).then((id) =>
-    chrome.sidePanel.open({ windowId: id })
+    globalThis.chrome.sidePanel.open({ windowId: id })
   );
 }
 
 export function closeSideView(windowId) {
+  if (typeof globalThis.chrome === "undefined") return Promise.resolve();
   const notifySidePage = () =>
-    chrome.runtime.sendMessage({ type: CLOSE_SIDE_VIEW }).catch(() => {
+    globalThis.chrome.runtime.sendMessage({ type: CLOSE_SIDE_VIEW }).catch(() => {
       // No side panel page is open to receive the message.
     });
 
-  if (typeof chrome.sidePanel?.close !== "function") {
+  if (typeof globalThis.chrome.sidePanel?.close !== "function") {
     return notifySidePage();
   }
 
   return windowIdFrom(windowId)
-    .then((id) => chrome.sidePanel.close({ windowId: id }))
+    .then((id) => globalThis.chrome.sidePanel.close({ windowId: id }))
     .catch(notifySidePage);
 }
