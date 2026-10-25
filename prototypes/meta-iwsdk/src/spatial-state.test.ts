@@ -160,15 +160,3 @@ test('a new drag invalidates an old in-flight anchor creation before it can repl
   assert.equal(recovery.anchor,placed);
   assert.equal(store.data.get(ANCHOR_KEY),'saved-room');
 });
-
-
-test('immersive completion setting defaults On for legacy preferences and preserves saved Off',()=>{
-  const store=storage(); const legacy={...DEFAULT_SPATIAL} as Record<string,unknown>;
-  delete legacy.immersiveCelebrations;
-  store.data.set(SPATIAL_KEY,JSON.stringify(legacy));
-  assert.equal(readSpatial(store).immersiveCelebrations,true);
-  saveSpatial(store,{...readSpatial(store),immersiveCelebrations:false});
-  assert.equal(readSpatial(store).immersiveCelebrations,false);
-  store.data.set(SPATIAL_KEY,JSON.stringify({...DEFAULT_SPATIAL,immersiveCelebrations:'yes'}));
-  assert.throws(()=>readSpatial(store));
-});

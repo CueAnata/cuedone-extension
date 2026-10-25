@@ -7,8 +7,6 @@ import {
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
-import { hybridCelebration } from './hybrid-celebration.js';
-import { readSpatial } from './spatial-state.js';
 import { launchAR } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
@@ -74,7 +72,6 @@ export class TaskPanelSystem extends createSystem({}) {
   private collapseDown?: InstanceType<typeof ChevronDown>;
   private entryOpen = false;
   private addingTask = false;
-  private preparingCelebration = false;
   private finishingEntry = false;
   private reviewingClear = false;
   private rowSignature = '';
@@ -155,15 +152,6 @@ export class TaskPanelSystem extends createSystem({}) {
       if(!this.isBrowser())void this.world.exitXR();
     });
     this.cleanupFuncs.push(() => this.disposeRows());
-    this.cleanupFuncs.push(hybridCelebration.onStart(plan => {
-      const newlyCompleted = new Set(plan.after.filter((task,i) => task.completed && !plan.before[i]?.completed).map(task => task.id));
-      for(const entry of this.rows)if(newlyCompleted.has(entry.id)) {
-        entry.elapsed = 0;
-        entry.vineSegments.forEach(segment => segment.setProperties({display: 'none'}));
-        entry.bee.setProperties({display: 'flex', positionLeft: 0});
-      }
-    }));
-    this.cleanupFuncs.push(() => hybridCelebration.cancel());
 
     taskInput.name = 'TaskInput';
     panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
@@ -376,38 +364,10 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
-    const taskId = id ?? this.session.activeTask?.id;
-    if(this.preparingCelebration || hybridCelebration.busy || this.session.phase !== 'ready' ||
-      !this.session.tasks.some(task => task.id === taskId && !task.completed))return;
-    let immersive = false;
-    let preferenceError = false;
-    try {immersive = this.isBrowser() && readSpatial(window.localStorage).immersiveCelebrations;}
-    catch {preferenceError = true;}
-    if(!immersive) {
-      const pending = this.session.completeTask(taskId);
-      this.render(panel);
-      const saved = await pending;
-      if(saved && preferenceError)this.session.message = 'Task saved. Could not read the immersive celebration setting.';
-      this.render(panel);
-      return;
-    }
-    this.preparingCelebration = true;
-    const before = this.session.tasks.map(task => ({id: task.id, completed: task.completed}));
-    try {
-      const result = await hybridCelebration.run(before,
-        () => {
-          const pending = this.session.completeTask(taskId);
-          this.render(panel);
-          return pending.then(saved => {this.render(panel); return saved;});
-        },
-        () => this.session.tasks,
-        () => launchAR(this.world, required<HTMLElement>('#xr-overlay')).then(started => started ? this.world.session : undefined),
-      );
-      if(result.saved && result.error)this.session.message = `Task saved. Could not open the AR celebration: ${result.error}`;
-    } finally {
-      this.preparingCelebration = false;
-      this.render(panel);
-    }
+    const pending = this.session.completeTask(id ?? this.session.activeTask?.id);
+    this.render(panel);
+    await pending;
+    this.render(panel);
   }
 
   private openNewListReview(panel: UIKitMLAsset, input: TaskInput, clear = false): void {
@@ -476,7 +436,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const signature = JSON.stringify([this.session.tasks, disabled]);
     if(signature === this.rowSignature)return;
     this.rowSignature = signature;
-    const animate = !this.preparingCelebration && !hybridCelebration.busy && (this.session.message === 'Task complete.' || this.remoteFeedback);
+    const animate = this.session.message === 'Task complete.' || this.remoteFeedback;
     this.disposeRows();
     const list = panel.requireElementById<UIKit.Container>('task-list');
     const browserList = required<HTMLElement>('#browser-task-list');
@@ -534,7 +494,6 @@ export class TaskPanelSystem extends createSystem({}) {
 
   update(delta: number): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
-    if(hybridCelebration.error && this.session.message !== hybridCelebration.error) {this.session.message = hybridCelebration.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches;
     this.browser.root.classList.toggle('motion-off', !motion);
@@ -570,7 +529,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
-      !this.preparingCelebration && !hybridCelebration.busy && (this.session.message === 'Task complete.' || this.remoteFeedback));
+      this.session.message === 'Task complete.' || this.remoteFeedback);
     panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('scroll-controls').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
@@ -679,7 +638,7 @@ export class TaskPanelSystem extends createSystem({}) {
       display: this.world.xrEnabled && !isBrowser ? 'flex' : 'none',
     });
 
-    const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList || this.preparingCelebration || hybridCelebration.busy;
+    const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList;
     const done = !disabled && this.session.tasks.length > 0 && this.session.unfinishedTaskCount === 0;
     panel.requireElementById('settings-panel').setProperties({display: this.settingsOpen ? 'flex' : 'none'});
     required<HTMLElement>('#browser-settings-panel').hidden = !this.settingsOpen;

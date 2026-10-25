@@ -318,7 +318,6 @@
     <button id="collapse-toggle" class="settings-toggle"></button>
     <button id="settings-toggle" class="settings-toggle"></button>
   </div>
-  <span id="input-diagnostic" class="review-copy" style="flex-shrink: 0; font-size: 1.6">XR diagnostics loading...</span>
   <div id="panel-body" style="flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; flex-direction: column; width: 100%; gap: 1.6">
   <div id="body-content" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
