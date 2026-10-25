@@ -14,9 +14,10 @@ test("task input Enter/Return immediately adds task without Done click", () => {
 
 test("full rectangular lattice encircles task list on all four sides", () => {
   const css = readFileSync("src/shared/styles.css", "utf8");
-  // 4-sided: top, left, right, bottom pillars — extended headroom for full vine span
+  // Unified container: background repeats continuously from top to bottom — no fixed header/footer row trap
   assert.match(css, /\.lattice-frame[^}]*grid-template-columns:\s*15%\s*1fr\s*15%/);
-  assert.match(css, /\.lattice-frame[^}]*grid-template-rows:\s*72px\s*1fr\s*32px/);
+  assert.doesNotMatch(css, /\.lattice-frame[^}]*grid-template-rows:\s*72px\s*1fr\s*32px/);
+  assert.match(css, /\.lattice-frame[^}]*background-repeat:\s*repeat/);
   assert.match(css, /\.lattice-pillar--bottom/);
   assert.match(css, /\.lattice-pillar--top[^}]*grid-row:\s*1/);
   assert.match(css, /\.lattice-pillar--left[^}]*grid-row:\s*2/);

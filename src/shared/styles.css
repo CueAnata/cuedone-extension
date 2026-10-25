@@ -3809,15 +3809,16 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
     linear-gradient(rgba(107,61,26,0.38) 0 1px, transparent 1px 7px);
   background-size: 14px 14px, 14px 14px, 7px 7px, 7px 7px;
   background-position: 0 0, 0 0, 0 0, 0 0;
+  background-repeat: repeat;
   background-clip: border-box;
   background-origin: border-box;
   box-shadow: var(--shadow);
   overflow: visible;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 72px 1fr 32px;
   gap: 0;
   min-height: 240px;
+  height: auto;
   border: 2px solid #6b3d1a;
 }
 
