@@ -26,21 +26,27 @@
       <div id="browser-panel-body">
       <div id="browser-task-view">
       <section class="browser-now-card" aria-labelledby="browser-now-heading">
-        <div id="browser-garden" role="img" aria-label="Garden Trellis task progress"><div id="scene-container"></div></div>
-        <p id="browser-now-heading" class="browser-eyebrow">To-do list</p>
-        <div id="browser-task-list" role="list" aria-label="To-do list"></div>
-        <p hidden id="browser-task-text" class="browser-task-text">Loading...</p>
-        <div class="browser-summary" aria-label="Task progress">
-          <span id="browser-progress-text">0 of 0 complete</span>
-          <span id="browser-waiting-text">0 tasks waiting</span>
+        <div id="browser-garden" class="trellis-frame" role="img" aria-label="Garden Trellis task progress">
+          <div class="trellis-pillar trellis-pillar--top" aria-hidden="true"></div>
+          <div class="trellis-pillar trellis-pillar--left" aria-hidden="true"></div>
+          <div class="trellis-pillar trellis-pillar--right" aria-hidden="true"></div>
+          <div id="scene-container"></div>
+          <div class="trellis-content">
+            <p id="browser-now-heading" class="browser-eyebrow">To-do list</p>
+            <div id="browser-task-list" role="list" aria-label="To-do list"></div>
+            <p hidden id="browser-task-text" class="browser-task-text">Loading...</p>
+            <div class="browser-summary" aria-label="Task progress">
+              <span id="browser-progress-text">0 of 0 complete</span>
+              <span id="browser-waiting-text">0 tasks waiting</span>
+            </div>
+            <div class="browser-list-actions browser-bottom-bar">
+              <button id="browser-reset-button" class="browser-button browser-outline" type="button">Reset</button>
+              <button id="browser-clear-button" class="browser-button browser-outline" type="button">Clear All</button>
+              <button id="browser-show-add-button" class="browser-button browser-secondary" type="button">Add Task</button>
+            </div>
+          </div>
         </div>
       </section>
-
-      <div class="browser-list-actions browser-bottom-bar">
-        <button id="browser-reset-button" class="browser-button browser-outline" type="button">Reset</button>
-        <button id="browser-clear-button" class="browser-button browser-outline" type="button">Clear All</button>
-        <button id="browser-show-add-button" class="browser-button browser-secondary" type="button">Add Task</button>
-      </div>
       <button id="browser-done-button" class="browser-button browser-primary browser-done" type="button" hidden>Done</button>
 
 

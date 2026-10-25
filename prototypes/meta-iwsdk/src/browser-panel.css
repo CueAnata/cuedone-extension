@@ -105,11 +105,84 @@ h2 {
 }
 
 .browser-now-card {
-  margin-top: 18px;
-  padding: 8px;
-  border: 2px solid #efa343;
-  border-radius: 19px;
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* True 3-sided trellis frame: 15% width solid diamond lattice, bottom open, compact */
+.trellis-frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: 15% 1fr 15%;
+  grid-template-rows: 18px 1fr;
+  gap: 0;
+  width: 100%;
+  min-height: 140px;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.trellis-pillar {
+  background-color: #d9b896;
+  background-image:
+    linear-gradient(45deg, #a67c3a 0 1.1px, transparent 1.1px 14px),
+    linear-gradient(-45deg, #a67c3a 0 1.1px, transparent 1.1px 14px),
+    linear-gradient(90deg, rgba(166,124,58,0.18) 0 1px, transparent 1px 7px),
+    linear-gradient(rgba(166,124,58,0.18) 0 1px, transparent 1px 7px);
+  background-size: 14px 14px, 14px 14px, 7px 7px, 7px 7px;
+  border: 1px solid #a07c3a;
+  position: relative;
+  overflow: hidden;
+}
+
+.trellis-pillar--top {
+  grid-column: 1 / 4;
+  grid-row: 1;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+}
+
+.trellis-pillar--left {
+  grid-column: 1;
+  grid-row: 2;
+  border-right: none;
+  border-top: none;
+}
+
+.trellis-pillar--right {
+  grid-column: 3;
+  grid-row: 2;
+  border-left: none;
+  border-top: none;
+}
+
+.trellis-content {
+  grid-column: 2;
+  grid-row: 2;
   background: linear-gradient(145deg, #fff8e9, #ffedcf);
+  padding: 6px 8px 8px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+#scene-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#scene-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0.22;
 }
 
 .browser-task-text {
@@ -357,6 +430,8 @@ h2 {
 #browser-task-list { max-height: 430px; overflow-y: auto; overscroll-behavior: auto; touch-action: pan-y; }
 .browser-panel .browser-task-row { min-height: 78px; }
 
-#browser-garden { position: relative; width: 100%; height: 220px; overflow: hidden; margin-bottom: 10px; }
-#scene-container canvas { display: block; width: 100% !important; height: 100% !important; }
+#browser-garden.trellis-frame {
+  margin-bottom: 0;
+}
+
 #browser-settings-done { position: sticky; top: 0; z-index: 1; }
