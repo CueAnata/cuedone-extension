@@ -3798,13 +3798,13 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-frame {
   position: relative;
   margin-top: 8px;
-  padding: 0;
+  padding: 16px 0;
   border: none;
   border-radius: 10px;
   background: #c49a6b;
   background-image:
-    linear-gradient(45deg, #6b3d1a 0 1.4px, transparent 1.4px 14px),
-    linear-gradient(-45deg, #6b3d1a 0 1.4px, transparent 1.4px 14px),
+    linear-gradient(45deg, #6b3d1a 0 1.6px, transparent 1.6px 14px),
+    linear-gradient(-45deg, #6b3d1a 0 1.6px, transparent 1.6px 14px),
     linear-gradient(90deg, rgba(107,61,26,0.32) 0 1px, transparent 1px 7px),
     linear-gradient(rgba(107,61,26,0.32) 0 1px, transparent 1px 7px);
   background-size: 14px 14px, 14px 14px, 7px 7px, 7px 7px;
@@ -3813,9 +3813,9 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   overflow: visible;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 48px 1fr 22px;
+  grid-template-rows: 64px 1fr 32px;
   gap: 0;
-  min-height: 180px;
+  min-height: 240px;
   border: 1px solid #6b3d1a;
 }
 
@@ -3834,7 +3834,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   grid-row: 1;
   border: none;
   background: transparent;
-  min-height: 48px;
+  min-height: 64px;
 }
 
 .lattice-pillar--left {
@@ -3856,7 +3856,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   grid-row: 3;
   border: none;
   background: transparent;
-  min-height: 22px;
+  min-height: 32px;
 }
 
 .lattice-content {
@@ -3920,9 +3920,10 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-pillar .lattice-vine--right::before { left: 48%; top: 20%; transform: translateX(-50%) rotate(14deg); }
 .lattice-pillar .lattice-vine--right::after { left: 44%; top: 52%; transform: translateX(-50%) rotate(-12deg); }
 
-/* keep vines cleanly inside outer pillars — no cutting across Task 1 */
+/* vines stay inside pillars but flowers remain fully visible — not clipped */
 .lattice-pillar .lattice-vine--left,
-.lattice-pillar .lattice-vine--right { overflow: hidden; }
+.lattice-pillar .lattice-vine--right { overflow: visible; }
+.lattice-pillar { overflow: visible; }
 
 /* top vine grows outward incrementally — saturated emerald fully opaque */
 .lattice-vine--top {

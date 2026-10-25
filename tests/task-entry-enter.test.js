@@ -16,7 +16,7 @@ test("full rectangular lattice encircles task list on all four sides", () => {
   const css = readFileSync("src/shared/styles.css", "utf8");
   // 4-sided: top, left, right, bottom pillars — extended headroom for full vine span
   assert.match(css, /\.lattice-frame[^}]*grid-template-columns:\s*15%\s*1fr\s*15%/);
-  assert.match(css, /\.lattice-frame[^}]*grid-template-rows:\s*48px\s*1fr\s*22px/);
+  assert.match(css, /\.lattice-frame[^}]*grid-template-rows:\s*64px\s*1fr\s*32px/);
   assert.match(css, /\.lattice-pillar--bottom/);
   assert.match(css, /\.lattice-pillar--top[^}]*grid-row:\s*1/);
   assert.match(css, /\.lattice-pillar--left[^}]*grid-row:\s*2/);
@@ -30,7 +30,7 @@ test("full rectangular lattice encircles task list on all four sides", () => {
 test("VR browser panel matches full 4-sided lattice", () => {
   const vrCss = readFileSync("prototypes/meta-iwsdk/src/browser-panel.css", "utf8");
   assert.match(vrCss, /\.trellis-frame[^}]*grid-template-columns:\s*15%\s*1fr\s*15%/);
-  assert.match(vrCss, /\.trellis-frame[^}]*grid-template-rows:\s*48px\s*1fr\s*22px/);
+  assert.match(vrCss, /\.trellis-frame[^}]*grid-template-rows:\s*64px\s*1fr\s*32px/);
   assert.match(vrCss, /\.trellis-pillar--bottom/);
 });
 
