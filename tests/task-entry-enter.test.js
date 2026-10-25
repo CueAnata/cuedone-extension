@@ -14,17 +14,17 @@ test("task input Enter/Return immediately adds task without Done click", () => {
 
 test("full rectangular lattice encircles task list on all four sides", () => {
   const css = readFileSync("src/shared/styles.css", "utf8");
-  // 4-sided: top, left, right, bottom pillars
+  // 4-sided: top, left, right, bottom pillars — extended headroom for full vine span
   assert.match(css, /\.lattice-frame[^}]*grid-template-columns:\s*15%\s*1fr\s*15%/);
-  assert.match(css, /\.lattice-frame[^}]*grid-template-rows:\s*22px\s*1fr\s*18px/);
+  assert.match(css, /\.lattice-frame[^}]*grid-template-rows:\s*36px\s*1fr\s*22px/);
   assert.match(css, /\.lattice-pillar--bottom/);
   assert.match(css, /\.lattice-pillar--top[^}]*grid-row:\s*1/);
   assert.match(css, /\.lattice-pillar--left[^}]*grid-row:\s*2/);
   assert.match(css, /\.lattice-pillar--right[^}]*grid-row:\s*2/);
   assert.match(css, /border-radius:\s*10px;/); // 4-sided radius, not 10px 10px 0 0
-  // Rich diamond lattice texture
-  assert.match(css, /background-color:\s*#d9b896/);
-  assert.match(css, /linear-gradient\(45deg.*#a67c3a/);
+  // Rich diamond lattice texture — crisp saturated, no muting overlay
+  assert.match(css, /background-color:\s*#c49a6b/);
+  assert.match(css, /linear-gradient\(45deg.*#6b3d1a/);
 });
 
 test("VR browser panel matches full 4-sided lattice", () => {
