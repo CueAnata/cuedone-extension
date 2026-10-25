@@ -464,3 +464,49 @@ form and submit control, matching the browser input's form-submit fallback.
 Native keyboard listeners run in capture phase. Done keeps its existing explicit
 finish flow, while storage failure retains the draft. This repair is local until
 committed and deployed; physical Quest keyboard validation remains required.
+
+
+### Dual-mode Garden Trellis completion — October 25, 2026
+The user explicitly requested a default standard windowed DOM task panel with
+short immersive-ar celebrations, superseding the previous requirement to work
+continuously in an immersive board alongside workspace apps. There is no automatic
+XR entry on load. A local unchecked-to-checked task gesture synchronously requests
+immersive-ar before awaiting storage (WebXR user-activation requirement), while
+completion still saves through the existing task session. Only a successfully
+saved forward completion may animate. Entry rejection/unavailability never undoes
+a saved task and leaves the standard UI usable with a visible explanation.
+
+The Garden Trellis animation starts on the first visible, tracked XR frame after
+both saving and session adoption. It animates from the prior exact task ratio to
+the new ratio, using the existing climbing vines, blooming flowers and final-task
+butterflies. The task label gets a winding green vine strike-through; the existing
+bee shares that task's spatial reveal. Exactly 4500ms after this animation start,
+a timeout ends that specific XR session and returns to the standard DOM panel.
+Manual exit cancels its timer; late session adoption after cancellation closes
+itself. Duplicate completion/entry is guarded; stale task snapshots do not replay.
+The timer is identical for ordinary and final tasks; no additional finale delay
+is added. Existing motion/reduced-motion and separate Garden sound gating remain.
+
+Settings includes the saved checkbox “Immersive 3D Celebration on Task Completion”,
+default checked for both new and legacy spatial preferences. Off completes tasks
+in the standard view without requesting XR. The boolean lives in the existing
+origin-local spatial preference envelope and synchronizes between same-origin
+windows. A failed preference save retains the previous saved choice. No task
+storage namespace, extension behavior, accounts, backend or handoff is added.
+
+The user's clarified overflow requirement means up to five minimum-height rows
+before vertical scrolling, not a five-second scrolling animation. Browser rows
+remain at least 78px high with vertically centered labels and 40px checkbox marks;
+the whole row remains a generous completion target. The list caps at 430px for
+five rows plus gaps/padding. Spatial rows include 8-unit checkbox marks and cap
+at five rows (64 UIKit units). Entry and explicit Done remain outside scrolling;
+spatial scroll buttons target the overflowing list or settings body as appropriate.
+Enter/Return still saves, clears after success and retains entry focus. Manual
+Enter AR and Exit AR controls and the temporary input diagnostic are retained.
+
+This uses a temporary immersive WebXR SESSION, not an OS-owned shared-space layer.
+Quest may request AR permission or transition confirmation. The app ends its
+session; exact OS window restoration, instant input availability and native
+keyboard/transition timing still require physical Quest 3 / Horizon OS 2.7 checks.
+No native app migration, desktop streaming work, commit or deployment is included
+in this implementation request.

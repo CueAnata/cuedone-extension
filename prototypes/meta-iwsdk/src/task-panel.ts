@@ -7,6 +7,8 @@ import {
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
+import { hybridCelebration } from './hybrid-celebration.js';
+import { readSpatial } from './spatial-state.js';
 import { launchAR } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
@@ -72,10 +74,11 @@ export class TaskPanelSystem extends createSystem({}) {
   private collapseDown?: InstanceType<typeof ChevronDown>;
   private entryOpen = false;
   private addingTask = false;
+  private preparingCelebration = false;
   private finishingEntry = false;
   private reviewingClear = false;
   private rowSignature = '';
-  private readonly rows: Array<{row: UIKit.Container; pollen: UIKit.Container; bee: UIKit.Container; id: string; elapsed: number}> = [];
+  private readonly rows: Array<{row: UIKit.Container; pollen: UIKit.Container; vineSegments: UIKit.Container[]; bee: UIKit.Container; id: string; elapsed: number}> = [];
   private emptyRow?: UIKit.Text;
   private previousTasks = new Map<string, boolean>();
   private readonly reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -131,7 +134,12 @@ export class TaskPanelSystem extends createSystem({}) {
     const body = panel.requireElementById<UIKit.Container>('panel-body');
     for(const [id, direction] of [['scroll-up', -1], ['scroll-down', 1]] as const) {
       const button = panel.requireElementById(id);
-      const scroll = () => {const [x,y] = body.scrollPosition.value; body.scrollPosition.value = [x,Math.max(0,Math.min(body.maxScrollPosition.value[1] ?? 0,y+direction*24))];};
+      const scroll = () => {
+        const list = panel.requireElementById<UIKit.Container>('task-list');
+        const target = !this.settingsOpen && !this.reviewingNewList && (list.maxScrollPosition.value[1] ?? 0) > 0 ? list : body;
+        const [x,y] = target.scrollPosition.value;
+        target.scrollPosition.value = [x,Math.max(0,Math.min(target.maxScrollPosition.value[1] ?? 0,y+direction*24))];
+      };
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
@@ -147,6 +155,15 @@ export class TaskPanelSystem extends createSystem({}) {
       if(!this.isBrowser())void this.world.exitXR();
     });
     this.cleanupFuncs.push(() => this.disposeRows());
+    this.cleanupFuncs.push(hybridCelebration.onStart(plan => {
+      const newlyCompleted = new Set(plan.after.filter((task,i) => task.completed && !plan.before[i]?.completed).map(task => task.id));
+      for(const entry of this.rows)if(newlyCompleted.has(entry.id)) {
+        entry.elapsed = 0;
+        entry.vineSegments.forEach(segment => segment.setProperties({display: 'none'}));
+        entry.bee.setProperties({display: 'flex', positionLeft: 0});
+      }
+    }));
+    this.cleanupFuncs.push(() => hybridCelebration.cancel());
 
     taskInput.name = 'TaskInput';
     panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
@@ -359,10 +376,38 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
-    const pending = this.session.completeTask(id ?? this.session.activeTask?.id);
-    this.render(panel);
-    await pending;
-    this.render(panel);
+    const taskId = id ?? this.session.activeTask?.id;
+    if(this.preparingCelebration || hybridCelebration.busy || this.session.phase !== 'ready' ||
+      !this.session.tasks.some(task => task.id === taskId && !task.completed))return;
+    let immersive = false;
+    let preferenceError = false;
+    try {immersive = this.isBrowser() && readSpatial(window.localStorage).immersiveCelebrations;}
+    catch {preferenceError = true;}
+    if(!immersive) {
+      const pending = this.session.completeTask(taskId);
+      this.render(panel);
+      const saved = await pending;
+      if(saved && preferenceError)this.session.message = 'Task saved. Could not read the immersive celebration setting.';
+      this.render(panel);
+      return;
+    }
+    this.preparingCelebration = true;
+    const before = this.session.tasks.map(task => ({id: task.id, completed: task.completed}));
+    try {
+      const result = await hybridCelebration.run(before,
+        () => {
+          const pending = this.session.completeTask(taskId);
+          this.render(panel);
+          return pending.then(saved => {this.render(panel); return saved;});
+        },
+        () => this.session.tasks,
+        () => launchAR(this.world, required<HTMLElement>('#xr-overlay')).then(started => started ? this.world.session : undefined),
+      );
+      if(result.saved && result.error)this.session.message = `Task saved. Could not open the AR celebration: ${result.error}`;
+    } finally {
+      this.preparingCelebration = false;
+      this.render(panel);
+    }
   }
 
   private openNewListReview(panel: UIKitMLAsset, input: TaskInput, clear = false): void {
@@ -431,7 +476,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const signature = JSON.stringify([this.session.tasks, disabled]);
     if(signature === this.rowSignature)return;
     this.rowSignature = signature;
-    const animate = this.session.message === 'Task complete.' || this.remoteFeedback;
+    const animate = !this.preparingCelebration && !hybridCelebration.busy && (this.session.message === 'Task complete.' || this.remoteFeedback);
     this.disposeRows();
     const list = panel.requireElementById<UIKit.Container>('task-list');
     const browserList = required<HTMLElement>('#browser-task-list');
@@ -446,15 +491,19 @@ export class TaskPanelSystem extends createSystem({}) {
       const text = new UIKit.Text({text: task.text, fontSize: 2.8, color: '#332D25', width: '100%', verticalAlign: 'center'});
       label.add(text);
       row.add(check, label);
-      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: task.completed && !fresh ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
-      pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
+      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', marginTop: -1, height: 2, width: '100%', pointerEvents: 'none'});
+      const vineSegments: UIKit.Container[] = [];
+      for(let segment=0; segment<32; segment++) {
+        const vine = new UIKit.Container({positionType: 'absolute', positionLeft: `${segment*100/32}%`, positionTop: 0.85+Math.sin(segment*Math.PI/4)*0.55, width: '4%', height: 0.3, borderRadius: 0.2, backgroundColor: '#548438', pointerEvents: 'none', display: task.completed && !fresh ? 'flex' : 'none'});
+        pollen.add(vine); vineSegments.push(vine);
+      }
       const bee = new UIKit.Container({positionType: 'absolute', positionTop: '30%', positionLeft: 0, width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
       for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
       for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
       label.add(pollen, bee);
       row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
       list.add(row);
-      this.rows.push({row, pollen, bee, id: task.id, elapsed: fresh ? 0 : -1});
+      this.rows.push({row, pollen, vineSegments, bee, id: task.id, elapsed: fresh ? 0 : -1});
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'browser-task-row';
       button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
@@ -485,6 +534,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   update(delta: number): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    if(hybridCelebration.error && this.session.message !== hybridCelebration.error) {this.session.message = hybridCelebration.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches;
     this.browser.root.classList.toggle('motion-off', !motion);
@@ -492,7 +542,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if(entry.elapsed < 0)continue;
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
       entry.elapsed = motion && visible ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/2.4) : 1;
-      entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
+      entry.vineSegments.forEach((segment,i) => segment.setProperties({display: i/entry.vineSegments.length < entry.elapsed ? 'flex' : 'none'}));
       entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;
     }
@@ -520,7 +570,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
-      this.session.message === 'Task complete.' || this.remoteFeedback);
+      !this.preparingCelebration && !hybridCelebration.busy && (this.session.message === 'Task complete.' || this.remoteFeedback));
     panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('scroll-controls').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
@@ -629,7 +679,7 @@ export class TaskPanelSystem extends createSystem({}) {
       display: this.world.xrEnabled && !isBrowser ? 'flex' : 'none',
     });
 
-    const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList;
+    const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList || this.preparingCelebration || hybridCelebration.busy;
     const done = !disabled && this.session.tasks.length > 0 && this.session.unfinishedTaskCount === 0;
     panel.requireElementById('settings-panel').setProperties({display: this.settingsOpen ? 'flex' : 'none'});
     required<HTMLElement>('#browser-settings-panel').hidden = !this.settingsOpen;

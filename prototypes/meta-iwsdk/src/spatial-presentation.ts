@@ -7,6 +7,8 @@ import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
 import { applyFixedPanelPose, faceCenterPanel } from './fixed-panel.js';
 import { PanelDrag } from './panel-drag.js';
+import { hybridCelebration } from './hybrid-celebration.js';
+import { taskRatio } from './spatial-state.js';
 import { ZenAudio } from './zen-audio.js';
 
 const progress = new GardenProgress();
@@ -113,6 +115,15 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const enterBrowser=document.getElementById('browser-xr-button')!;
     enterSpatial.addEventListener('click',unlock);enterBrowser.addEventListener('click',unlock);
     this.cleanupFuncs.push(()=>{enterSpatial.removeEventListener('click',unlock);enterBrowser.removeEventListener('click',unlock);});
+    const immersiveToggle = document.getElementById('browser-immersive-celebration') as HTMLInputElement;
+    const onImmersiveToggle = () => {
+      const requested = immersiveToggle.checked;
+      immersiveToggle.checked = this.settings.immersiveCelebrations;
+      void this.change({immersiveCelebrations: requested});
+    };
+    immersiveToggle.addEventListener('change', onImmersiveToggle);
+    this.cleanupFuncs.push(() => immersiveToggle.removeEventListener('change', onImmersiveToggle));
+    this.cleanupFuncs.push(hybridCelebration.onRequest(() => {void this.unlockAudio();}));
     this.load();
     this.cleanupFuncs.push(watchLocalStorage(window,[SPATIAL_KEY],()=>this.refreshSettings()));
     this.cleanupFuncs.push(this.world.onXRFrame(frame => this.frame(frame)));
@@ -123,7 +134,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
-        this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+        this.tween.set(hybridCelebration.waitingToAnimate ? taskRatio(hybridCelebration.before) : (progress.total ? progress.complete / progress.total : 0), false);
         this.fade = 0.3;
       }
       this.renderControls();
@@ -249,7 +260,18 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.placeFixedPanel();
       this.fade = 0.3;
       this.revision = progress.revision;
-      this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+      this.tween.set(hybridCelebration.waitingToAnimate ? taskRatio(hybridCelebration.before) : (progress.total ? progress.complete / progress.total : 0), false);
+    }
+    const celebration = hybridCelebration.start(session, progress.tasks);
+    if(celebration) {
+      const motion = this.settings.motion && !this.media.matches;
+      this.tween.set(taskRatio(celebration.before), false);
+      this.tween.set(taskRatio(celebration.after), motion);
+      this.revision = progress.revision;
+      this.fade = 0;
+      const final = celebration.after.length > 0 && celebration.after.every(task => task.completed);
+      this.finaleAudioPending = final && this.ready && this.settings.zenSound;
+      if(final)this.themes.trellis.celebrate();
     }
     if(this.drag.owner !== null) {
       const source=this.dragHand && this.world.input.xr.getPrimaryInputSource(this.dragHand);
@@ -272,7 +294,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.root.visible = visible || this.world.visibilityState.value === VisibilityState.VisibleBlurred;
     if (!visible) { this.fadeMesh.visible = false; this.themes.trellis.cancel(); this.audio.stop();this.finaleAudioPending=false; return; }
     const motion = this.settings.motion && !this.media.matches;
-    if (this.revision !== progress.revision) {
+    if (!hybridCelebration.waitingToAnimate && this.revision !== progress.revision) {
       this.finaleAudioPending=this.revision>=0 && progress.finale && this.ready && this.settings.zenSound;
       if(progress.finale && this.revision>=0) this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
@@ -280,7 +302,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
         motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
     }
-    if (!motion) this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
+    if (!motion && !hybridCelebration.waitingToAnimate) this.tween.set(hybridCelebration.waitingToAnimate ? taskRatio(hybridCelebration.before) : (progress.total ? progress.complete / progress.total : 0), false);
     this.audio.setAmbient(this.ready && this.settings.zenSound);
     this.audio.tick(delta);
     this.themes.update(this.tween.tick(delta), progress.total > 0, delta, motion);
@@ -292,6 +314,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   private renderControls(): void {
+    const immersiveToggle = document.getElementById('browser-immersive-celebration') as HTMLInputElement;
+    immersiveToggle.checked = this.settings.immersiveCelebrations;
+    immersiveToggle.disabled = !this.ready;
     for(const [id, text] of [
       ['spatial-scale', 'Panel size: 0.8 x 1.0 m (fixed)'],
       ['spatial-placement', this.faceLocked ? 'Panel: Face centered' : 'Panel: Placed by hand'],

@@ -347,3 +347,11 @@ h2 {
 #browser-panel-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 #browser-task-list { max-height: none; overflow: visible; }
 .browser-task-form { flex: 0 0 auto; }
+
+/* Five minimum-height task rows; entry and Done remain outside this region. */
+#browser-task-list { max-height: 430px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.browser-panel .browser-task-row { min-height: 78px; }
+.browser-celebration-toggle { display: flex; align-items: center; gap: 12px; min-height: 56px; cursor: pointer; }
+.browser-celebration-toggle input { flex: 0 0 40px; width: 40px; height: 40px; accent-color: #548438; }
+.task-label .pollen-line { top: calc(50% - 6px); height: 12px; background: none; box-shadow: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'%3E%3Cpath d='M0 6 Q5 0 10 6 T30 6 T50 6 T70 6 T90 6 T110 6 T130 6 T150 6 T170 6 T190 6 T210 6' fill='none' stroke='%23548438' stroke-width='2.5'/%3E%3C/svg%3E"); background-size: 100% 100%; }
+[data-completed="true"] .task-label-text { text-decoration-color: #548438; }

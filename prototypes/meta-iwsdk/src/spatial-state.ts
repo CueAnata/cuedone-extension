@@ -10,9 +10,10 @@ export interface SpatialSettings {
   placement: Placement;
   motion: boolean;
   zenSound: boolean;
+  immersiveCelebrations: boolean;
 }
 export const DEFAULT_SPATIAL: SpatialSettings = {
-  version: 1, theme: 'zen', scale: 1, placement: 'room', motion: true, zenSound: false,
+  version: 1, theme: 'zen', scale: 1, placement: 'room', motion: true, zenSound: false, immersiveCelebrations: true,
 };
 
 export function readSpatial(storage: TaskStorage): SpatialSettings {
@@ -24,11 +25,13 @@ export function readSpatial(storage: TaskStorage): SpatialSettings {
       ![1, 1.25, 1.5].includes(value.scale) ||
       !['head', 'hand', 'controller', 'room'].includes(value.placement) ||
       typeof value.motion !== 'boolean' ||
-      (value.zenSound !== undefined && typeof value.zenSound !== 'boolean')) {
+      (value.zenSound !== undefined && typeof value.zenSound !== 'boolean') ||
+      (value.immersiveCelebrations !== undefined && typeof value.immersiveCelebrations !== 'boolean')) {
     throw new Error('Unsupported spatial preferences.');
   }
   return { version: 1, theme: 'zen', scale: value.scale,
-    placement: value.placement === 'controller' ? 'hand' : value.placement, motion: value.motion, zenSound: value.zenSound ?? false };
+    placement: value.placement === 'controller' ? 'hand' : value.placement, motion: value.motion, zenSound: value.zenSound ?? false,
+    immersiveCelebrations: value.immersiveCelebrations ?? true };
 }
 
 /** Save before changing the displayed appearance. Never touches task storage. */
