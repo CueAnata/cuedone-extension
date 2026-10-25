@@ -115,7 +115,7 @@ h2 {
   position: relative;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 64px 1fr 32px;
+  grid-template-rows: 72px 1fr 32px;
   gap: 0;
   width: 100%;
   min-height: 240px;
@@ -123,13 +123,15 @@ h2 {
   overflow: visible;
   background: #c49a6b;
   background-image:
-    linear-gradient(45deg, #6b3d1a 0 1.6px, transparent 1.6px 14px),
-    linear-gradient(-45deg, #6b3d1a 0 1.6px, transparent 1.6px 14px),
-    linear-gradient(90deg, rgba(107,61,26,0.32) 0 1px, transparent 1px 7px),
-    linear-gradient(rgba(107,61,26,0.32) 0 1px, transparent 1px 7px);
+    linear-gradient(45deg, #6b3d1a 0 2px, transparent 2px 14px),
+    linear-gradient(-45deg, #6b3d1a 0 2px, transparent 2px 14px),
+    linear-gradient(90deg, rgba(107,61,26,0.38) 0 1px, transparent 1px 7px),
+    linear-gradient(rgba(107,61,26,0.38) 0 1px, transparent 1px 7px);
   background-size: 14px 14px, 14px 14px, 7px 7px, 7px 7px;
   background-position: 0 0, 0 0, 0 0, 0 0;
-  border: 1px solid #6b3d1a;
+  background-clip: border-box;
+  background-origin: border-box;
+  border: 2px solid #6b3d1a;
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
   padding: 0;
 }
@@ -146,7 +148,7 @@ h2 {
   grid-row: 1;
   border: none;
   background: transparent;
-  min-height: 64px;
+  min-height: 72px;
 }
 
 .trellis-pillar--left {
