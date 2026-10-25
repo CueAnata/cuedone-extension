@@ -186,7 +186,7 @@ test('hand-keyboard: whitespace or empty submit is rejected without saving', asy
   const session = new PersonalTaskSession(store, () => 10, () => 'id-1');
   await session.load();
   assert.equal(await session.add('   '), false);
-  assert.equal(session.message, 'Enter a task before choosing Add.');
+  assert.equal(session.message, 'Type a task, then press Enter or choose Done.');
   assert.equal(store.saves.length, 0);
   assert.equal(await session.add(''), false);
   assert.equal(store.saves.length, 0);

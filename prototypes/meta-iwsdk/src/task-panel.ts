@@ -4,12 +4,15 @@ import {
   UIKitMLAsset,
   VisibilityState,
 } from '@iwsdk/core';
+import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
+import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
 import { launchAR } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
 import { isForwardCompletion } from './garden-progress.js';
+import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
@@ -21,7 +24,6 @@ interface BrowserPanelElements {
   waitingText: HTMLElement;
   form: HTMLFormElement;
   input: HTMLInputElement;
-  addButton: HTMLButtonElement;
   completeButton: HTMLButtonElement;
   statusText: HTMLElement;
   newListButton: HTMLButtonElement;
@@ -48,7 +50,6 @@ function browserPanelElements(): BrowserPanelElements {
     waitingText: required<HTMLElement>('#browser-waiting-text'),
     form: required<HTMLFormElement>('#browser-task-form'),
     input: required<HTMLInputElement>('#browser-task-input'),
-    addButton: required<HTMLButtonElement>('#browser-add-button'),
     completeButton: required<HTMLButtonElement>('#browser-complete-button'),
     statusText: required<HTMLElement>('#browser-status-text'),
     newListButton: required<HTMLButtonElement>('#browser-new-list-button'),
@@ -66,7 +67,12 @@ export class TaskPanelSystem extends createSystem({}) {
   private readonly session = new PersonalTaskSession(new LocalTaskStore());
   private readonly browser = browserPanelElements();
   private settingsOpen = false;
+  private collapsed = false;
+  private collapseUp?: InstanceType<typeof ChevronUp>;
+  private collapseDown?: InstanceType<typeof ChevronDown>;
   private entryOpen = false;
+  private addingTask = false;
+  private finishingEntry = false;
   private reviewingClear = false;
   private rowSignature = '';
   private readonly rows: Array<{row: UIKit.Container; pollen: UIKit.Container; bee: UIKit.Container; id: string; elapsed: number}> = [];
@@ -89,8 +95,13 @@ export class TaskPanelSystem extends createSystem({}) {
     settingsButton.setProperties({hover: {backgroundColor: '#FDE68A'}});
     settingsButton.add(gear);
     this.cleanupFuncs.push(() => {gear.removeFromParent(); gear.dispose();});
+    this.collapseUp = new ChevronUp({width: 4, height: 4, color: '#332D25'});
+    this.collapseDown = new ChevronDown({width: 4, height: 4, color: '#332D25'});
+    panel.requireElementById<UIKit.Container>('collapse-toggle').add(this.collapseUp, this.collapseDown);
+    this.cleanupFuncs.push(() => {
+      for(const icon of [this.collapseUp, this.collapseDown]) {icon?.removeFromParent(); icon?.dispose();}
+    });
     const taskInput = panel.requireElementById<TaskInput>('task-input');
-    const addButton = panel.requireElementById('add-button');
     const completeButton = panel.requireElementById('complete-button');
     const newListButton = panel.requireElementById('new-list-button');
     const carryButton = panel.requireElementById('carry-button');
@@ -107,8 +118,18 @@ export class TaskPanelSystem extends createSystem({}) {
       browser.addEventListener('click', action);
       this.cleanupFuncs.push(() => {spatial.removeEventListener('click', action); browser.removeEventListener('click', action);});
     };
+    bind('collapse-toggle', () => {
+      this.collapsed = !this.collapsed;
+      if(this.collapsed) {
+        // Preserve unfinished text while releasing the native keyboard.
+        taskInput.input.blur();
+        this.browser.input.blur();
+      }
+      this.render(panel);
+    });
     bind('settings-toggle', () => {this.settingsOpen = !this.settingsOpen; this.render(panel);});
-    bind('show-add-button', () => {this.entryOpen = !this.entryOpen; this.render(panel); if(this.isBrowser() && this.entryOpen)this.browser.input.focus();});
+    bind('show-add-button', () => this.openTaskEntry(panel, taskInput));
+    bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
       this.openNewListReview(panel, taskInput, true);
@@ -121,7 +142,8 @@ export class TaskPanelSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => this.disposeRows());
 
     taskInput.name = 'TaskInput';
-    addButton.name = 'AddTask';
+    panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
+    panel.requireElementById('entry-done-button').name = 'FinishTaskEntry';
     completeButton.name = 'CompleteTask';
     newListButton.name = 'NewList';
     carryButton.name = 'CarryUnfinishedTasks';
@@ -134,16 +156,9 @@ export class TaskPanelSystem extends createSystem({}) {
     taskInput.setProperties({
       onValueChange: (value: string) => {
         this.draft = value;
-        addButton.setProperties({
-          disabled:
-            this.session.phase !== 'ready' ||
-            this.reviewingNewList ||
-            value.trim().length === 0,
-        });
       },
     });
 
-    const onAdd = () => void this.addTask(panel, taskInput);
     const onComplete = () => void this.completeTask(panel);
     const onNewList = () => this.openNewListReview(panel, taskInput);
     const onCarry = () => void this.createNewList(panel, taskInput, true);
@@ -163,10 +178,6 @@ export class TaskPanelSystem extends createSystem({}) {
       this.draft = this.browser.input.value;
       this.render(panel);
     };
-    const onBrowserSubmit = (event: SubmitEvent) => {
-      event.preventDefault();
-      void this.addTask(panel, taskInput);
-    };
     const onBrowserComplete = () => void this.completeTask(panel);
     const onBrowserNewList = () => this.openNewListReview(panel, taskInput);
     const onBrowserCarry = () =>
@@ -175,7 +186,6 @@ export class TaskPanelSystem extends createSystem({}) {
       void this.createNewList(panel, taskInput, false);
     const onBrowserCancel = () => this.cancelNewListReview(panel);
 
-    addButton.addEventListener('click', onAdd);
     completeButton.addEventListener('click', onComplete);
     newListButton.addEventListener('click', onNewList);
     carryButton.addEventListener('click', onCarry);
@@ -192,7 +202,14 @@ export class TaskPanelSystem extends createSystem({}) {
       overlayExit.removeEventListener('beforexrselect', preventXRSelect);
     });
     this.browser.input.addEventListener('input', onBrowserInput);
-    this.browser.form.addEventListener('submit', onBrowserSubmit);
+    const spatialKeyboard = taskInput.input.element;
+    spatialKeyboard.enterKeyHint = 'enter';
+    spatialKeyboard.maxLength = 200;
+    spatialKeyboard.autocomplete = 'off';
+    this.cleanupFuncs.push(
+      bindTaskEntry(this.browser.input, () => {void this.addTask(panel, taskInput);}, this.browser.form),
+      bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}),
+    );
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
     this.browser.newListButton.addEventListener('click', onBrowserNewList);
     this.browser.carryButton.addEventListener('click', onBrowserCarry);
@@ -202,7 +219,6 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.xrButton.addEventListener('click', onEnterXR);
 
     this.cleanupFuncs.push(
-      () => addButton.removeEventListener('click', onAdd),
       () => completeButton.removeEventListener('click', onComplete),
       () => newListButton.removeEventListener('click', onNewList),
       () => carryButton.removeEventListener('click', onCarry),
@@ -212,7 +228,6 @@ export class TaskPanelSystem extends createSystem({}) {
       () => xrButton.removeEventListener('click', onEnterXR),
       () => exitButton.removeEventListener('click', onExitXR),
       () => this.browser.input.removeEventListener('input', onBrowserInput),
-      () => this.browser.form.removeEventListener('submit', onBrowserSubmit),
       () =>
         this.browser.completeButton.removeEventListener(
           'click',
@@ -272,24 +287,67 @@ export class TaskPanelSystem extends createSystem({}) {
     this.remoteFeedback=false;
   }
 
-  private async addTask(
-    panel: UIKitMLAsset,
-    input: TaskInput,
-  ): Promise<void> {
-    if (this.session.phase !== 'ready' || this.reviewingNewList) return;
-    const submitted = this.draft;
-    const pending = this.session.add(submitted);
+  private focusTaskEntry(input: TaskInput): void {
+    if(this.isBrowser())this.browser.input.focus({preventScroll: true});
+    else input.input.focus();
+  }
+
+  private openTaskEntry(panel: UIKitMLAsset, input: TaskInput): void {
+    if(this.session.phase !== 'ready' || this.reviewingNewList)return;
+    this.collapsed = false;
+    this.entryOpen = true;
     this.render(panel);
-    if (await pending) {
-      if (this.draft === submitted) {
+    this.focusTaskEntry(input);
+  }
+
+  private async finishTaskEntry(panel: UIKitMLAsset, input: TaskInput): Promise<void> {
+    if(this.finishingEntry || this.session.phase !== 'ready' || this.reviewingNewList)return;
+    this.finishingEntry = true;
+    try {
+      this.draft = this.isBrowser() ? this.browser.input.value : input.input.element.value;
+      if(this.draft.trim() && !await this.addTask(panel, input))return;
+      // Never hide new text typed while the final draft was being saved.
+      if(this.draft.trim()) {this.focusTaskEntry(input); return;}
+      this.draft = '';
+      input.input.uncontrolledSignal.value = '';
+      this.browser.input.value = '';
+      this.entryOpen = false;
+      this.session.message = 'Task entry finished. Your list is saved.';
+      input.input.blur();
+      this.browser.input.blur();
+      this.render(panel);
+      if(this.isBrowser())required<HTMLButtonElement>('#browser-show-add-button').focus();
+    } finally {
+      this.finishingEntry = false;
+      this.render(panel);
+    }
+  }
+
+  private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
+    if(this.session.phase !== 'ready' || this.reviewingNewList || !this.entryOpen || this.addingTask)return false;
+    const wasBrowser = this.isBrowser();
+    const keyboard = wasBrowser ? this.browser.input : input.input.element;
+    // Read the native value at submission, including the final soft-keyboard edit.
+    const submitted = keyboard.value;
+    this.draft = submitted;
+    const keepFocus = document.activeElement === keyboard;
+    this.addingTask = true;
+    try {
+      const pending = this.session.add(submitted);
+      this.render(panel);
+      const saved = await pending;
+      if(saved && this.draft === submitted) {
         this.draft = '';
-        // Keep typing uncontrolled so the system keyboard retains its caret.
-        // Clear the Horizon wrapper's real input only after persistence succeeds.
         input.input.uncontrolledSignal.value = '';
         this.browser.input.value = '';
       }
+      return saved;
+    } finally {
+      this.addingTask = false;
+      this.render(panel);
+      if(keepFocus && !this.finishingEntry && this.entryOpen && wasBrowser === this.isBrowser() &&
+        (document.activeElement === keyboard || document.activeElement === document.body))this.focusTaskEntry(input);
     }
-    this.render(panel);
   }
 
   private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
@@ -327,7 +385,8 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
     if (await pending) {
       this.reviewingNewList = false;
-      this.entryOpen = true;
+      this.collapsed = false;
+    this.entryOpen = true;
       this.reviewingClear = false;
       if (this.draft === submittedDraft) {
         this.draft = '';
@@ -371,7 +430,7 @@ export class TaskPanelSystem extends createSystem({}) {
     browserList.replaceChildren();
     for(const task of this.session.tasks) {
       const fresh = animate && this.previousTasks.get(task.id) === false && task.completed;
-      const row = new UIKit.Container({width: '100%', minHeight: 7, flexShrink: 0, padding: 1.5, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'column'});
+      const row = new UIKit.Container({width: '100%', minHeight: 10, flexShrink: 0, padding: 2, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'column'});
       row.name = `Task-${task.id}`;
       const text = new UIKit.Text({text: `${task.completed ? '[x]' : '[ ]'} ${task.text}`, fontSize: 2.8, color: '#332D25', width: '100%'});
       row.add(text);
@@ -445,6 +504,18 @@ export class TaskPanelSystem extends createSystem({}) {
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
       this.session.message === 'Task complete.' || this.remoteFeedback);
+    panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('settings-toggle').setProperties({display: this.collapsed ? 'none' : 'flex'});
+    this.collapseUp?.setProperties({display: this.collapsed ? 'none' : 'flex'});
+    this.collapseDown?.setProperties({display: this.collapsed ? 'flex' : 'none'});
+    panel.requireElementById('collapse-toggle').name = this.collapsed ? 'Expand CueDone' : 'Collapse CueDone';
+    required<HTMLElement>('#browser-panel-body').hidden = this.collapsed;
+    required<HTMLElement>('#browser-settings-toggle').hidden = this.collapsed;
+    const collapse = required<HTMLButtonElement>('#browser-collapse-toggle');
+    collapse.textContent = this.collapsed ? '⌄' : '⌃';
+    collapse.setAttribute('aria-expanded', String(!this.collapsed));
+    collapse.setAttribute('aria-label', this.collapsed ? 'Expand CueDone' : 'Collapse CueDone');
     const active = this.session.activeTask;
     const isLoading = this.session.phase === 'loading';
     const isSaving = this.session.phase === 'saving';
@@ -493,16 +564,13 @@ export class TaskPanelSystem extends createSystem({}) {
           : '#F3EBDD',
     });
     panel.requireElementById('task-input').setProperties({
-      disabled: isLoading || isSaving || loadFailed || this.reviewingNewList,
+      disabled: isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList,
     });
-    panel.requireElementById('add-button').setProperties({
-      disabled:
-        isLoading ||
-        isSaving ||
-        loadFailed ||
-        this.reviewingNewList ||
-        this.draft.trim().length === 0,
+    panel.requireElementById('entry-done-button').setProperties({
+      disabled: isLoading || isSaving || loadFailed || this.reviewingNewList || this.finishingEntry,
     });
+    required<HTMLButtonElement>('#browser-entry-done-button').disabled =
+      isLoading || isSaving || loadFailed || this.reviewingNewList || this.finishingEntry;
     panel.requireElementById('complete-button').setProperties({
       disabled:
         isLoading ||
@@ -589,12 +657,7 @@ export class TaskPanelSystem extends createSystem({}) {
           : 'neutral';
 
     this.browser.form.hidden = this.reviewingNewList || !this.entryOpen;
-    this.browser.input.disabled = busy || loadFailed || this.reviewingNewList;
-    this.browser.addButton.disabled =
-      busy ||
-      loadFailed ||
-      this.reviewingNewList ||
-      this.draft.trim().length === 0;
+    this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
     this.browser.newListButton.hidden = this.reviewingNewList;

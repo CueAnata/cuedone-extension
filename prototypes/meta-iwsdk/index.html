@@ -16,11 +16,14 @@
       <header class="browser-header">
         <div>
           <p class="browser-eyebrow">Personal VR prototype</p>
-          <h1>CueDone</h1>
+          <h1>CueDone™</h1>
+          <p class="browser-tagline">— See it. Do it. CueDone.</p>
         </div>
+        <button id="browser-collapse-toggle" class="browser-button browser-collapse-toggle" type="button" aria-label="Collapse CueDone" aria-expanded="true" aria-controls="browser-panel-body">⌃</button>
         <button id="browser-settings-toggle" class="browser-button browser-settings-toggle" type="button" aria-label="Settings" aria-expanded="false" aria-controls="browser-settings-panel"><span aria-hidden="true">⚙️</span></button>
       </header>
 
+      <div id="browser-panel-body">
       <section class="browser-now-card" aria-labelledby="browser-now-heading">
         <p id="browser-now-heading" class="browser-eyebrow">To-do list</p>
         <div id="browser-task-list" role="list" aria-label="To-do list"></div>
@@ -37,20 +40,22 @@
         <button id="browser-show-add-button" class="browser-button browser-secondary" type="button">Add Task</button>
       </div>
       <button id="browser-done-button" class="browser-button browser-primary browser-done" type="button" hidden>Done</button>
-      <form id="browser-task-form" class="browser-task-form">
+      <form id="browser-task-form" class="browser-task-form" hidden>
         <label for="browser-task-input">Add a task</label>
+        <div class="browser-entry-row">
         <input
           id="browser-task-input"
           type="text"
           maxlength="200"
           autocomplete="off"
-          enterkeyhint="done"
+          enterkeyhint="enter"
+          aria-describedby="browser-entry-help"
           placeholder="Type a short task"
         />
-        <div class="browser-action-row">
-          <button id="browser-add-button" class="browser-button browser-secondary" type="submit">Add</button>
-          <button hidden id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
+          <button id="browser-entry-done-button" class="browser-button browser-secondary" type="button">Done</button>
         </div>
+        <p id="browser-entry-help" class="browser-entry-help">Enter adds a task. Done finishes.</p>
+        <button hidden id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
       </form>
 
       <p id="browser-status-text" class="browser-status" role="status" aria-live="polite">
@@ -93,7 +98,9 @@
         <p id="browser-spatial-status" role="status" aria-live="polite"></p>
         <p>Stay seated or within your Quest boundary. Hand placement falls back to your head when hands are not tracked. Handheld controllers are disabled. Zen Garden frames your board with a living trellis. Garden sound defaults Off. Companion windows synchronize only within the same browser profile and origin.</p>
       </section>
+      <p class="browser-entry-help">Keep CueDone in this browser window beside your workspace. Enter AR opens an immersive session.</p>
       <button id="browser-xr-button" class="browser-button browser-enter" type="button">Enter AR</button>
+      </div>
     </main>
     <script type="module" src="/src/index.ts"></script>
   </body>

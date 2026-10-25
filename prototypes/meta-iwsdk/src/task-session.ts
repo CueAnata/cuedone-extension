@@ -74,7 +74,7 @@ export class PersonalTaskSession {
     const normalized = normalizeTaskText(text);
     if (!normalized || this.phase !== 'ready') {
       if (!normalized && this.phase === 'ready') {
-        this.message = 'Enter a task before choosing Add.';
+        this.message = 'Type a task, then press Enter or choose Done.';
       }
       return false;
     }

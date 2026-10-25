@@ -1,6 +1,29 @@
 # CueDone Personal VR prototype
 
 
+## Keyboard task-entry fix — October 22, 2026
+
+Add Task only opens and focuses entry, including on repeated clicks; it never
+submits or toggles the field closed. Enter/Return saves a task and clears the
+field after a successful save, keeping entry open and focused. Browser and
+spatial inputs share a keyboard binder attached to the actual HTML keyboard
+element. It handles keydown, soft-keyboard line-break beforeinput, and the browser
+form's submit fallback, prevents default navigation/submission, ignores held-key
+repeats and IME composition, and removes listeners at teardown. Both keyboard
+elements use the Enter hint rather than asking the keyboard to dismiss with Done.
+
+The Done button beside the input saves a remaining nonempty draft, then closes
+entry and dismisses its keyboard. An empty/whitespace draft closes without adding
+a task. Failed saves keep the field open and retain the draft. New text typed
+while an add is saving is never cleared or hidden by that older save. The input
+stays enabled during its own task save; duplicate saves remain guarded by the
+session state. The separate completed-list Done button retains its prior behavior.
+
+Validation: 73 tests, TypeScript, production build, and isolated browser checks
+for opening/refocusing, consecutive Enter saves, retained focus, clearing, Done
+with a final draft, and empty Enter/Done. Native Quest system-keyboard behavior
+still requires headset verification. No commit, push or deployment is included.
+
 ## Browser card wrapper refinement — October 22, 2026
 
 The user-supplied wrapper styling now supersedes the earlier 448 px card width
@@ -388,3 +411,23 @@ checks on isolated localhost test data (multiple rows, out-of-order completion,
 Done visibility, Reset, settings, Clear All cancellation and confirmation).
 Quest 3 readability, pinch targets at 2.5 m, native keyboard, finale clipping,
 perceived audio and comfort still require physical headset verification.
+
+
+### Quest bare-hand targets and collapsible header — October 24, 2026
+The requested prototype refinement retains the existing Add Task focus-only,
+Enter/Return save-and-clear, and adjacent Done flow. Browser interactive targets
+are at least 56px high; spatial buttons and task rows are at least 10 UIKit units
+high with separated header targets. Zen Garden remains the only approved theme;
+its existing appearance/motion/sound controls use the same enlarged targets.
+A dedicated chevron collapses the body, settings and move handle, leaving the
+CueDone™ — See it. Do it. CueDone. header and expand control. Collapse releases
+the keyboard while preserving the draft and task state; expansion is presentation
+only and never submits text. This temporary state is shared between browser and
+immersive presentations within the open page.
+For adjacent desktop windows, leave CueDone in the normal Quest browser spatial
+window and use Horizon OS placement/pinning. Enter AR remains an explicit optional
+immersive-ar action; the page cannot pin OS windows or guarantee their visibility
+inside an immersive session. Existing required hand tracking and controller
+exclusion remain unchanged. Physical Quest pinch, native keyboard, window
+coexistence and comfort require headset verification. No extension UI, icons,
+backend, task storage namespace, deployment or sync behavior is changed.

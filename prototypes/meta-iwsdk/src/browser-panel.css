@@ -310,3 +310,24 @@ h2 {
 #xr-overlay { position: fixed; inset: 0; z-index: 10; pointer-events: none; background: transparent; }
 #xr-overlay:xr-overlay { background: transparent; }
 #overlay-exit-button { position: absolute; right: 12px; bottom: 12px; pointer-events: auto; }
+
+.browser-entry-row { display: flex; align-items: stretch; gap: 8px; }
+.browser-entry-row input { width: 0; min-width: 0; flex: 1; }
+.browser-entry-row button { flex: 0 0 auto; }
+.browser-entry-help { margin: 0; font-size: 0.8rem; color: #665240; }
+
+/* Generous visible hand-ray targets, including narrow pinned browser windows. */
+.browser-panel .browser-button,
+.browser-panel .browser-task-row,
+.browser-panel .browser-task-form input {
+  min-height: 56px;
+  min-width: 56px;
+  padding: 14px;
+}
+.browser-header { align-items: center; flex-wrap: wrap; }
+.browser-header > div { flex: 1 1 150px; min-width: 0; }
+.browser-tagline { margin: 6px 0 0; font-size: 0.88rem; line-height: 1.4; }
+.browser-panel .browser-collapse-toggle { flex: 0 0 56px; font-size: 1.5rem; background: #ffe4b3; }
+.browser-entry-row .browser-button { min-width: 76px; }
+.browser-entry-row input { min-width: 0; }
+.browser-panel .browser-button:hover { filter: brightness(0.95); }

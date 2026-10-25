@@ -17,7 +17,7 @@
 
   .grab-handle {
     width: 100%;
-    min-height: 6.5;
+    min-height: 10;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
@@ -32,12 +32,13 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 2;
     width: 100%;
   }
 
   .settings-toggle {
-    width: 7.5;
-    height: 7.5;
+    width: 10;
+    height: 10;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
@@ -134,10 +135,29 @@
   }
 
   .input {
-    width: 100%;
-    height: 7.5;
+    width: 0;
+    min-width: 0;
+    flex-grow: 1;
+    height: 10;
     font-size: 2.6;
     color: #332d25;
+  }
+
+  .entry-row {
+    flex-direction: row;
+    width: 100%;
+    align-items: center;
+    gap: 1.5;
+  }
+  .entry-done {
+    width: 14;
+    height: 10;
+    justify-content: center;
+    border-radius: 2;
+    background-color: #d97706;
+    color: #ffffff;
+    font-size: 2.6;
+    font-weight: 700;
   }
 
   .action-row {
@@ -152,7 +172,7 @@
     width: 34;
     min-width: 0;
     max-width: 34;
-    height: 7.5;
+    height: 10;
     justify-content: center;
     background-color: #efe7d8;
     border-radius: 2;
@@ -185,7 +205,7 @@
 
   .new-list-button {
     width: 100%;
-    height: 7;
+    height: 10;
     justify-content: center;
     border-width: 0.6;
     border-color: #d97706;
@@ -229,7 +249,7 @@
 
   .carry-button {
     width: 100%;
-    min-height: 7;
+    min-height: 10;
     padding-right: 2;
     padding-left: 2;
     justify-content: center;
@@ -252,7 +272,7 @@
     flex-shrink: 1;
     width: 33;
     min-width: 0;
-    height: 7;
+    height: 10;
     justify-content: center;
     border-radius: 2;
     background-color: #24201b;
@@ -275,7 +295,7 @@
 
   .small-button {
     width: 100%;
-    height: 7;
+    height: 10;
     justify-content: center;
     background-color: #24201b;
     border-radius: 2;
@@ -288,9 +308,14 @@
 <Panel class="panel-root">
   <button id="grab-handle" class="grab-handle">Hold pinch here to move</button>
   <div class="brand-row">
-    <span class="brand">CueDone</span>
+    <div style="flex-direction: column; flex-grow: 1; flex-shrink: 1; min-width: 0">
+      <div style="flex-direction: row; align-items: flex-start"><span class="brand">CueDone</span><span style="font-size: 1.8; font-weight: 700; color: #17130f">TM</span></div>
+      <div style="flex-direction: row; align-items: center; gap: 0.8"><div style="width: 2.5; height: 0.2; background-color: #96550c"></div><span class="eyebrow">See it. Do it. CueDone.</span></div>
+    </div>
+    <button id="collapse-toggle" class="settings-toggle"></button>
     <button id="settings-toggle" class="settings-toggle"></button>
   </div>
+  <div id="panel-body" style="flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
   <div id="task-list" style="flex-direction: column; width: 100%; max-height: 48; overflow: scroll; gap: 1"></div>
   <div class="task-card" style="display: none">
@@ -306,17 +331,18 @@
     <button id="show-add-button" class="action">Add Task</button>
   </div>
   <button id="done-button" class="carry-button" style="display: none">Done</button>
-  <div id="task-controls" class="task-controls">
+  <div id="task-controls" class="task-controls" style="display: none">
     <span class="label">Add a task</span>
+    <div class="entry-row">
     <Input
       id="task-input"
       class="input"
       placeholder="Type a short task"
     ></Input>
-    <div class="action-row">
-      <button id="add-button" class="action">Add</button>
-      <button id="complete-button" class="action complete" style="display: none">Complete</button>
+      <button id="entry-done-button" class="entry-done">Done</button>
     </div>
+    <span class="review-copy">Enter adds a task. Done finishes.</span>
+    <button id="complete-button" class="action complete" style="display: none">Complete</button>
   </div>
   <span id="status-text" class="status">Loading your local list...</span>
   <button id="new-list-button" class="new-list-button">New List</button>
@@ -355,5 +381,6 @@
     <button id="exit-button" class="small-button" style="display: none">
       Exit AR
     </button>
+  </div>
   </div>
 </Panel>

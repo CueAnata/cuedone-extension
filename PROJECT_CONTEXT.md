@@ -352,3 +352,38 @@ padding, 90% white background, backdrop blur, rounded corners and shadow. This
 supersedes the previous 448 px maximum and 8 px card padding for the prototype's
 2D card only. The implementation shrinks to narrower available widths; spatial
 panel sizing, task behavior and extension styling remain unchanged.
+
+
+### Prototype task-entry flow — October 22, 2026
+The user authorized correcting task entry in `prototypes/meta-iwsdk`. Add Task
+only opens/focuses the field, including on repeated clicks. Enter/Return saves
+and clears after success while keeping entry active. A separate Done button next
+to the input saves any remaining nonempty draft and closes entry; empty Done adds
+nothing. Failed saves preserve the draft and open field, and a newer draft typed
+during an older save is retained. The completed-list Done remains separate.
+Browser form defaults and physical/soft-keyboard Enter actions are prevented and
+handled explicitly on both actual keyboard elements, with repeat and IME guards.
+The input remains enabled during its own add save to avoid dismissing the keyboard.
+73 tests, TypeScript, production build and isolated browser interaction checks
+pass; native Quest keyboard verification remains pending. Extension behavior is
+unchanged. No commit, push or deployment is included in this implementation.
+
+
+### Quest bare-hand targets and collapsible header — October 24, 2026
+The requested prototype refinement retains the existing Add Task focus-only,
+Enter/Return save-and-clear, and adjacent Done flow. Browser interactive targets
+are at least 56px high; spatial buttons and task rows are at least 10 UIKit units
+high with separated header targets. Zen Garden remains the only approved theme;
+its existing appearance/motion/sound controls use the same enlarged targets.
+A dedicated chevron collapses the body, settings and move handle, leaving the
+CueDone™ — See it. Do it. CueDone. header and expand control. Collapse releases
+the keyboard while preserving the draft and task state; expansion is presentation
+only and never submits text. This temporary state is shared between browser and
+immersive presentations within the open page.
+For adjacent desktop windows, leave CueDone in the normal Quest browser spatial
+window and use Horizon OS placement/pinning. Enter AR remains an explicit optional
+immersive-ar action; the page cannot pin OS windows or guarantee their visibility
+inside an immersive session. Existing required hand tracking and controller
+exclusion remain unchanged. Physical Quest pinch, native keyboard, window
+coexistence and comfort require headset verification. No extension UI, icons,
+backend, task storage namespace, deployment or sync behavior is changed.
