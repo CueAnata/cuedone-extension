@@ -115,25 +115,27 @@ h2 {
   position: relative;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 18px 1fr 16px;
+  grid-template-rows: 48px 1fr 22px;
   gap: 0;
   width: 100%;
-  min-height: 140px;
+  min-height: 180px;
   border-radius: 10px;
-  overflow: hidden;
-  background: transparent;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
-}
-
-.trellis-pillar {
-  background-color: #c49a6b;
+  overflow: visible;
+  background: #c49a6b;
   background-image:
     linear-gradient(45deg, #6b3d1a 0 1.4px, transparent 1.4px 14px),
     linear-gradient(-45deg, #6b3d1a 0 1.4px, transparent 1.4px 14px),
     linear-gradient(90deg, rgba(107,61,26,0.32) 0 1px, transparent 1px 7px),
     linear-gradient(rgba(107,61,26,0.32) 0 1px, transparent 1px 7px);
   background-size: 14px 14px, 14px 14px, 7px 7px, 7px 7px;
+  background-position: 0 0, 0 0, 0 0, 0 0;
   border: 1px solid #6b3d1a;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.trellis-pillar {
+  background: transparent;
+  border: none;
   position: relative;
   overflow: hidden;
 }
@@ -141,31 +143,31 @@ h2 {
 .trellis-pillar--top {
   grid-column: 1 / 4;
   grid-row: 1;
-  border-bottom: none;
-  border-radius: 10px 10px 0 0;
+  border: none;
+  background: transparent;
+  min-height: 48px;
 }
 
 .trellis-pillar--left {
   grid-column: 1;
   grid-row: 2;
-  border-right: none;
-  border-top: none;
-  border-bottom: none;
+  border: none;
+  background: transparent;
 }
 
 .trellis-pillar--right {
   grid-column: 3;
   grid-row: 2;
-  border-left: none;
-  border-top: none;
-  border-bottom: none;
+  border: none;
+  background: transparent;
 }
 
 .trellis-pillar--bottom {
   grid-column: 1 / 4;
   grid-row: 3;
-  border-top: none;
-  border-radius: 0 0 10px 10px;
+  border: none;
+  background: transparent;
+  min-height: 22px;
 }
 
 .trellis-content {
