@@ -1797,11 +1797,14 @@ async function mountTaskList(root) {
     </section>
     <p class="client-sequence-status" role="status" hidden></p>
     <div class="lattice-frame" data-vine-progress="0" style="--vine-height: 0%;">
-      <div class="lattice-vine lattice-vine--left" aria-hidden="true"></div>
-      <div class="lattice-vine lattice-vine--right" aria-hidden="true"></div>
+      <div class="lattice-pillar lattice-pillar--top" aria-hidden="true"></div>
+      <div class="lattice-pillar lattice-pillar--left" aria-hidden="true"><div class="lattice-vine lattice-vine--left" aria-hidden="true"></div></div>
+      <div class="lattice-pillar lattice-pillar--right" aria-hidden="true"><div class="lattice-vine lattice-vine--right" aria-hidden="true"></div></div>
       <div class="lattice-vine lattice-vine--top" aria-hidden="true"></div>
-      <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
-      <p class="empty-state">No tasks yet. Add one to get started.</p>
+      <div class="lattice-content">
+        <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
+        <p class="empty-state">No tasks yet. Add one to get started.</p>
+      </div>
     </div>
     <section class="client-motivator" hidden>
       <div class="client-reward-head">
