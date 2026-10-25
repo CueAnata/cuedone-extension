@@ -48,6 +48,7 @@ import {
   showCelebration,
   showFinalTrail,
   stopCelebrationAudio,
+  triggerGardenTrellisGrandFinale,
   unlockCelebrationAudio,
 } from "./celebrations.js";
 import {
@@ -1795,8 +1796,13 @@ async function mountTaskList(root) {
       <p class="personal-plant-status sr-only" aria-live="polite"></p>
     </section>
     <p class="client-sequence-status" role="status" hidden></p>
-    <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
-    <p class="empty-state">No tasks yet. Add one to get started.</p>
+    <div class="lattice-frame" data-vine-progress="0" style="--vine-height: 0%;">
+      <div class="lattice-vine lattice-vine--left" aria-hidden="true"></div>
+      <div class="lattice-vine lattice-vine--right" aria-hidden="true"></div>
+      <div class="lattice-vine lattice-vine--top" aria-hidden="true"></div>
+      <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
+      <p class="empty-state">No tasks yet. Add one to get started.</p>
+    </div>
     <section class="client-motivator" hidden>
       <div class="client-reward-head">
         <p class="client-reward-heading" id="reward-select-label">Reward</p>
@@ -1891,6 +1897,7 @@ async function mountTaskList(root) {
   const doneButton = root.querySelector(".done-button");
   const addToggle = root.querySelector(".add-task-toggle");
   const list = root.querySelector(".task-list");
+  const latticeFrame = root.querySelector(".lattice-frame");
   const resetSection = root.querySelector(".list-reset");
   const resetButton = root.querySelector(".reset-list-button");
   const resetConfirm = root.querySelector(".reset-confirm");
@@ -3034,6 +3041,14 @@ async function mountTaskList(root) {
       return;
     }
 
+    // Garden Trellis AR milestone grand finale: final task checked + settings allow
+    if (plan.kind === "final" && plan.playVisualCelebration && !prefersReducedMotion()) {
+      try {
+        const tf = root.querySelector(".lattice-frame");
+        if (tf) void triggerGardenTrellisGrandFinale(tf);
+      } catch {}
+    }
+
     const rewardText =
       plan.kind === "final" && !clientSequence.enabled ? formatRewardReveal(currentReward()) : "";
 
@@ -3159,7 +3174,7 @@ async function mountTaskList(root) {
     resetConfirm.hidden = !canReset || !resetConfirming;
   }
 
-  async function persist(nextTasks, { clearEnding = false } = {}) {
+  async function persist(nextTasks, { clearEnding = false, resetVisualProgress = false } = {}) {
     const previous = tasks;
     const previousKind = tasksKind;
     const previousSequence = clientSequence;
@@ -3181,6 +3196,7 @@ async function mountTaskList(root) {
     try {
       await saveList(kind, tasks, {
         clearEnding,
+        resetVisualProgress,
         breakTimer: resumedBreakTimer,
         clientSequence: isClientMode() ? clientSequence : null,
       });
@@ -3227,6 +3243,17 @@ async function mountTaskList(root) {
     }
     emptyState.textContent = emptyStateCopy(currentListKind());
     emptyState.hidden = shown.length > 0;
+    // Lattice vines: anchor left/right, grow upward with completion, meet at top center
+    if (latticeFrame) {
+      const total = Number(oneActiveState.progress.total) || 0;
+      const complete = Number(oneActiveState.progress.complete) || 0;
+      const ratio = total > 0 ? complete / total : 0;
+      const percent = Math.round(ratio * 100);
+      latticeFrame.style.setProperty("--vine-height", `${percent}%`);
+      latticeFrame.dataset.vineProgress = String(percent);
+      // Clean windowed framing: remove any diagnostic/inline banners crowding top frame
+      latticeFrame.querySelectorAll(".diagnostic, .inline-banner, [data-diagnostic]").forEach((el) => el.remove());
+    }
     list.replaceChildren();
     const currentId = nextUnfinishedTask(sequence ? sequence.orderedTasks : shown)?.id;
 
@@ -3835,7 +3862,7 @@ async function mountTaskList(root) {
     document.querySelectorAll('.fisherman-scene, #anglerContainer').forEach(el=>{
       try { resetFishermanVisualToIdle(el.closest('.fisherman-scene') || el); } catch (_) {}
     });
-    await persist(next, { clearEnding: true });
+    await persist(next, { clearEnding: true, resetVisualProgress: true });
     // Ensure visual stays at 0 after persist/render (Top + Side)
     try { resetFishermanVisualToIdle(root); } catch (_) {}
     try { resetFishermanVisualToIdle(document); } catch (_) {}

@@ -14,9 +14,9 @@ export function clientVisualSettings(value, changes) {
   }
   return next;
 }
-export function clientVisualForList(value, previous, tasks, random = Math.random) {
+export function clientVisualForList(value, previous, tasks, random = Math.random, options = {}) {
   const next=normalizeClientVisualProgress(value);
-  if(next.enabled && next.theme === "random") next.randomState=themeSelectionForList(next.randomState,previous,tasks,"random",random);
+  if(next.enabled && next.theme === "random") next.randomState=themeSelectionForList(next.randomState,previous,tasks,"random",random,options);
   return next;
 }
 export function clientCompletionStyle(savedStyle, visualProgress) {

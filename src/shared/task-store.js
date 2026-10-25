@@ -29,7 +29,7 @@ export async function loadTasks() {
 
 export async function saveTasks(
   tasks,
-  { clearEnding = false, breakTimer = null, clientSequence = null } = {}
+  { clearEnding = false, breakTimer = null, clientSequence = null, resetVisualProgress = false } = {}
 ) {
   const values = { [TASKS_STORAGE_KEY]: tasks };
   const ending = clearEnding
@@ -49,12 +49,12 @@ export async function saveTasks(
   const saved = (await getLocal(PERSONAL_RANDOM_THEME_KEY))[PERSONAL_RANDOM_THEME_KEY];
   if (preference === "random" || (preference == null && saved?.active)) {
     const previous = listFromStorage((await getLocal(TASKS_STORAGE_KEY))[TASKS_STORAGE_KEY]);
-    values[PERSONAL_RANDOM_THEME_KEY] = themeSelectionForList(saved, previous, tasks, preference);
+    values[PERSONAL_RANDOM_THEME_KEY] = themeSelectionForList(saved, previous, tasks, preference, Math.random, { reset: resetVisualProgress });
   }
   const clientVisual = (await getLocal(CLIENT_VISUAL_PROGRESS_KEY))[CLIENT_VISUAL_PROGRESS_KEY];
   if (clientVisual?.enabled && clientVisual.theme === "random") {
     const previous = listFromStorage((await getLocal(TASKS_STORAGE_KEY))[TASKS_STORAGE_KEY]);
-    values[CLIENT_VISUAL_PROGRESS_KEY] = clientVisualForList(clientVisual, previous, tasks);
+    values[CLIENT_VISUAL_PROGRESS_KEY] = clientVisualForList(clientVisual, previous, tasks, Math.random, { reset: resetVisualProgress });
   }
   await setLocal(values);
 }

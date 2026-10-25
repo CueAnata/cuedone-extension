@@ -539,7 +539,7 @@ test("Personal Private affirmations and session endings stay isolated and silent
   assert.doesNotMatch(continueHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
 
   const persistFn = taskListJs.slice(
-    taskListJs.indexOf("async function persist(nextTasks, { clearEnding = false } = {})"),
+    taskListJs.indexOf("async function persist(nextTasks, { clearEnding = false, resetVisualProgress = false } = {})"),
     taskListJs.indexOf("function render()")
   );
   assert.match(
@@ -596,7 +596,7 @@ test("Reset List supports checked tasks and confirms before unchecking", () => {
     taskListJs.indexOf("doneButton.addEventListener")
   );
   assert.match(confirmHandler, /resetCompletedTasks\(shown, \{ allowPartial: true \}\)/);
-  assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true \}\)/);
+  assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true, resetVisualProgress: true \}\)/);
   assert.match(
     confirmHandler,
     /saveTasks: \(next\) =>[\s\S]*saveList\(kind, next, \{[\s\S]*clearEnding: true,[\s\S]*breakTimer: resumedBreakTimer/

@@ -40,7 +40,7 @@ export function createVisualThemeSelection(random = Math.random, saved = {}) {
 }
 
 
-export function themeSelectionForList(saved, previousTasks, nextTasks, preference, random = Math.random) {
+export function themeSelectionForList(saved, previousTasks, nextTasks, preference, random = Math.random, { reset = false } = {}) {
   if (normalizeVisualTheme(preference) !== "random") return saved;
   const selection = createVisualThemeSelection(random, saved ?? {});
   selection.resolve("random");
@@ -48,7 +48,7 @@ export function themeSelectionForList(saved, previousTasks, nextTasks, preferenc
   const previousIds = new Set(previousTasks.map(task => task.id));
   const newTask = nextTasks.some(task => !previousIds.has(task.id));
   const replacedCompletedList = previousComplete && (newTask || nextTasks.length === 0);
-  let pending = saved?.pendingNextList === true || replacedCompletedList;
+  let pending = saved?.pendingNextList === true || replacedCompletedList || (reset && nextTasks.length > 0);
   if (pending && nextTasks.length > 0) {
     selection.next("random");
     pending = false;

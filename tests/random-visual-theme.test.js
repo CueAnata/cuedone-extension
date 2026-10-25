@@ -82,7 +82,7 @@ test("one Random theme stays with the entire list, including reopen and unchecki
     previous = next;
     state = updated;
   }
-  // Reset/uncheck on the same task IDs does not select another theme.
+  // Ordinary unchecking on the same task IDs does not select another theme.
   assert.deepEqual(themeSelectionForList(state, previous, tasks, "random", () => 0), state);
   // Creating an empty new list retains the finale until the next task is added.
   const pending = themeSelectionForList(state, previous, [], "random", () => 0);

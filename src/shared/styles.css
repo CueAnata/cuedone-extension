@@ -3794,6 +3794,182 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .client-routine-status { margin: 0; font-size: .8rem; }
 
 /* The CSS plant needs its own canvas height: its stem/leaves are absolute. */
+/* --- Three-Sided Lattice Frame: wrapper completely surrounding task list on top/left/right only --- */
+.lattice-frame {
+  position: relative;
+  margin-top: 12px;
+  padding: 12px 14px 10px;
+  border: 2px solid #c9a87a;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: visible;
+  /* subtle lattice grid texture */
+  background-image:
+    linear-gradient(transparent 13px, rgba(201,168,122,0.09) 13px),
+    linear-gradient(90deg, transparent 13px, rgba(201,168,122,0.09) 13px);
+  background-size: 14px 14px;
+}
+
+.lattice-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(201,168,122,0.18);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lattice-frame .task-list,
+.lattice-frame .empty-state {
+  position: relative;
+  z-index: 1;
+}
+
+/* Vines: anchor to left/right side frames, grow upward, meet at top center */
+.lattice-vine {
+  position: absolute;
+  bottom: 0;
+  width: 16px;
+  z-index: 2;
+  pointer-events: none;
+  transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: visible;
+}
+
+.lattice-vine--left,
+.lattice-vine--right {
+  height: var(--vine-height, 0%);
+  background: linear-gradient(to top, #2e7d32 0%, #4caf50 28%, #81c784 62%, #aed581 100%);
+  border-radius: 8px 8px 0 0;
+  transform-origin: bottom center;
+}
+
+.lattice-vine--left {
+  left: 6px;
+}
+
+.lattice-vine--right {
+  right: 6px;
+}
+
+/* leaf accents along each vine */
+.lattice-vine--left::before,
+.lattice-vine--right::before,
+.lattice-vine--left::after,
+.lattice-vine--right::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: #66bb6a;
+  border: 0.7px solid #2e7d32;
+  border-radius: 9px 0 9px 0;
+  opacity: 0.96;
+}
+
+.lattice-vine--left::before { left: -5px; top: 18%; transform: rotate(-18deg); }
+.lattice-vine--left::after { right: -5px; top: 46%; transform: rotate(18deg) scaleX(-1); }
+.lattice-vine--right::before { right: -5px; top: 22%; transform: rotate(18deg); }
+.lattice-vine--right::after { left: -5px; top: 52%; transform: rotate(-18deg) scaleX(-1); }
+
+/* top connecting vine — becomes visible when vines meet at 100% */
+.lattice-vine--top {
+  top: 0;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  width: 0;
+  height: 10px;
+  background: linear-gradient(to right, #81c784, #4caf50 50%, #81c784);
+  border-radius: 0 0 8px 8px;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: width 420ms ease, opacity 320ms ease;
+}
+
+.lattice-frame[data-vine-progress="100"] .lattice-vine--top {
+  width: calc(100% - 32px);
+  opacity: 1;
+}
+
+/* Clean windowed framing — suppress diagnostic/inline banners inside top frame */
+.lattice-frame .diagnostic,
+.lattice-frame .inline-banner,
+.lattice-frame [data-diagnostic] {
+  display: none !important;
+}
+
+/* Garden Trellis AR grand finale: vines meet completely at top center */
+.lattice-frame.is-ar-finale .lattice-vine--left,
+.lattice-frame.is-ar-finale .lattice-vine--right {
+  height: 100% !important;
+}
+
+.lattice-frame.is-ar-finale .lattice-vine--top {
+  width: calc(100% - 32px) !important;
+  opacity: 1 !important;
+}
+
+/* Butterflies emanating outward from blooming flowers */
+.garden-butterflies {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.garden-butterfly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 15px;
+  line-height: 1;
+  animation: garden-butterfly-drift 4.5s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes garden-butterfly-drift {
+  0% { transform: translate(-50%, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  14% { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-butterfly { animation: none !important; opacity: 0.85; }
+}
+
+/* Graceful 2D fallback banner — lightweight, no layout shift */
+.garden-fallback-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  background: var(--surface);
+  border: 1px solid #c9a87a;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgb(22 22 22 / 12%);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  animation: garden-banner-in 260ms ease;
+}
+
+@keyframes garden-banner-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .personal-plant[data-visual-theme="plant"] > .personal-plant-visual {
   min-height: 96px;
   box-sizing: border-box;

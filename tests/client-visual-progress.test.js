@@ -19,7 +19,7 @@ test("Client visuals default Off/Random and save separately from Personal with f
  fake.reject(true);await assert.rejects(saveClientVisualProgress({enabled:true,theme:'coffee'}));
  assert.equal(fake.data[CLIENT_VISUAL_PROGRESS_KEY].theme,'battery');
 });
-test("Client Random keeps the list's theme through checks, Reset and reload; new completed lists exhaust the bag",()=>{
+test("Client Random keeps the list's theme through checks, ordinary unchecks and reload; new completed lists exhaust the bag",()=>{
  let state=clientVisualSettings({}, {enabled:true});const chosen=[];let previous=[];
  for(let i=0;i<RANDOM_VISUAL_THEME_VALUES.length;i++) {
   const list=tasks.map(t=>({...t,id:t.id+i}));
@@ -64,5 +64,39 @@ test("progression permits one selected completion sound while Off restores saved
    assert.equal(plan.kind,progress ? 'final' : null);
    assert.equal(plan.playSound,progress && sound==='on');
   }
+ }
+});
+
+test("explicit Reset refreshes both Random themes atomically without changing task identities", async () => {
+ const {PERSONAL_RANDOM_THEME_KEY,PERSONAL_VISUAL_THEME_KEY}=await import('../src/shared/preferences.js');
+ const {createVisualThemeSelection}=await import('../src/shared/random-visual-theme.js');
+ const selection=createVisualThemeSelection(()=>0);selection.resolve('random');
+ const personal=selection.snapshot();
+ const client=clientVisualSettings({}, {enabled:true});
+ const done=tasks.map(task=>({...task,completed:true}));
+ const fake=storage({[TASKS_STORAGE_KEY]:done,[PERSONAL_VISUAL_THEME_KEY]:'random',
+  [PERSONAL_RANDOM_THEME_KEY]:personal,[CLIENT_VISUAL_PROGRESS_KEY]:client});
+ const original=structuredClone(fake.data);
+ fake.reject(true);
+ await assert.rejects(saveList('private',tasks,{clearEnding:true,resetVisualProgress:true}));
+ assert.deepEqual(fake.data,original);
+ fake.reject(false);
+ await saveList('private',tasks,{clearEnding:true,resetVisualProgress:true});
+ assert.deepEqual(fake.data[TASKS_STORAGE_KEY],tasks);
+ assert.notEqual(fake.data[PERSONAL_RANDOM_THEME_KEY].active,personal.active);
+ assert.notEqual(fake.data[CLIENT_VISUAL_PROGRESS_KEY].randomState.active,client.randomState.active);
+ assert.equal(fake.data[PERSONAL_RANDOM_THEME_KEY].bag.length,personal.bag.length-1);
+ const refreshed=structuredClone(fake.data);
+ await saveList('private',tasks);
+ assert.deepEqual(fake.data,refreshed);
+ await saveList('public',tasks,{resetVisualProgress:true});
+ assert.deepEqual(fake.data[PERSONAL_RANDOM_THEME_KEY],refreshed[PERSONAL_RANDOM_THEME_KEY]);
+ assert.deepEqual(fake.data[CLIENT_VISUAL_PROGRESS_KEY],refreshed[CLIENT_VISUAL_PROGRESS_KEY]);
+});
+
+test("explicit Reset preserves fixed themes and disabled Client visuals",()=>{
+ for(const settings of [{enabled:true,theme:'coffee'},{enabled:false,theme:'random'}]) {
+  const state=clientVisualSettings({},settings);
+  assert.deepEqual(clientVisualForList(state,tasks,tasks,()=>0,{reset:true}),state);
  }
 });
