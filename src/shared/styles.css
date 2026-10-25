@@ -136,7 +136,7 @@ input {
 
 .app-main {
   position: relative;
-  padding: 8px 10px 10px;
+  padding: 6px 6px 8px;
 }
 
 .task-form {
@@ -3794,19 +3794,19 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .client-routine-status { margin: 0; font-size: .8rem; }
 
 /* The CSS plant needs its own canvas height: its stem/leaves are absolute. */
-/* --- 15% Width Trellis Frame: solid 3-sided rectangular frame (top/left/right, bottom open) --- */
+/* --- Full Rectangular Lattice Frame: 4-sided solid diamond lattice encircling task list --- */
 .lattice-frame {
   position: relative;
   margin-top: 8px;
   padding: 0;
   border: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: 10px;
   background: transparent;
   box-shadow: var(--shadow);
   overflow: hidden;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 22px 1fr;
+  grid-template-rows: 22px 1fr 18px;
   gap: 0;
   min-height: 88px;
 }
@@ -3841,6 +3841,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   grid-row: 2;
   border-right: none;
   border-top: none;
+  border-bottom: none;
 }
 
 .lattice-pillar--right {
@@ -3848,6 +3849,15 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   grid-row: 2;
   border-left: none;
   border-top: none;
+  border-bottom: none;
+}
+
+.lattice-pillar--bottom {
+  grid-column: 1 / 4;
+  grid-row: 3;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  min-height: 18px;
 }
 
 .lattice-content {
