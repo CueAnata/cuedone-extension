@@ -63,3 +63,35 @@ test("action buttons remain clean, distinct, properly aligned and header intact"
   assert.match(vrCss, /\.browser-secondary[^}]*background:\s*#ffb13f/);
   assert.match(vrCss, /\.browser-primary[^}]*background:\s*#d86f09/);
 });
+
+test("vine growth progression is incremental inside 4-sided pillars reaching 100%", () => {
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  const js = readFileSync("src/shared/task-list.js", "utf8");
+  // Side vines use --vine-height, top vine grows outward proportionally
+  assert.match(css, /\.lattice-pillar \.lattice-vine--left,\s*\.lattice-pillar \.lattice-vine--right[^}]*height:\s*var\(--vine-height/);
+  assert.match(css, /\.lattice-vine--top[^}]*width:\s*calc\(var\(--vine-height/);
+  assert.match(css, /\.lattice-vine--top[^}]*opacity:\s*calc\(clamp/);
+  assert.match(css, /\.lattice-vine--top[^}]*max-width:\s*calc\(70%/);
+  // JS sets --vine-height from checked/total ratio and updates on every render
+  assert.match(js, /latticeFrame\.style\.setProperty\("--vine-height"/);
+  assert.match(js, /const percent = Math\.round\(ratio \* 100\)/);
+  // Interactive: change handler updates tasks then render immediately (no manual refresh)
+  assert.match(js, /tasks = nextTasks/);
+  assert.match(js, /function render\(\)/);
+});
+
+test("standalone widget remains compact and vertically concise", () => {
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  const vrCss = readFileSync("prototypes/meta-iwsdk/src/browser-panel.css", "utf8");
+  // Lattice is exclusive to task list (only ul#task-list inside lattice-content, buttons outside)
+  const js = readFileSync("src/shared/task-list.js", "utf8");
+  assert.match(js, /<div class="lattice-content">\s*<ul id="task-list"/);
+  assert.match(js, /<\/div>\s*<\/div>\s*<section class="client-motivator"/);
+  // VR: trellis-content wraps task list only, buttons outside trellis-frame
+  const html = readFileSync("prototypes/meta-iwsdk/index.html", "utf8");
+  assert.match(html, /<div class="trellis-content">\s*<p id="browser-now-heading"/);
+  assert.match(html, /<\/div>\s*<\/div>\s*<div class="browser-list-actions/);
+  // No dead space: lattice has tight padding, top/bottom pillars 18px
+  assert.match(css, /\.lattice-content[^}]*padding:\s*6px 6px 6px/);
+  assert.match(vrCss, /\.trellis-content[^}]*padding:\s*6px 8px 8px/);
+});
