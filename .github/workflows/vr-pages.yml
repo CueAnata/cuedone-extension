@@ -1,4 +1,4 @@
-name: Build and publish Personal VR to Pages
+name: Build and publish CueDone to Pages
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: vr-pages
+  group: cuedone-pages
   cancel-in-progress: true
 
 jobs:
@@ -17,21 +17,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: prototypes/meta-iwsdk/package-lock.json
       - uses: actions/configure-pages@v5
-      - run: npm ci
-        working-directory: prototypes/meta-iwsdk
-      - run: npm run build
-        env:
-          VR_BASE_PATH: /cuedone-extension/
-        working-directory: prototypes/meta-iwsdk
+      - name: Build standalone CueDone app
+        run: |
+          set -e
+          rm -rf dist
+          mkdir -p dist/shared dist/icons
+          cp src/popup/popup.html dist/index.html
+          cp src/popup/popup.css dist/popup.css
+          cp src/popup/popup.js dist/popup.js
+          cp -r src/shared/* dist/shared/
+          cp -r icons/* dist/icons/ 2>/dev/null || true
+          # Fix relative paths for dist root (GitHub Pages serves dist as site root)
+          sed -i 's|\.\./shared/|shared/|g' dist/index.html
+          sed -i 's|\.\./\.\./icons/|icons/|g' dist/index.html
+          # Ensure module scripts point correctly from dist root
+          # popup.html has <script src="../shared/task-list.js"> -> shared/task-list.js
+          # and <script src="popup.js"> stays popup.js
+          # Verify artifact
+          ls -lh dist/index.html dist/shared/styles.css dist/popup.css 2>&1 | head -n 20
+          echo "--- dist/index.html head ---"
+          head -n 30 dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: prototypes/meta-iwsdk/dist
+          path: dist
 
   deploy:
     needs: build
@@ -43,6 +52,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish built VR app
+      - name: Publish standalone CueDone app
         id: deployment
         uses: actions/deploy-pages@v4
