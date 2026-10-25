@@ -1805,7 +1805,9 @@ async function mountTaskList(root) {
       <div class="lattice-content">
         <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
         <p class="empty-state">No tasks yet. Add one to get started.</p>
-        <section class="client-motivator" hidden>
+      </div>
+    </div>
+    <section class="client-motivator" hidden>
       <div class="client-reward-head">
         <p class="client-reward-heading" id="reward-select-label">Reward</p>
         <button type="button" class="reward-edit">Edit</button>
@@ -1836,45 +1838,43 @@ async function mountTaskList(root) {
         />
       </div>
       <p class="client-reward-value" hidden></p>
-      </section>
-      <section class="list-lifecycle">
-        <button class="finish-for-now-button" type="button" hidden>
-          Finish for now
-        </button>
-        <div class="list-actions-footer" role="group" aria-label="List actions">
-          <button type="button" class="reset-list-button">Reset List</button>
-          <button id="clear-all-btn" type="button" class="clear-all-button">Clear All</button>
-        <button
-          class="new-list-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="new-list-review"
-        >
-          Review &amp; Continue
-        </button>
-        </div>
-        <div id="new-list-review" class="new-list-review" hidden>
-          <h2 class="new-list-heading" id="new-list-heading">Choose tasks to keep</h2>
-          <p class="new-list-copy">
-            Choose unfinished tasks to carry over. Completed tasks and unfinished
-            tasks you deselect will be removed.
-          </p>
-          <div
-            class="carryover-list"
-            role="group"
-            aria-labelledby="new-list-heading"
-          ></div>
-          <p class="carryover-empty" hidden></p>
-          <p class="new-list-status" aria-live="polite"></p>
-          <p class="new-list-error" role="alert" hidden></p>
-          <div class="new-list-actions">
-            <button class="create-new-list-button" type="button">Continue with Selected Tasks</button>
-            <button class="cancel-new-list-button" type="button">Cancel</button>
-          </div>
-        </div>
-      </section>
+    </section>
+    <section class="list-lifecycle">
+      <button class="finish-for-now-button" type="button" hidden>
+        Finish for now
+      </button>
+      <div class="list-actions-footer" role="group" aria-label="List actions">
+        <button type="button" class="reset-list-button">Reset List</button>
+        <button id="clear-all-btn" type="button" class="clear-all-button">Clear All</button>
+      <button
+        class="new-list-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="new-list-review"
+      >
+        Review &amp; Continue
+      </button>
       </div>
-    </div>
+      <div id="new-list-review" class="new-list-review" hidden>
+        <h2 class="new-list-heading" id="new-list-heading">Choose tasks to keep</h2>
+        <p class="new-list-copy">
+          Choose unfinished tasks to carry over. Completed tasks and unfinished
+          tasks you deselect will be removed.
+        </p>
+        <div
+          class="carryover-list"
+          role="group"
+          aria-labelledby="new-list-heading"
+        ></div>
+        <p class="carryover-empty" hidden></p>
+        <p class="new-list-status" aria-live="polite"></p>
+        <p class="new-list-error" role="alert" hidden></p>
+        <div class="new-list-actions">
+          <button class="create-new-list-button" type="button">Continue with Selected Tasks</button>
+          <button class="cancel-new-list-button" type="button">Cancel</button>
+        </div>
+      </div>
+    </section>
     <div class="list-reset" hidden>
       <div class="reset-confirm" hidden>
         <p class="reset-confirm-copy">Start this list again?</p>
