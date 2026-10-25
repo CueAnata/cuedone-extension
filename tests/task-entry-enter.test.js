@@ -67,11 +67,13 @@ test("action buttons remain clean, distinct, properly aligned and header intact"
 test("vine growth progression is incremental inside 4-sided pillars reaching 100%", () => {
   const css = readFileSync("src/shared/styles.css", "utf8");
   const js = readFileSync("src/shared/task-list.js", "utf8");
-  // Side vines use --vine-height, top vine grows outward proportionally
+  // Side vines use --vine-height, top vine grows outward proportionally — fully opaque vivid
   assert.match(css, /\.lattice-pillar \.lattice-vine--left,\s*\.lattice-pillar \.lattice-vine--right[^}]*height:\s*var\(--vine-height/);
   assert.match(css, /\.lattice-vine--top[^}]*width:\s*calc\(var\(--vine-height/);
-  assert.match(css, /\.lattice-vine--top[^}]*opacity:\s*calc\(clamp/);
+  assert.match(css, /\.lattice-vine--top[^}]*opacity:\s*1/);
   assert.match(css, /\.lattice-vine--top[^}]*max-width:\s*calc\(70%/);
+  // High-contrast vivid vines/leaves fully opaque
+  assert.match(css, /\.lattice-pillar \.lattice-vine--left[^}]*opacity:\s*1/);
   // JS sets --vine-height from checked/total ratio and updates on every render
   assert.match(js, /latticeFrame\.style\.setProperty\("--vine-height"/);
   assert.match(js, /const percent = Math\.round\(ratio \* 100\)/);

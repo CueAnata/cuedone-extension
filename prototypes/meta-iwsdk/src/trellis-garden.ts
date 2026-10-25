@@ -66,17 +66,17 @@ export class TrellisGarden {
     this.root.add(wood);
     for(const side of [-1,1]) {
       const path=bezierVine(t=>this.vinePoint(t,side));
-      const vine=new Mesh(new TubeGeometry(path,VINE_SEGMENTS,0.012,radial,false),
-        new MeshBasicMaterial({color:side<0?0x487d3c:0x659743}));
+      const vine=new Mesh(new TubeGeometry(path,VINE_SEGMENTS,0.014,radial,false),
+        new MeshBasicMaterial({color:side<0?0x0e4d1a:0x1a7a2e}));
       this.growthControllers.push(new VineGrowthController(vine));
       enableVineContact(vine);
       vine.name=side<0?'Left flowering vine':'Right flowering vine';
       vine.geometry.setDrawRange(0,0);this.vines.push(vine);this.root.add(vine);
     }
     const geometry=new SphereGeometry(1,8,5);
-    this.petals=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xf5b9ad}),120);
-    this.centers=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xffd36b}),24);
-    this.leaves=new InstancedMesh(geometry,new MeshBasicMaterial({color:0x6b9d46}),48);
+    this.petals=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xff3b30}),120);
+    this.centers=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xffeb3b}),24);
+    this.leaves=new InstancedMesh(geometry,new MeshBasicMaterial({color:0x27ae60}),48);
     for(const mesh of [this.petals,this.centers,this.leaves])enableInstancedContact(mesh);
     this.petals.name='Vine flowers';this.leaves.name='Vine leaves';
     this.root.add(this.petals,this.centers,this.leaves);
