@@ -3891,25 +3891,26 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-pillar .lattice-vine--left,
 .lattice-pillar .lattice-vine--right {
   height: var(--vine-height, 0%);
-  background: linear-gradient(to top, #1b5e20 0%, #2e7d32 18%, #388e3c 32%, #4caf50 52%, #81c784 74%, #aed581 100%);
+  background: linear-gradient(to top, #0d3b1a 0%, #14532d 14%, #1b7a3d 28%, #27ae60 46%, #2ecc71 68%, #58d68d 88%, #82e0aa 100%);
   transform-origin: bottom center;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(13,59,26,0.35);
+  opacity: 1;
 }
 
-/* flowers along vines inside pillars */
+/* flowers and leaves — high-contrast, fully opaque vivid */
 .lattice-pillar .lattice-vine--left::before,
 .lattice-pillar .lattice-vine--right::before,
 .lattice-pillar .lattice-vine--left::after,
 .lattice-pillar .lattice-vine--right::after {
   content: "";
   position: absolute;
-  width: 7px;
-  height: 7px;
-  background: #fff8e1;
-  border: 1px solid #a67c3a;
+  width: 8px;
+  height: 8px;
+  background: #ffeb3b;
+  border: 1px solid #7a4a0a;
   border-radius: 50%;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.14), inset 0 0 0 1.5px #f9a825;
-  opacity: 0.96;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.22), inset 0 0 0 1.5px #ffffff;
+  opacity: 1;
 }
 
 .lattice-pillar .lattice-vine--left::before { left: 42%; top: 16%; transform: translateX(-50%) rotate(-10deg); }
@@ -3921,7 +3922,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-pillar .lattice-vine--left,
 .lattice-pillar .lattice-vine--right { overflow: visible; }
 
-/* top vine grows outward incrementally inside 4-sided pillars — reaches 100% at completion */
+/* top vine grows outward incrementally — fully opaque vivid */
 .lattice-vine--top {
   top: 0;
   left: 50%;
@@ -3929,13 +3930,14 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   bottom: auto;
   width: calc(var(--vine-height, 0%) * 0.72);
   height: 12px;
-  background: linear-gradient(to right, #2e7d32, #4caf50 30%, #66bb6a 50%, #4caf50 70%, #2e7d32);
+  background: linear-gradient(to right, #0d3b1a, #14532d 20%, #1b7a3d 38%, #27ae60 52%, #2ecc71 68%, #1b7a3d 84%, #0d3b1a);
   border-radius: 0 0 8px 8px;
   transform: translateX(-50%);
-  opacity: calc(clamp(0, var(--vine-height, 0%), 100%) / 100);
-  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease;
+  opacity: 1;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 4;
   max-width: calc(70% + 2px);
+  box-shadow: 0 1px 0 rgba(13,59,26,0.35);
 }
 
 /* Clean windowed framing — suppress diagnostic/inline banners inside top frame */
