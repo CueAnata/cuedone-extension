@@ -3798,7 +3798,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-frame {
   position: relative;
   margin-top: 8px;
-  padding: 16px 0;
+  padding: 0;
   border: none;
   border-radius: 10px;
   background: #c49a6b;
@@ -3826,7 +3826,7 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   background: transparent;
   border: none;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .lattice-pillar--top {
@@ -3873,16 +3873,13 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-content .task-item { padding: 6px; }
 .lattice-content .empty-state { margin: 2px 0 0; padding: 12px 8px; font-size: 0.86rem; }
 
-/* Vines: grow upward through 15% wide lattice structure */
+/* Vines: grow upward on inside edge of 15% pillars closest to task list */
 .lattice-vine {
   position: absolute;
   bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
   z-index: 2;
   pointer-events: none;
-  transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: height 420ms cubic-bezier(0.22, 1, 0.36, 1), width 420ms cubic-bezier(0.22, 1, 0.36, 1);
   overflow: visible;
   border-radius: 6px 6px 0 0;
 }
@@ -3894,6 +3891,18 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
   transform-origin: bottom center;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(27,94,32,0.35);
   opacity: 1;
+}
+
+.lattice-pillar .lattice-vine--left {
+  left: auto;
+  right: 3px;
+  width: calc(52% - 3px);
+}
+
+.lattice-pillar .lattice-vine--right {
+  left: 3px;
+  right: auto;
+  width: calc(52% - 3px);
 }
 
 /* flowers — vibrant saturated reds/golds/pinks, fully opaque */
@@ -3920,10 +3929,9 @@ body[data-presentation="client"] .client-sequence-active > .add-task-toggle { di
 .lattice-pillar .lattice-vine--right::before { left: 48%; top: 20%; transform: translateX(-50%) rotate(14deg); }
 .lattice-pillar .lattice-vine--right::after { left: 44%; top: 52%; transform: translateX(-50%) rotate(-12deg); }
 
-/* vines stay inside pillars but flowers remain fully visible — not clipped */
+/* vines stay on inner edge closest to task list; flowers visible inside pillar */
 .lattice-pillar .lattice-vine--left,
 .lattice-pillar .lattice-vine--right { overflow: visible; }
-.lattice-pillar { overflow: visible; }
 
 /* top vine grows outward incrementally — saturated emerald fully opaque */
 .lattice-vine--top {
