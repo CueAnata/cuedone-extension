@@ -1,22 +1,20 @@
 import { canResetList } from "./tasks.js";
-export { nextUnfinishedTask } from "./tasks.js";
+import { formatProgress as formatProgressShared, normalizeProgress } from "./progress.js";
+
+export function nextUnfinishedTask(tasks) {
+  if (!Array.isArray(tasks)) {
+    return null;
+  }
+
+  return tasks.find((task) => task && task.completed === false) ?? null;
+}
 
 export function taskProgress(tasks) {
-  const list = Array.isArray(tasks) ? tasks : [];
-  const total = list.length;
-  const complete = list.filter((task) => task && task.completed === true).length;
-
-  return {
-    complete,
-    total,
-    percent: total === 0 ? 0 : Math.round((complete / total) * 100),
-  };
+  return normalizeProgress(tasks);
 }
 
 export function formatProgressLabel(progress) {
-  const complete = Number(progress?.complete) || 0;
-  const total = Number(progress?.total) || 0;
-  return `${complete} of ${total} complete`;
+  return formatProgressShared(progress);
 }
 
 export function resetListVisible({
@@ -25,7 +23,7 @@ export function resetListVisible({
   style = "simple",
   finalCelebrationActive = false,
 } = {}) {
-  if (!canResetList(tasks)) {
+  if (!canResetList(tasks, { allowPartial: presentation === "personal" })) {
     return false;
   }
 

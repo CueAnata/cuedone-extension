@@ -18,6 +18,14 @@ const MARKS = {
   buddy: "👍",
 };
 export const FINAL_SOUND_ASSETS = Object.freeze({
+  "party-horn": new URL("../../assets/audio/final-party-horn.wav", import.meta.url).href,
+  "whip-crack": new URL("../../assets/audio/final-whip-crack.wav", import.meta.url).href,
+  "cash-register": new URL("../../assets/audio/final-cash-register.wav", import.meta.url).href,
+  "chiptune-blip": new URL("../../assets/audio/final-chiptune-blip.wav", import.meta.url).href,
+  "rimshot": new URL("../../assets/audio/final-rimshot.wav", import.meta.url).href,
+  "jackpot-coins": new URL("../../assets/audio/final-jackpot-coins.wav", import.meta.url).href,
+  "gong": new URL("../../assets/audio/final-gong.wav", import.meta.url).href,
+
   yay: new URL("../../assets/audio/final-yay.mp3", import.meta.url).href,
   applause: new URL("../../assets/audio/final-applause.mp3", import.meta.url)
     .href,
@@ -470,6 +478,12 @@ function playBundledFinalSound(name, token) {
   }
 }
 
+export const FINAL_SOUND_POOL = Object.freeze(["current", ...Object.keys(FINAL_SOUND_ASSETS)]);
+export function resolveFinalSound(name, random = Math.random) {
+  if (name !== "random") return FINAL_SOUND_POOL.includes(name) ? name : "current";
+  return FINAL_SOUND_POOL[Math.max(0, Math.min(FINAL_SOUND_POOL.length - 1, Math.floor(random() * FINAL_SOUND_POOL.length)))];
+}
+
 export function resolveTaskSound(name, random = Math.random) {
   if (name === "none") {
     return null;
@@ -543,6 +557,32 @@ function startOscillators(context, kind, token) {
   });
 }
 
+function startBreakClockOscillators(context, token) {
+  if (!audioEnabled || token !== playbackToken) {
+    return;
+  }
+
+  const now = context.currentTime;
+  for (let strike = 0; strike < 7; strike += 1) {
+    for (const frequency of [720, 920]) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "triangle";
+      oscillator.frequency.value = frequency;
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      activeOscillators.add(oscillator);
+      oscillator.onended = () => activeOscillators.delete(oscillator);
+      const start = now + strike * 0.13;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(0.11, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
+      oscillator.start(start);
+      oscillator.stop(start + 0.11);
+    }
+  }
+}
+
 export function unlockCelebrationAudio() {
   if (!audioEnabled) {
     return null;
@@ -562,6 +602,41 @@ export function unlockCelebrationAudio() {
   }
 
   return audioContext;
+}
+
+export function playBreakClockRing() {
+  if (!audioEnabled) {
+    return false;
+  }
+
+  const token = stopActivePlayback();
+  const context = unlockCelebrationAudio();
+  if (!context) {
+    return false;
+  }
+
+  const start = () => {
+    if (
+      !audioEnabled ||
+      token !== playbackToken ||
+      !context ||
+      context.state !== "running"
+    ) {
+      return;
+    }
+    try {
+      startBreakClockOscillators(context, token);
+    } catch {
+      // Break audio is optional and must never block the timer prompt.
+    }
+  };
+
+  if (context.state === "running") {
+    start();
+    return true;
+  }
+  context.resume?.().then(start).catch(() => {});
+  return true;
 }
 
 function playWebAudio(kind, token) {
@@ -611,6 +686,7 @@ export function playCelebrationSound(
     return playTaskSound(taskSound);
   }
 
+  finalSound = resolveFinalSound(finalSound);
   const token = stopActivePlayback();
   if (kind === "final" && finalSound !== "current") {
     return playBundledFinalSound(finalSound, token);
@@ -676,4 +752,111 @@ export function showCelebration({
   );
 
   return name;
+}
+
+// Garden Trellis AR grand finale — lightweight 4.5s immersive effect
+function playBirdsChirping() {
+  try {
+    const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    if (ctx.state === "suspended") ctx.resume?.().catch(() => {});
+    const now = ctx.currentTime;
+    const notes = [1200, 1800, 2400, 1600, 2100];
+    notes.forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      o.connect(g);
+      g.connect(ctx.destination);
+      const t = now + i * 0.22 + Math.random() * 0.08;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.12, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.start(t);
+      o.stop(t + 0.3);
+    });
+    globalThis.setTimeout(() => { try { ctx.close?.(); } catch {} }, 2500);
+  } catch {}
+}
+
+function triggerGardenButterflies(frame) {
+  if (!frame || typeof document === "undefined") return null;
+  frame.querySelectorAll(".garden-butterflies").forEach((n) => n.remove());
+  const layer = document.createElement("div");
+  layer.className = "garden-butterflies";
+  layer.setAttribute("aria-hidden", "true");
+  const specs = [
+    { tx: "-72px", ty: "-38px", rot: "-18deg", delay: "0ms" },
+    { tx: "68px", ty: "-42px", rot: "22deg", delay: "90ms" },
+    { tx: "-48px", ty: "34px", rot: "-12deg", delay: "160ms" },
+    { tx: "52px", ty: "30px", rot: "16deg", delay: "240ms" },
+    { tx: "-88px", ty: "6px", rot: "-24deg", delay: "120ms" },
+    { tx: "84px", ty: "4px", rot: "20deg", delay: "200ms" },
+  ];
+  specs.forEach((s) => {
+    const b = document.createElement("span");
+    b.className = "garden-butterfly";
+    b.textContent = "🦋";
+    b.style.setProperty("--tx", s.tx);
+    b.style.setProperty("--ty", s.ty);
+    b.style.setProperty("--rot", s.rot);
+    b.style.animationDelay = s.delay;
+    layer.append(b);
+  });
+  frame.append(layer);
+  return layer;
+}
+
+function showGardenFallbackBanner(frame) {
+  if (!frame || typeof document === "undefined") return null;
+  frame.querySelectorAll(".garden-fallback-banner").forEach((n) => n.remove());
+  const banner = document.createElement("div");
+  banner.className = "garden-fallback-banner";
+  banner.setAttribute("role", "status");
+  banner.textContent = "Trellis complete — garden in bloom! \u00A0\uD83C\uDF38\u2728";
+  frame.append(banner);
+  return banner;
+}
+
+function revertGardenFinale(frame) {
+  if (!frame) return;
+  frame.classList.remove("is-ar-finale");
+  frame.querySelectorAll(".garden-butterflies").forEach((n) => n.remove());
+  frame.querySelectorAll(".garden-fallback-banner").forEach((n) => n.remove());
+}
+
+export async function triggerGardenTrellisGrandFinale(frame) {
+  if (!frame || typeof document === "undefined") return;
+  frame.classList.add("is-ar-finale");
+  frame.dataset.vineProgress = "100";
+  frame.style.setProperty("--vine-height", "100%");
+  try { playBirdsChirping(); } catch {}
+  triggerGardenButterflies(frame);
+  const xr = globalThis.navigator?.xr;
+  const canTryXR = Boolean(xr && typeof xr.isSessionSupported === "function" && typeof xr.requestSession === "function");
+  if (!canTryXR) {
+    showGardenFallbackBanner(frame);
+    globalThis.setTimeout(() => revertGardenFinale(frame), 4500);
+    return;
+  }
+  try {
+    const supported = await xr.isSessionSupported("immersive-ar");
+    if (!supported) throw new Error("immersive-ar not supported");
+    const session = await xr.requestSession("immersive-ar");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      revertGardenFinale(frame);
+    };
+    session.addEventListener("end", finish, { once: true });
+    globalThis.setTimeout(() => {
+      try { session.end(); } catch { finish(); }
+    }, 4500);
+  } catch {
+    showGardenFallbackBanner(frame);
+    globalThis.setTimeout(() => revertGardenFinale(frame), 4500);
+  }
 }

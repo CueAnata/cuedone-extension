@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CueDone - The Catch & Splashdown Preview</title>
+  <style>
+    :root {
+      --bg-linen: #F9F6F0;
+      --card-bg: #FFFFFF;
+      --slate-dark: #23302E;
+      --slate-muted: #556B67;
+      --ochre-amber: #D97D43;
+      --ochre-light: #F5E8DD;
+      --border-color: #E6E0D6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-linen);
+      color: var(--slate-dark);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container { width: 100%; max-width: 640px; }
+    .header { margin-bottom: 16px; text-align: center; }
+
+    .badge-preview {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--ochre-light);
+      color: var(--ochre-amber);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(217, 125, 67, 0.25);
+      margin-bottom: 6px;
+    }
+
+    h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--slate-dark); }
+    p.subhead { font-size: 13px; color: var(--slate-muted); margin-top: 4px; }
+
+    .preview-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(35, 48, 46, 0.08);
+      position: relative;
+      margin-top: 14px;
+    }
+
+    .hud-pill {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--ochre-amber);
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--slate-dark);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .stage-wrapper {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      position: relative;
+      background: #EBF4F6;
+      overflow: hidden;
+    }
+
+    svg.fisherman-stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Rod strike action using pure SVG attribute manipulation or clean CSS class */
+    .cuedone-rig-container {
+      transform-origin: 75px 146px;
+      transition: transform 0.35s ease;
+    }
+
+    /* Stringer Fish Visibility: NEVER override SVG transform directly with CSS! */
+    .stringer-fish-item {
+      transition: opacity 0.4s ease;
+    }
+    .stringer-fish-item.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .stringer-fish-item.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Bobber bobbing + dragged under on bite */
+    @keyframes bobberIdle {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(3px); }
+    }
+    .bobber-idle {
+      animation: bobberIdle 2.5s ease-in-out infinite;
+    }
+    @keyframes bobberDragged {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(18px); opacity: 0.6; }
+    }
+    .bobber-dragged {
+      animation: bobberDragged 0.45s ease-in forwards;
+    }
+
+    /* FINALE: Fisherman pulled in! — slowed for Beat 3 */
+    @keyframes anglerYankedIn {
+      0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+      22% { transform: translate(18px, -6px) rotate(14deg); } /* Tug */
+      48% { transform: translate(52px, 12px) rotate(58deg); } /* Flying off dock */
+      74% { transform: translate(98px, 42px) rotate(108deg); opacity: 1; } /* Plunging */
+      88% { transform: translate(122px, 72px) rotate(132deg); opacity: 0; }
+      100% { transform: translate(128px, 78px) rotate(135deg); opacity: 0; visibility: hidden; }
+    }
+    .angler-pulled-in {
+      animation: anglerYankedIn 1.25s cubic-bezier(0.32, 0, 0.52, 1) forwards !important;
+    }
+
+    /* Floating hat after splash */
+    @keyframes hatFloat {
+      0% { opacity: 0; transform: translate(195px, 160px) scale(0.6); }
+      40% { opacity: 1; transform: translate(195px, 149px) scale(1) rotate(-8deg); }
+      70% { transform: translate(195px, 151px) rotate(6deg); }
+      100% { opacity: 1; transform: translate(195px, 150px) rotate(0deg); }
+    }
+    @keyframes hatFloatBob {
+      0% { opacity: 0; transform: translate(140px, 135px) scale(0.6); }
+      40% { opacity: 1; transform: translate(165px, 105px) scale(1) rotate(-8deg); }
+      70% { transform: translate(165px, 105px) rotate(6deg); }
+      100% { opacity: 1; transform: translate(165px, 105px) rotate(0deg); }
+    }
+    .floating-hat {
+      opacity: 0;
+    }
+    .floating-hat.show-hat {
+      animation: hatFloatBob 1.2s ease-out 0.85s forwards;
+    }
+
+    /* Big Water Splash Explosion — geyser for Beat 3 */
+    @keyframes bigSplashExplosion {
+      0% { opacity: 0; transform: translate(200px, 150px) scale(0.2); }
+      30% { opacity: 1; transform: translate(200px, 138px) scale(1.15); }
+      65% { opacity: 0.9; transform: translate(200px, 128px) scale(1.35); }
+      100% { opacity: 0; transform: translate(200px, 118px) scale(1.55); }
+    }
+    .big-splash-group {
+      opacity: 0;
+      transform-origin: 200px 150px;
+    }
+    .big-splash-group.exploding {
+      animation: bigSplashExplosion 1.0s ease-out forwards;
+    }
+
+    /* Giant Fish Tail Slap - legacy, kept for stringer but not finale */
+    @keyframes fishTailSlap {
+      0% { opacity: 0; transform: translate(235px, 175px) rotate(45deg) scale(0.5); }
+      40% { opacity: 1; transform: translate(230px, 135px) rotate(-15deg) scale(1.25); }
+      70% { opacity: 1; transform: translate(228px, 130px) rotate(10deg) scale(1.25); }
+      100% { opacity: 0; transform: translate(225px, 170px) rotate(45deg) scale(0.8); }
+    }
+    .giant-tail-splash {
+      opacity: 0;
+    }
+    .giant-tail-splash.slapping {
+      animation: fishTailSlap 1.2s ease-out 0.35s forwards;
+    }
+
+    /* Monster Fish — 3-beat finale: mouth at (0,0) locked to hook 212,120 — no flash */
+    @keyframes monsterSurface {
+      0% { opacity: 0; transform: translate(280px, 140px) scale(0.72) rotate(-8deg); }
+      100% { opacity: 1; transform: translate(212px, 120px) scale(1) rotate(0deg); }
+    }
+    @keyframes monsterBite {
+      0% { transform: translate(212px, 120px) scale(1) rotate(0deg); }
+      30% { transform: translate(212px, 120px) scale(1.09) rotate(3deg); }
+      100% { transform: translate(212px, 120px) scale(1) rotate(0deg); }
+    }
+    @keyframes monsterDiveLocked {
+      0% { transform: translate(212px, 120px) scale(1) rotate(0deg); opacity:1; }
+      100% { transform: translate(240px, 165px) scale(0.88) rotate(58deg); opacity:1; }
+    }
+    .monster-fish {
+      opacity: 0; visibility: hidden;
+    }
+    .monster-fish.surfacing {
+      visibility: visible; opacity: 1;
+      animation: monsterSurface 1.0s ease-out forwards;
+    }
+    .monster-fish.biting {
+      visibility: visible; opacity: 1;
+      animation: monsterBite 0.5s cubic-bezier(0.42, 0, 0.56, 1) forwards;
+    }
+    .monster-fish.diving {
+      visibility: visible; opacity: 1;
+      animation: monsterDiveLocked 0.95s cubic-bezier(0.38, 0, 0.62, 1) forwards;
+    }
+    /* Keep fish at constant opacity 1 through Beat 1+2 — no flicker */
+    .monster-fish.surfacing, .monster-fish.biting, .monster-fish.diving {
+      opacity: 1 !important; visibility: visible !important;
+    }
+
+    /* Bubbles rising after splashdown */
+    @keyframes bubbleRise {
+      0% { opacity: 0; transform: translateY(0) scale(0.6); }
+      25% { opacity: 0.9; }
+      100% { opacity: 0; transform: translateY(-28px) scale(1.1); }
+    }
+    .bubble { opacity: 0; }
+    .bubble.rising { animation: bubbleRise 1.4s ease-out forwards; }
+
+    /* Controls Panel */
+    .controls {
+      margin-top: 18px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .slider-row { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .slider-group { display: flex; align-items: center; gap: 12px; }
+    .slider-group label { font-size: 13px; font-weight: 600; width: 140px; }
+    .slider-group input { flex: 1; accent-color: var(--ochre-amber); }
+    .slider-val { font-size: 13px; font-weight: 700; width: 32px; text-align: right; color: var(--ochre-amber); }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-color); }
+    .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-linen); font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #EDE6DC; }
+    .btn-active { background: var(--ochre-amber); color: #fff; border-color: var(--ochre-amber); }
+    .stage-note { margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--slate-muted); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <span class="badge-preview">CueDone Live Preview</span>
+      <h1>Fisherman &amp; Stringer Progress</h1>
+      <p class="subhead">Low relaxed pole &bull; Strike &amp; stringer catch &bull; 100% Giant Fish Pulls Fisherman In!</p>
+    </div>
+
+    <div class="preview-card" id="previewCard">
+      <div class="hud-pill">
+        <span>🎣</span>
+        <span id="hudText">0 of 4 on Stringer</span>
+      </div>
+
+      <div class="stage-wrapper">
+        <svg class="fisherman-stage" viewBox="0 0 320 180">
+          <defs>
+            <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#EBF4F6" /><stop offset="100%" stop-color="#DAE9EC" />
+            </linearGradient>
+            <linearGradient id="blueWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
+            </linearGradient>
+            <linearGradient id="cleanWaterGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#38A5EB" /><stop offset="100%" stop-color="#2185D0" />
+            </linearGradient>
+            <linearGradient id="woodPlankGrad" x1="0%" y1="0%" x2="0%" y2="1">
+              <stop offset="0%" stop-color="#6D4C41" /><stop offset="100%" stop-color="#4E342E" />
+            </linearGradient>
+
+            <!-- Detailed Trout Silhouette Template -->
+            <g id="stringerTrout">
+              <!-- Tail -->
+              <polygon points="-14,0 -23,-7 -20,0 -23,7" fill="#FF7043" stroke="#D84315" stroke-width="0.8" />
+              <!-- Dorsal fin -->
+              <path d="M-4 -7 Q2 -12 7 -6 Z" fill="#FF7043" stroke="#D84315" stroke-width="0.7" />
+              <!-- Body -->
+              <path d="M-14 0 C-10 -7, 2 -8, 10 -4 C14 0, 14 2, 10 5 C2 8, -10 7, -14 0 Z" fill="#FF9800" stroke="#D84315" stroke-width="1" />
+              <!-- Rainbow stripe -->
+              <path d="M-11 0 Q0 1 9 -1" stroke="#E91E63" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.8" />
+              <!-- Belly -->
+              <path d="M-10 2 C-2 5, 4 5, 11 2" stroke="#FFF59D" stroke-width="1.2" fill="none" />
+              <!-- Eye -->
+              <circle cx="9" cy="-2" r="1.8" fill="#FFFFFF" />
+              <circle cx="9.3" cy="-2" r="0.9" fill="#000000" />
+            </g>
+
+            <!-- Giant Fish Tail Fin Template -->
+            <g id="giantTail">
+              <!-- Massive forked rainbow trout tail fin -->
+              <polygon points="0,0 28,-22 21,-2 32,18 7,5" fill="#E64A19" stroke="#BF360C" stroke-width="1.5" />
+              <path d="M-15,10 C-5,-5 5,-2 0,0" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5" />
+              <path d="M-10,6 Q-2,1 6,-5" stroke="#E91E63" stroke-width="4" fill="none" />
+            </g>
+
+            <!-- Monster Fish — 88px long, 38px girth, jaws 18px — mouth at (0,0) — large -->
+            <g id="monsterFishTpl">
+              <!-- Body 88px long, 38px girth -->
+              <path d="M0 0 C9 -16, 28 -20, 46 -10 C50 0, 46 9, 38 14 C20 25, 5 21, 0 0 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.6" />
+              <!-- Rainbow stripe -->
+              <path d="M-2 0 Q 18 3, 38 -2" stroke="#E91E63" stroke-width="4" stroke-linecap="round" fill="none" />
+              <!-- Belly -->
+              <path d="M4 8 C 18 14, 32 14, 38 8" fill="#FFF59D" opacity="0.95" />
+              <!-- Tail on right (east) -->
+              <polygon points="46,0 64,-16 56,0 64,16" fill="#E64A19" stroke="#BF360C" stroke-width="1.3" />
+              <!-- Head / large gaping jaws 18px AT (0,0) — chomps hook -->
+              <path id="jawOpen" d="M0 -9 L-18 -8 L-10 0 L-18 8 L0 9 Z" fill="#1B1B1B" />
+              <g id="jawTeeth">
+                <path d="M0 -9 L-18 -8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+                <path d="M0 9 L-18 8 L0 0 Z" fill="#FFFFFF" opacity="0.96" />
+              </g>
+              <path d="M-3 -2.5 L-3 2.5" stroke="#E91E63" stroke-width="1" />
+              <!-- Eye clearly visible just behind jaws -->
+              <circle cx="14" cy="-7" r="4.5" fill="#FFFFFF" stroke="#1B5E20" stroke-width="0.8" />
+              <circle cx="15" cy="-7" r="2.2" fill="#000000" />
+              <circle cx="16.5" cy="-8.5" r="0.7" fill="#FFFFFF" />
+            </g>
+          </defs>
+
+          <!-- Single continuous water rect 0,105 320x120 cleanWaterGrad — no seam -->
+          <rect x="0" y="0" width="320" height="95" fill="url(#skyGrad)" />
+          <rect x="0" y="105" width="320" height="120" fill="url(#cleanWaterGrad)" />
+
+          <!-- Grassy Shoreline Bank on Left (x=0) — elevated -->
+          <path d="M0 78 Q12 78 18 84 L22 180 L0 180 Z" fill="#3E5F48" />
+
+          <!-- Pier Pilings — y=104 to 180 continuous -->
+          <rect x="28" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="70" y="104" width="9" height="76" fill="#3E2723" />
+          <rect x="118" y="104" width="9" height="76" fill="#3E2723" />
+
+          <!-- Dock deck y=98 to 106 — fisherman sits ON TOP -->
+          <rect x="0" y="98" width="140" height="8" rx="1.5" fill="url(#woodPlankGrad)" stroke="#3E2723" stroke-width="0.8" />
+          <line x1="22" y1="98" x2="22" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="48" y1="98" x2="48" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="74" y1="98" x2="74" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="100" y1="98" x2="100" y2="106" stroke="#3E2723" stroke-width="1" />
+          <line x1="126" y1="98" x2="126" y2="106" stroke="#3E2723" stroke-width="1" />
+
+          <!-- ==================== UNDERWATER STRINGER LINE — y=112,126,140 slightly smaller -->
+          <!-- Cord tied to cleat at deck 83, hanging into deep water -->
+          <g id="stringerAssembly">
+            <rect x="115" y="82" width="8" height="3" rx="1" fill="#FFA000" stroke="#5D4037" stroke-width="0.8" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#1A237E" stroke-width="3.0" opacity="0.25" />
+            <line x1="119" y1="85" x2="119" y2="150" stroke="#FFFFFF" stroke-width="2.2" />
+            <ellipse cx="119" cy="150" rx="2.5" ry="4" fill="#78909C" />
+
+            <!-- Fish 1 (Depth 112) — slightly smaller -->
+            <g transform="translate(104, 112)">
+              <g class="stringer-fish-item is-hidden" id="fish1">
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
+              </g>
+            </g>
+
+            <!-- Fish 2 (Depth 126) — slightly smaller -->
+            <g transform="translate(134, 126)">
+              <g class="stringer-fish-item is-hidden" id="fish2">
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
+              </g>
+            </g>
+
+            <!-- Fish 3 (Depth 140) — slightly smaller -->
+            <g transform="translate(104, 140)">
+              <g class="stringer-fish-item is-hidden" id="fish3">
+                <line x1="15" y1="-8" x2="10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(0.9)" />
+              </g>
+            </g>
+
+            <!-- Fish 4 (Depth 140 duplicate, hidden) -->
+            <g transform="translate(134, 140)">
+              <g class="stringer-fish-item is-hidden" id="fish4">
+                <line x1="-15" y1="-8" x2="-10" y2="0" stroke="#FFFFFF" stroke-width="1.8" stroke-dasharray="1.5,1.5" />
+                <use href="#stringerTrout" transform="scale(-0.9, 0.9)" />
+              </g>
+            </g>
+          </g>
+
+          <!-- Water depth tint removed for bright clear lake -->
+
+          <!-- ==================== FISHERMAN IN OVERALLS ==================== -->
+          <!-- Unified container centered at dock plank x=75, y=146 -->
+          <g class="cuedone-rig-container" id="anglerContainer">
+            <!-- Fisherman sits ON TOP of deck y98-106 — rump 44,95 torso 50,86 head 50,68 hat 50,65 — bold outline -->
+            <ellipse cx="44" cy="95" rx="7" ry="5" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="9" ry="11" fill="#D97D43" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="86" rx="8" ry="8" fill="#37474F" stroke="#1A202C" stroke-width="0.9" />
+            <circle cx="50" cy="68" r="7" fill="#E8CBB3" stroke="#1A202C" stroke-width="0.9" />
+            <ellipse cx="50" cy="65" rx="10" ry="3.5" fill="#8D6E63" stroke="#1A202C" stroke-width="0.9" />
+            <rect x="44" y="58" width="12" height="5" rx="1.5" fill="#6D4C41" stroke="#1A202C" stroke-width="0.9" />
+            <!-- Arm normal proportion: M50 78 Q59 82 68 80 hand 68,80 -->
+            <path d="M50 78 Q59 82 68 80" stroke="#E8CBB3" stroke-width="4.5" stroke-linecap="round" fill="none" />
+            <circle cx="68" cy="80" r="2.8" fill="#E8CBB3" />
+            <!-- Cane pole base pinned at hand 66,80 resting tip 182,75 sw3.6 bold -->
+            <line id="canePole" x1="66" y1="80" x2="182" y2="75" stroke="#D97D43" stroke-width="3.6" stroke-linecap="round" />
+          </g>
+
+          <!-- ==================== FISHING LINE, BOBBER & HOOK — balanced 320x180 -->
+          <g id="lineHookGroup">
+            <!-- Line from rod tip 182,75 down to bobber on water line 198,105 -->
+            <path id="fishingLine" d="M182 75 Q190 90 198 105" stroke="#FFFFFF" stroke-width="2.0" stroke-dasharray="2.5,2" fill="none" />
+            
+            <!-- Bobber floats right on water line at 198,105 r5.5 bold — id bobberAssembly -->
+            <g class="bobber-idle" id="bobberAssembly">
+              <circle cx="198" cy="105" r="5.5" fill="#FF5722" stroke="#B71C1C" stroke-width="0.8" />
+              <circle cx="198" cy="103.5" r="2.8" fill="#FFFFFF" />
+            </g>
+            <!-- compat alias for older selectors -->
+            <g id="bobberGroup" style="display:none"></g>
+
+            <!-- Submerged line hangs down to hook at 196,128 -->
+            <line id="underwaterLeader" x1="198" y1="106" x2="196" y2="128" stroke="#FFFFFF" stroke-width="1.8" opacity="0.9" />
+            <!-- Hook + worm assembly — enlarged brass hook sw2.6 worm r4.2 -->
+            <g id="hookAssembly">
+              <path d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#5D4037" stroke-width="3.8" fill="none" opacity="0.95" />
+              <path id="fishHook" d="M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131" stroke="#FFC107" stroke-width="2.6" fill="none" />
+              <circle id="hookBait" cx="191" cy="142" r="4.2" fill="#E91E63" stroke="#880E4F" stroke-width="1.0" />
+              <circle cx="192.5" cy="140.5" r="1.0" fill="#FFFFFF" opacity="0.9" />
+            </g>
+          </g>
+
+          <!-- ==================== FINALE: 3-BEAT CATCH & OVERBOARD ==================== -->
+          <!-- Beat 1 & 2: Monster fish approaches, bites hook at 275,175, then dives bending rod -->
+          <g class="monster-fish" id="monsterFish" transform="translate(196, 128)">
+            <use href="#monsterFishTpl" />
+          </g>
+          <!-- Legacy tail splash (kept hidden, not used in finale) -->
+          <g class="giant-tail-splash" id="giantTailGroup" style="display:none">
+            <use href="#giantTail" />
+          </g>
+
+          <!-- Beat 3: Big splash when fisherman yanked overboard -->
+          <g class="big-splash-group" id="waterSplashExplosion">
+            <path d="M170 152 Q180 105 195 115 Q185 135 180 152" fill="#E1F5FE" opacity="0.9" />
+            <path d="M210 152 Q225 95 240 110 Q225 135 220 152" fill="#E1F5FE" opacity="0.9" />
+            <path d="M190 152 Q200 90 215 95 Q205 130 200 152" fill="#FFFFFF" opacity="0.95" />
+            <!-- Flying water droplets -->
+            <circle cx="165" cy="120" r="3" fill="#FFFFFF" />
+            <circle cx="180" cy="98" r="3.5" fill="#B3E5FC" />
+            <circle cx="205" cy="85" r="4" fill="#FFFFFF" />
+            <circle cx="230" cy="95" r="3.5" fill="#B3E5FC" />
+            <circle cx="245" cy="115" r="3" fill="#FFFFFF" />
+            <!-- Surface foaming rings -->
+            <ellipse cx="205" cy="153" rx="35" ry="8" fill="none" stroke="#FFFFFF" stroke-width="3" />
+          </g>
+
+          <!-- Punchline: hat floats alone, bubbles rise after both disappear -->
+          <g class="floating-hat" id="floatingHat">
+            <ellipse cx="0" cy="0" rx="12" ry="4" fill="#8D6E63" />
+            <rect x="-7" y="-6" width="14" height="6" rx="2" fill="#6D4C41" />
+            <circle cx="1" cy="-8" r="1.5" fill="#FFFFFF" opacity="0.7" />
+            <circle cx="-5" cy="-12" r="2.2" fill="#FFFFFF" opacity="0.6" />
+          </g>
+          <!-- Bubbles rising after splashdown -->
+          <g id="bubbleGroup" style="pointer-events:none">
+            <circle class="bubble" cx="198" cy="162" r="1.6" fill="#FFFFFF" />
+            <circle class="bubble" cx="205" cy="165" r="1.2" fill="#FFFFFF" />
+            <circle class="bubble" cx="192" cy="168" r="1.0" fill="#B3E5FC" />
+            <circle class="bubble" cx="202" cy="170" r="1.4" fill="#FFFFFF" />
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="controls">
+      <div class="slider-row">
+        <div class="slider-group">
+          <label for="totalSlider">Total Tasks:</label>
+          <input type="range" id="totalSlider" min="0" max="10" value="4" oninput="onSliderChange()">
+          <span class="slider-val" id="totalVal">4</span>
+        </div>
+
+        <div class="slider-group">
+          <label for="completedSlider">Completed Tasks:</label>
+          <input type="range" id="completedSlider" min="0" max="4" value="0" oninput="onSliderChange()">
+          <span class="slider-val" id="completedVal">0</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" onclick="setPreset(4, 0)">Reset (0/4)</button>
+        <button class="btn" onclick="completeOneTask()">+ Complete 1 Task (Strike &amp; Catch!)</button>
+        <button class="btn btn-active" onclick="setPreset(4, 4)">100% Giant Fish Pulls Him In! 💦</button>
+      </div>
+
+      <div class="stage-note" id="stageStatusText">
+        Status: 0 of 4 on Stringer &bull; Bait on hook under water &bull; Pole resting low
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class SplashdownFisherman {
+      constructor() {
+        this.hudText = document.getElementById('hudText');
+        this.statusText = document.getElementById('stageStatusText');
+        this.angler = document.getElementById('anglerContainer');
+        this.pole = document.getElementById('canePole');
+        this.line = document.getElementById('fishingLine');
+        this.leader = document.getElementById('underwaterLeader');
+        this.hook = document.getElementById('fishHook');
+        this.bait = document.getElementById('hookBait');
+        this.bobber = document.getElementById('bobberAssembly') || document.getElementById('bobberGroup');
+        this.hookAssembly = document.getElementById('hookAssembly');
+
+        this.monster = document.getElementById('monsterFish');
+        this.bubbles = document.querySelectorAll('#bubbleGroup .bubble');
+        this.giantTail = document.getElementById('giantTailGroup');
+        this.splash = document.getElementById('waterSplashExplosion');
+        this.hat = document.getElementById('floatingHat');
+
+        this.fishItems = [
+          document.getElementById('fish1'),
+          document.getElementById('fish2'),
+          document.getElementById('fish3'),
+          document.getElementById('fish4')
+        ];
+
+        this.lastCompleted = 0;
+        this.isStriking = false;
+        this.pulledIn = false;
+      }
+
+      // Sets resting pole geometry (tip at low 182,75) — balanced 320x180
+      setRestingPose() {
+        this.pole.setAttribute('x2', '182');
+        this.pole.setAttribute('y2', '75');
+        this.line.setAttribute('d', 'M182 75 Q190 90 198 105');
+        this.line.style.opacity = '1';
+        this.bobber.style.opacity = '1';
+        this.leader.style.opacity = '0.8';
+        this.hook.style.opacity = '1';
+        this.bait.style.opacity = '1';
+      }
+
+      // Hookset strike: ONLY pole tip moves to (165,30) — hand pinned at (66,80)
+      performStrike(callback) {
+        if (this.isStriking || this.pulledIn) return;
+        this.isStriking = true;
+
+        // Rapid strike up high — only tip moves, hand stays pinned at 66,80!
+        this.pole.setAttribute('x2', '165');
+        this.pole.setAttribute('y2', '30');
+        this.line.setAttribute('d', 'M165 30 Q180 65 198 105');
+        this.bobber.style.transform = 'translateY(-4px)';
+
+        // Hold strike tension for 400ms, then return down as caught fish lands on stringer
+        setTimeout(() => {
+          this.setRestingPose();
+          this.bobber.style.transform = 'translateY(0)';
+          this.isStriking = false;
+          if (callback) callback();
+        }, 550);
+      }
+
+      // 100% Finale — 3 distinct beats, mouth locked to hook (272,178), no flash, locked dive — 800ms bite, 1600ms splash
+      triggerPulledInFinale() {
+        if (this.pulledIn) return;
+        this.pulledIn = true;
+
+        // Beat 1 (0-800ms): Monster surfaces directly next to hook with open jaws at 196,128 — mouth at (0,0) — hook/bobber STAY VISIBLE until 800ms
+        this.statusText.textContent = "Beat 1: Monster surfaces at hook (196,128) — jaws open…";
+        this.monster.classList.remove('biting','diving','surfacing');
+        this.monster.style.visibility='visible'; this.monster.style.opacity='1';
+        void this.monster.offsetWidth;
+        this.monster.classList.add('surfacing');
+        this.leader.setAttribute('x2','196'); this.leader.setAttribute('y2','128');
+        this.hook.setAttribute('d','M196 128 L196 136 Q196 141 191 141 Q186 141 186 135 L186 131'); // compat M272 178
+        this.hook.style.opacity='1'; this.bait.style.opacity='1';
+        if (this.hookAssembly) this.hookAssembly.style.opacity='1';
+        this.bobber.classList.remove('bobber-dragged');
+        this.bobber.classList.add('bobber-idle');
+        this.bobber.style.opacity='1'; this.bobber.style.display=''; this.bobber.style.transform='translateY(0)';
+
+        setTimeout(()=>{
+          // Beat 2 (800ms): Fish bites down — jaws clamp, hook & worm swallowed, bobber pulled deep out of frame
+          this.statusText.textContent = "Beat 2: CHOMP! Jaws lock on hook — swallowed, bobber dragged deep, pole bends…";
+          this.monster.classList.add('biting');
+          this.hook.style.opacity='0';
+          this.bait.style.opacity='0';
+          if (this.hookAssembly) this.hookAssembly.style.opacity='0';
+          this.monster.classList.remove('surfacing','biting'); void this.monster.offsetWidth; this.monster.classList.add('diving');
+          this.bobber.classList.remove('bobber-idle'); void this.bobber.offsetWidth; this.bobber.classList.add('bobber-dragged');
+          this.pole.setAttribute('x2','182'); this.pole.setAttribute('y2','75');
+          this.line.setAttribute('d','M182 75 Q190 90 198 105');
+          this.leader.style.opacity='0.85';
+          this.leader.setAttribute('x2','196'); this.leader.setAttribute('y2','140');
+          this.bobber.style.transform = 'translate(10px, 50px)';
+        }, 800);
+
+        setTimeout(()=>{
+          // Beat 3 (1600ms): Fisherman gets pulled head-first off dock planks with geyser splash — bobber removed completely
+          this.statusText.textContent = "Beat 3: Yanked head-first off the dock — geyser splash!";
+          this.angler.classList.add('angler-pulled-in');
+          this.line.style.opacity='0'; this.leader.style.opacity='0'; this.hook.style.opacity='0'; this.bait.style.opacity='0';
+          this.bobber.style.opacity='0'; this.bobber.style.display='none';
+          this.splash.classList.remove('exploding'); void this.splash.offsetWidth; this.splash.classList.add('exploding');
+        }, 1600);
+
+        setTimeout(()=>{
+          // Punchline: fisherman, fish, and line disappear underwater, bubbles rise, hat floats peacefully alone
+          this.monster.style.visibility='hidden';
+          this.monster.classList.remove('surfacing','biting','diving');
+          this.angler.style.opacity='0';
+          this.bubbles.forEach((b,i)=>{
+            b.classList.remove('rising'); void b.offsetWidth;
+            b.style.animationDelay = (i*140)+'ms';
+            b.classList.add('rising');
+            setTimeout(()=> b.classList.remove('rising'), 1600);
+          });
+          this.hat.classList.add('show-hat');
+          this.statusText.textContent = "💦 Gone under — fish & angler vanished, bubbles rise, hat floats alone.";
+        }, 3000);
+      }
+
+      resetToDefault() {
+        this.pulledIn = false;
+        this.isStriking = false;
+        this.angler.classList.remove('angler-pulled-in');
+        this.monster.classList.remove('biting','diving');
+        this.monster.style.visibility='';
+        this.giantTail.classList.remove('slapping');
+        this.splash.classList.remove('exploding');
+        this.hat.classList.remove('show-hat');
+        this.bubbles.forEach(b=>{ b.classList.remove('rising'); b.style.animationDelay=''; });
+        this.setRestingPose();
+      }
+
+      update(completed, total) {
+        if (completed > total) completed = total;
+
+        // Reset if we were previously pulled in
+        if (completed < total && this.pulledIn) {
+          this.resetToDefault();
+        }
+
+        this.hudText.textContent = `${completed} of ${total} on Stringer`;
+
+        if (total === 0) {
+          this.statusText.textContent = "Status: Empty list (0/0) — No tasks, waiting on pier";
+          this.fishItems.forEach(f => { f.classList.remove('is-visible'); f.classList.add('is-hidden'); });
+          this.lastCompleted = 0;
+          return;
+        }
+
+        // Did we advance a task?
+        const isAdvance = completed > this.lastCompleted;
+        this.lastCompleted = completed;
+
+        if (isAdvance && completed < total) {
+          this.statusText.textContent = `Strike! Rod yanked high, set the hook, and fish landed on stringer! (${completed}/${total})`;
+          this.performStrike(() => {
+            this.syncStringerFish(completed);
+          });
+        } else {
+          this.syncStringerFish(completed);
+        }
+
+        // Finale trigger at 100%
+        if (completed === total && total > 0) {
+          this.triggerPulledInFinale();
+        } else if (completed === 0) {
+          this.statusText.textContent = `Status: 0 of ${total} on Stringer &bull; Bait on hook under water &bull; Pole resting low`;
+        }
+      }
+
+      syncStringerFish(completed) {
+        const numToShow = Math.min(4, completed);
+        this.fishItems.forEach((item, idx) => {
+          if (idx < numToShow) {
+            item.classList.remove('is-hidden');
+            item.classList.add('is-visible');
+          } else {
+            item.classList.remove('is-visible');
+            item.classList.add('is-hidden');
+          }
+        });
+      }
+    }
+
+    const app = new SplashdownFisherman();
+    const totalSlider = document.getElementById('totalSlider');
+    const compSlider = document.getElementById('completedSlider');
+    const totalVal = document.getElementById('totalVal');
+    const compVal = document.getElementById('completedVal');
+
+    function onSliderChange() {
+      const tot = parseInt(totalSlider.value, 10);
+      compSlider.max = tot;
+      if (parseInt(compSlider.value, 10) > tot) compSlider.value = tot;
+      const comp = parseInt(compSlider.value, 10);
+
+      totalVal.textContent = tot;
+      compVal.textContent = comp;
+      app.update(comp, tot);
+    }
+
+    function completeOneTask() {
+      const tot = parseInt(totalSlider.value, 10);
+      let comp = parseInt(compSlider.value, 10);
+      if (comp < tot) {
+        comp++;
+        compSlider.value = comp;
+        onSliderChange();
+      }
+    }
+
+    function setPreset(t, c) {
+      totalSlider.value = t;
+      compSlider.max = t;
+      compSlider.value = c;
+      onSliderChange();
+    }
+
+    onSliderChange();
+  </script>
+</body>
+</html>

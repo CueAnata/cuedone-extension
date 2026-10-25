@@ -1,13 +1,25 @@
+html {
+  height: 100%;
+}
+
 body.popup-view {
   width: 360px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .popup-view .app-header {
   padding: 12px 14px 10px;
+  flex-shrink: 0;
 }
 
 .popup-view .app-main {
-  padding: 12px 14px 14px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .popup-view .task-text {
@@ -17,4 +29,104 @@ body.popup-view {
 .popup-view[data-presentation="client"] .task-text {
   font-size: 1.12rem;
   line-height: 1.45;
+}
+
+/* Fisherman card must be transparent unified scene — remove dark wrapper background */
+.personal-fisherman-visual,
+.personal-fisherman-visual--entry,
+.personal-plant--entry[data-visual-theme="fisherman"],
+.fisherman-scene,
+.stage-wrapper,
+.task-list-visual,
+.visual-card,
+#visual-container {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Robust CSS-driven hiding — prevent flashing side-by-side card during task creation */
+.task-list-container.is-editing .task-list-visual,
+.task-list-container[data-mode="add-task"] .task-list-visual,
+.task-list-container.is-editing .personal-fisherman-visual,
+.task-list-container.is-editing .personal-fisherman-visual--entry,
+.task-list-container.is-editing .personal-plant--entry,
+.task-list-container[data-mode="add-task"] .personal-fisherman-visual,
+.task-list-container[data-mode="add-task"] .personal-fisherman-visual--entry,
+.task-list-container[data-mode="add-task"] .personal-plant--entry {
+  display: none !important;
+}
+.task-input-row {
+  width: 100% !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+.task-input-row input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.is-editing #visual-container,
+.is-editing .task-list-visual,
+[data-mode="add-task"] #visual-container,
+[data-mode="add-task"] .task-list-visual,
+#task-input-container.active ~ #visual-container {
+  display: none !important;
+}
+
+.task-input-row,
+#task-input-container {
+  width: 100% !important;
+  flex: 1 1 100% !important;
+}
+
+#task-input {
+  width: 100% !important;
+}
+
+.personal-plant--entry .personal-plant-visual,
+.personal-plant-visual {
+  min-height: 96px !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+.personal-plant-visual svg,
+.personal-plant-visual > * {
+  overflow: visible !important;
+}
+
+.personal-plant-visual[data-bloom="true"] {
+  padding-top: 14px;
+}
+
+.personal-constellation-visual {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 88px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.personal-constellation-visual svg {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 10px;
+  display: block;
+}
+
+[data-personal-visual-theme="constellation"] .personal-plant,
+[data-personal-visual-theme="constellation"] .personal-plant--entry {
+  padding: 0 !important;
+  background: #0d1b2a !important;
+  overflow: hidden !important;
+}
+
+[data-personal-visual-theme="constellation"] .personal-constellation-visual,
+[data-personal-visual-theme="constellation"] .constellation-sky {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 105px !important;
+  border-radius: 14px !important;
 }

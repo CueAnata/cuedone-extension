@@ -1,4 +1,3 @@
-import { mountTaskList } from "../shared/task-list.js";
 import { startPresentationMode } from "../shared/mode-switch.js";
 import { wireViewSwitch } from "../shared/view-switch.js";
 import { savePreferredView } from "../shared/preferences.js";
@@ -12,7 +11,7 @@ onCloseSideViewRequest(() => {
   window.close();
 });
 
-mountTaskList(document.getElementById("app"));
+(globalThis.mountTaskList || window.mountTaskList)(document.getElementById("app"));
 startPresentationMode(document.querySelector(".mode-switch"));
 
 wireViewSwitch(document.querySelector(".view-switch"), {

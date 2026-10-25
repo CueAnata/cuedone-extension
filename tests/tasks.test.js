@@ -152,3 +152,14 @@ test("isTaskList validates persisted shape", () => {
   assert.equal(isTaskList(null), false);
   assert.equal(isTaskList([{ id: "a" }]), false);
 });
+
+test("Personal partial reset clears checks while retaining every task and its order", () => {
+  const tasks = [createTask("One",1,"a"),{...createTask("Two",2,"b"),completed:true},createTask("Three",3,"c")];
+  const options={allowPartial:true};
+  assert.equal(canResetList(tasks,options),true);
+  const reset=resetCompletedTasks(tasks,options);
+  assert.deepEqual(reset,tasks.map(task=>({...task,completed:false})));
+  assert.equal(tasks[1].completed,true);
+  assert.equal(canResetList(reset,options),false);
+  assert.equal(resetCompletedTasks(reset,options),reset);
+});

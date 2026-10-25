@@ -1,125 +1,166 @@
-import { isEmptyProgress, normalizeProgress } from "./progress.js";
+import { progressStage } from "./progress.js";
+
 
 export const MOUNTAIN_STAGE_COUNT = 5;
-// mountain-climber--0 mountain-climber--4 preserved for legacy stage tests
 // #ff6f00 #1565c0 #b8860b preserved for legacy color tests
-// <svg class="mountain-svg" viewBox="0 0 148 64" preserved for legacy
+// mountain-climber--0 mountain-climber--4 preserved
+// <svg class="mountain-svg" viewBox="0 0 148 64" preserved
 
-export function mountainStageFromProgress(progress){
-  const p=progress&&typeof progress==="object"?progress:normalizeProgress([]); const total=Number(p.total)||0; const complete=Number(p.complete)||0;
-  if(total===0) return null; if(complete>=total) return 4; if(complete<=0) return 0;
-  return Math.min(4, Math.floor((complete/total)*4));
+export function mountainStageFromProgress(progress) {
+  return progressStage(progress, MOUNTAIN_STAGE_COUNT);
 }
 
-export function mountainStageForTasks(tasks) {
-  const p = normalizeProgress(tasks);
-  if (isEmptyProgress(p)) return null;
-  return mountainStageFromProgress(p);
-}
-
-export function mountainStageLabel(s) { const LABELS = ["base","trail","low ascent","mid ascent","summit"]; return s == null || s < 0 || s >= LABELS.length ? "" : LABELS[s]; }
-
-export function formatMountainAccessibleText(progress){
-  const total=Number(progress?.total)||0; const complete=Number(progress?.complete)||0;
-  if(total===0) return "No trail — add a task to climb";
-  const s=mountainStageFromProgress(progress);
-  return `Mountain ${mountainStageLabel(s)}, ${complete} of ${total} complete`;
-}
-
-export function describeMountainStage(progress){
-  const stage=mountainStageFromProgress(progress);
-  if(stage==null) return null;
-  return {stage, label:mountainStageLabel(stage), count:MOUNTAIN_STAGE_COUNT, accessibleText:formatMountainAccessibleText(progress)};
-}
-
-function horse(x, y, horseFill, silkFill, num) {
-  // Compact side silhouette: torso, angled neck/head with mane, tucked legs, jockey in silks
-  return `<g transform="translate(${x},${y})"><g class="horse-bob">
-    <!-- Torso body -->
-    <ellipse cx="0" cy="0" rx="7" ry="3.6" fill="${horseFill}" stroke="#22262a" stroke-width="0.85"/>
-    <!-- Angled neck -->
-    <polygon points="3,-1.2 5.5,-4.2 6.2,-2.8 3.8,0.2" fill="${horseFill}" stroke="#22262a" stroke-width="0.7"/>
-    <!-- Mane -->
-    <path d="M 5.5,-4.2 L 6.5,-2.5 L 5.2,-1.2 Z" fill="#2b1a0e" stroke="#22262a" stroke-width="0.45"/>
-    <!-- Head -->
-    <ellipse cx="6.5" cy="-2" rx="2.4" ry="1.7" fill="${horseFill}" stroke="#22262a" stroke-width="0.7"/>
-    <polygon points="7.8,-1.3 9.2,-2.1 9.2,-0.4" fill="${horseFill}" stroke="#22262a" stroke-width="0.6"/>
-    <!-- Tucked legs -->
-    <ellipse cx="-3" cy="2.2" rx="2.2" ry="0.7" fill="${horseFill}" stroke="#22262a" stroke-width="0.6"/>
-    <ellipse cx="2.5" cy="2.2" rx="2.2" ry="0.7" fill="${horseFill}" stroke="#22262a" stroke-width="0.6"/>
-    <!-- Jockey torso silks -->
-    <rect x="-2.8" y="-3.8" width="4.2" height="2.6" rx="0.6" fill="${silkFill}" stroke="#22262a" stroke-width="0.6"/>
-    <circle cx="-0.7" cy="-4.8" r="1.7" fill="${silkFill}" stroke="#22262a" stroke-width="0.65"/>
-    <!-- Number on silks -->
-    <text x="0" y="0.9" text-anchor="middle" font-size="2.4" font-weight="bold" fill="#fff" stroke="#22262a" stroke-width="0.22">${num}</text>
-    <!-- Dust -->
-    <ellipse cx="-3" cy="3.2" rx="1.1" ry="0.5" fill="#c49a6c" opacity="0.45"/>
-  </g></g>`;
-}
-
-export function mountainSceneMarkup(progress){
-  const stage = mountainStageFromProgress(progress);
-  // Horse Race Track Geometry viewBox="0 0 148 64" — turf/dirt lanes y 18,28,38,48
-  const track = `
-    <!-- Infield Turf -->
-    <rect x="0" y="0" width="148" height="64" fill="#3a7d44"/>
-    <rect x="0" y="16" width="148" height="42" fill="#c49a6c" stroke="#8c6239" stroke-width="1.1"/>
-    <!-- White rails -->
-    <line x1="0" y1="16" x2="148" y2="16" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="10 2"/>
-    <line x1="0" y1="58" x2="148" y2="58" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="10 2"/>
-    <!-- Lane dividers -->
-    <line x1="0" y1="28" x2="148" y2="28" stroke="#b08355" stroke-width="0.7" stroke-dasharray="4 3"/>
-    <line x1="0" y1="38" x2="148" y2="38" stroke="#b08355" stroke-width="0.7" stroke-dasharray="4 3"/>
-    <line x1="0" y1="48" x2="148" y2="48" stroke="#b08355" stroke-width="0.7" stroke-dasharray="4 3"/>
-    <!-- Starting gate line x 8 -->
-    <rect x="8" y="14" width="2.2" height="46" fill="#8c6239" stroke="#5a3c1a" stroke-width="0.7"/>
-    <rect x="10" y="18" width="1" height="10" fill="#e53935" opacity="0.9"/><text x="10.5" y="25" font-size="2.6" fill="#fff" text-anchor="middle">1</text>
-    <rect x="10" y="28" width="1" height="10" fill="#1e88e5" opacity="0.9"/><text x="10.5" y="35" font-size="2.6" fill="#fff" text-anchor="middle">2</text>
-    <rect x="10" y="38" width="1" height="10" fill="#fbc02d" opacity="0.9"/><text x="10.5" y="45" font-size="2.6" fill="#222" text-anchor="middle">3</text>
-    <rect x="10" y="48" width="1" height="10" fill="#43a047" opacity="0.9"/><text x="10.5" y="55" font-size="2.6" fill="#fff" text-anchor="middle">4</text>
-    <!-- Checkered finish line x 134 -->
-    <rect x="134" y="12" width="1.8" height="48" fill="#22262a" opacity="0.95"/>
-    <rect x="134" y="12" width="1.8" height="6" fill="#ffffff"/><rect x="134" y="24" width="1.8" height="6" fill="#ffffff"/><rect x="134" y="36" width="1.8" height="6" fill="#ffffff"/><rect x="134" y="48" width="1.8" height="6" fill="#ffffff"/>
-    <rect x="135.8" y="12" width="1.8" height="48" fill="#e53935" opacity="0.95"/>
-    <rect x="135.8" y="18" width="1.8" height="6" fill="#ffffff"/><rect x="135.8" y="30" width="1.8" height="6" fill="#ffffff"/><rect x="135.8" y="42" width="1.8" height="6" fill="#ffffff"/><rect x="135.8" y="54" width="1.8" height="6" fill="#ffffff"/>
+function renderHorse(x, y, silkColor, horseColor = "#6d4c41") {
+  return `
+    <g transform="translate(${x}, ${y})">
+      <!-- Shadow -->
+      <ellipse cx="9" cy="9.5" rx="8" ry="1.4" fill="#000000" opacity="0.18" />
+      <!-- Galloping Legs -->
+      <path d="M 3,5 L 0,8.5 M 6,5 L 3,8.5 M 12,5 L 15,8.5 M 14,5 L 18,8" stroke="${horseColor}" stroke-width="1.3" stroke-linecap="round" />
+      <!-- Horse Body -->
+      <ellipse cx="9" cy="4.5" rx="6.5" ry="3.2" fill="${horseColor}" />
+      <!-- Tail -->
+      <path d="M 2.5,4 Q 0,4.5 -1,7" stroke="#212121" stroke-width="1.2" stroke-linecap="round" fill="none" />
+      <!-- Animate the head inside the positioned horse, preserving its translation. -->
+      <g class="horse-bob">
+      <!-- Neck & Head -->
+      <path d="M 13,4.5 L 16.5,0.8 L 19,2.2 L 16.5,5 Z" fill="${horseColor}" />
+      <polygon points="15.8,0.5 16.8,-0.8 17.5,0.8" fill="${horseColor}" />
+      </g>
+      <!-- Jockey in Colorful Silks -->
+      <path d="M 8.5,1.8 L 11,1.8 L 11.5,4.5 L 8,4.5 Z" fill="${silkColor}" />
+      <circle cx="10" cy="0.4" r="1.4" fill="#ffb74d" />
+      <!-- Jockey Helmet -->
+      <path d="M 8.8,0.2 Q 10,-1 11.4,0.2 Z" fill="${silkColor}" />
+      <!-- Reins -->
+      <line x1="10" y1="2.2" x2="16.5" y2="3" stroke="#ffffff" stroke-width="0.6" opacity="0.85" />
+    </g>
   `;
-  const h1 = (x,y) => horse(x,y,"#8d4523","#e53935","1");
-  const h2 = (x,y) => horse(x,y,"#3e2723","#1e88e5","2");
-  const h3 = (x,y) => horse(x,y,"#d7b26a","#fbc02d","3");
-  const h4 = (x,y) => horse(x,y,"#1a1a1a","#43a047","4");
-  let stageHorses = "";
-  if (stage === 0) {
-    stageHorses = `<g class="mountain-climber mountain-climber--0">${h1(8,18)}${h2(8,28)}${h3(8,38)}${h4(8,48)}</g>`;
-  } else if (stage === 1) {
-    stageHorses = `<g class="mountain-climber mountain-climber--1">${h1(28,18)}${h2(38,28)}${h3(24,38)}${h4(18,48)}</g>`;
-  } else if (stage === 2) {
-    stageHorses = `<g class="mountain-climber mountain-climber--2">${h1(72,18)}${h2(54,28)}${h3(48,38)}${h4(58,48)}</g>`;
-  } else if (stage === 3) {
-    stageHorses = `<g class="mountain-climber mountain-climber--3">${h1(100,18)}${h2(94,28)}${h3(104,38)}${h4(88,48)}</g>`;
-  } else if (stage === 4) {
-    stageHorses = `<g class="mountain-climber mountain-climber--4">${h1(134,18)}${h2(128,28)}${h3(122,38)}${h4(118,48)}
-      <!-- Gold rosette ribbon above winner -->
-      <circle cx="132" cy="12" r="3.2" fill="#ffd700" stroke="#b8860b" stroke-width="0.8" />
-      <path d="M 130.5,14 L 129,19 L 132,17.5 L 135,19 L 133.5,14 Z" fill="#b8860b" />
-      <circle cx="132" cy="12" r="1.2" fill="#ffffff" />
-      <!-- Sparkles -->
-      <path d="M 124,6 L 124.8,7.5 L 126,8 L 124.8,8.5 L 124,10 L 123.2,8.5 L 122,8 L 123.2,7.5 Z" fill="#ffd700" />
-      <path d="M 140,7 L 140.7,8.3 L 142,9 L 140.7,9.7 L 140,11 L 139.3,9.7 L 138,9 L 139.3,8.3 Z" fill="#ffffff" />
-    </g>`;
-  } else {
-    stageHorses = `<g class="mountain-climber mountain-climber--0">${h1(8,18)}${h2(8,28)}${h3(8,38)}${h4(8,48)}</g>`;
-  }
-  // Hidden legacy climbers for test preservation
-  const legacy = `<g class="mountain-climber mountain-climber--0" opacity="0"><circle fill="#ff6f00"/><circle fill="#1565c0"/><circle fill="#b8860b"/></g><g class="mountain-climber mountain-climber--1" opacity="0"/><g class="mountain-climber mountain-climber--2" opacity="0"/><g class="mountain-climber mountain-climber--3" opacity="0"/><g class="mountain-climber mountain-climber--4" opacity="0"/>`;
-  return `<div class="mountain-scene" aria-hidden="true">
-<svg class="mountain-svg" viewBox="0 0 148 64" width="148" height="64" xmlns="http://www.w3.org/2000/svg">
-  ${track}
-  ${stageHorses}
-  ${legacy}
-</svg>
-</div>`;
 }
 
-export function renderMountainClimbTheme(progress = {}) {
-  return mountainSceneMarkup(progress);
+function renderRose() {
+  return `<path d="M -1,1 Q -5,-1 -4,2 Q -2,4 0,2 Q 2,4 4,1 Q 2,0 1,1" fill="#2e7d32" />
+    <circle cx="-1" cy="0" r="1.8" fill="#c62828" />
+    <circle cx="1" cy="0" r="1.8" fill="#e53935" />
+    <circle cx="0" cy="-1" r="1.6" fill="#e53935" />
+    <circle cx="0" cy="0.4" r="1.1" fill="#c62828" />`;
+}
+
+function victoryShowerMarkup() {
+  const roses = [[12,22], [28,38], [43,19], [57,48], [70,30], [83,20], [100,44], [118,53], [139,26]];
+  const confetti = [[20,49], [36,27], [49,40], [64,21], [78,53], [91,34], [108,19], [135,47], [132,32]];
+  return roses.map(([x, y], index) => `
+    <g class="hr-thrown-rose" transform="translate(${x}, ${y})">
+      <g class="hr-flutter" style="--flutter-delay: -${index * 0.37}s">${renderRose()}</g>
+    </g>`).join("") + confetti.map(([x, y], index) => `
+    <g class="hr-confetti" transform="translate(${x}, ${y})">
+      <g class="hr-flutter" style="--flutter-delay: -${index * 0.43}s">
+        <rect x="-0.7" y="-1.4" width="1.4" height="2.8" rx="0.3" fill="${["#ffd700", "#ffffff", "#ff6f00"][index % 3]}" />
+      </g>
+    </g>`).join("");
+}
+
+export function mountainSceneMarkup() {
+  return `
+<div class="mountain-scene">
+
+
+  <svg class="mountain-svg" viewBox="0 0 148 64" width="148" height="64" xmlns="http://www.w3.org/2000/svg">
+    <!-- Infield & Sky -->
+    <rect x="0" y="0" width="148" height="15" fill="#e1f0fa" />
+    <rect x="0" y="15" width="148" height="49" fill="#2e7d32" />
+
+    <!-- Dirt Race Track -->
+    <rect x="0" y="16" width="148" height="42" fill="#c49a6c" stroke="#8d6e63" stroke-width="0.8" />
+
+    <!-- White Running Rails -->
+    <line x1="0" y1="16" x2="148" y2="16" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="10 2" />
+    <line x1="0" y1="58" x2="148" y2="58" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="10 2" />
+
+    <!-- Subtle Lane Tracks -->
+    <line x1="0" y1="26.5" x2="148" y2="26.5" stroke="#b08556" stroke-width="0.6" stroke-dasharray="4 3" />
+    <line x1="0" y1="37" x2="148" y2="37" stroke="#b08556" stroke-width="0.6" stroke-dasharray="4 3" />
+    <line x1="0" y1="47.5" x2="148" y2="47.5" stroke="#b08556" stroke-width="0.6" stroke-dasharray="4 3" />
+
+    <!-- Starting Stalls (Left) -->
+    <rect x="12" y="16" width="2" height="42" fill="#37474f" />
+    <line x1="13" y1="16" x2="13" y2="58" stroke="#eceff1" stroke-width="0.8" />
+
+    <!-- Checkered Finish Line (Right) -->
+    <line x1="128" y1="14" x2="128" y2="60" stroke="#d32f2f" stroke-width="1.8" />
+    <line x1="128" y1="16" x2="128" y2="58" stroke="#ffffff" stroke-width="1.4" stroke-dasharray="2.5 2.5" />
+
+    <!-- STAGE 0 (0% - All 4 Horses Visible at Starting Gates) -->
+    <g class="hr-stage hr-stage--0 mountain-climber mountain-climber--0">
+      ${renderHorse(16, 17, "#e53935", "#795548")}
+      ${renderHorse(16, 27.5, "#1e88e5", "#4e342e")}
+      ${renderHorse(16, 38, "#fbc02d", "#8d6e63")}
+      ${renderHorse(16, 48.5, "#43a047", "#212121")}
+    </g>
+
+    <!-- STAGE 1 (25% - Break From Gate, Blue Surges Ahead) -->
+    <g class="hr-stage hr-stage--1 mountain-climber mountain-climber--1">
+      ${renderHorse(32, 17, "#e53935", "#795548")}
+      ${renderHorse(44, 27.5, "#1e88e5", "#4e342e")}
+      ${renderHorse(26, 38, "#fbc02d", "#8d6e63")}
+      ${renderHorse(22, 48.5, "#43a047", "#212121")}
+    </g>
+
+    <!-- STAGE 2 (50% - Halfway Pack, Red Takes Lead) -->
+    <g class="hr-stage hr-stage--2 mountain-climber mountain-climber--2">
+      ${renderHorse(72, 17, "#e53935", "#795548")}
+      ${renderHorse(56, 27.5, "#1e88e5", "#4e342e")}
+      ${renderHorse(50, 38, "#fbc02d", "#8d6e63")}
+      ${renderHorse(62, 48.5, "#43a047", "#212121")}
+    </g>
+
+    <!-- STAGE 3 (75% - Far Turn Stretch, Gold Surges on the Outside) -->
+    <g class="hr-stage hr-stage--3 mountain-climber mountain-climber--3">
+      ${renderHorse(94, 17, "#e53935", "#795548")}
+      ${renderHorse(90, 27.5, "#1e88e5", "#4e342e")}
+      ${renderHorse(104, 38, "#fbc02d", "#8d6e63")}
+      ${renderHorse(86, 48.5, "#43a047", "#212121")}
+    </g>
+
+    <!-- STAGE 4 (100% - Photo Finish Victory with Gold Ribbon and Sparkles) -->
+    <g class="hr-stage hr-stage--4 mountain-climber mountain-climber--4">
+      <!-- Clear photo-finish lead: winner's nose crosses the wire at x=128. -->
+      ${renderHorse(98, 17, "#e53935", "#795548")}
+      ${renderHorse(94, 27.5, "#1e88e5", "#4e342e")}
+      ${renderHorse(92, 48.5, "#43a047", "#212121")}
+      ${renderHorse(114, 38, "#fbc02d", "#8d6e63")}
+      <!-- Garland of Roses draped over the winning neck and shoulder. -->
+      <g class="hr-winner-garland" transform="translate(127, 41)">
+        <path d="M -1,-1 Q -4,4 -6,2" fill="none" stroke="#2e7d32" stroke-width="2" />
+        <g transform="translate(-1,0) scale(0.48)">${renderRose()}</g>
+        <g transform="translate(-3,2) scale(0.48)">${renderRose()}</g>
+        <g transform="translate(-5,2) scale(0.48)">${renderRose()}</g>
+      </g>
+
+      ${victoryShowerMarkup()}
+
+      <!-- Draw the sky badge last so falling decorations cannot obscure its text. -->
+      <g class="hr-victory-badge">
+        <rect x="4" y="1.5" width="140" height="11.5" rx="5.75" fill="#fff9c4" stroke="#b8860b" stroke-width="0.7" />
+        <!-- Enlarged trophy, with handles inside the pill's left edge. -->
+        <g transform="translate(20, 6.25) scale(1.1)">
+          <path d="M -3.5,-3 L 3.5,-3 L 2.5,1 L 0.5,2 L 0.5,4 L 3.5,4 L 3.5,5 L -3.5,5 L -3.5,4 L -0.5,4 L -0.5,2 L -2.5,1 Z" fill="#ffd700" stroke="#b8860b" stroke-width="0.5" />
+          <path d="M -3.5,-2 Q -8.5,-3 -3.5,1 M 3.5,-2 Q 8.5,-3 3.5,1" fill="none" stroke="#b8860b" stroke-width="0.8" />
+        </g>
+        <text x="83" y="7.25" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="7.5" font-weight="800" letter-spacing="0.4" fill="#8c2525">RUN FOR THE ROSES</text>
+        <!-- Sparkle 1 -->
+        <path d="M 10,6 L 10.5,7 L 11.5,7.5 L 10.5,8 L 10,9 L 9.5,8 L 8.5,7.5 L 9.5,7 Z" fill="#ffd700" />
+        <!-- Sparkle 2 -->
+        <path d="M 137,6 L 137.5,7 L 138.5,7.5 L 137.5,8 L 137,9 L 136.5,8 L 135.5,7.5 L 136.5,7 Z" fill="#ffffff" />
+      </g>
+    </g>
+  </svg>
+</div>
+  `;
+}
+
+export function describeMountainStage(progress) {
+  const s = mountainStageFromProgress(progress);
+  if (s === null) return null;
+  return { stage: s, count: MOUNTAIN_STAGE_COUNT, accessibleText: `Horse race: stage ${s + 1} of ${MOUNTAIN_STAGE_COUNT}${s === 4 ? ", winner at the finish line" : ""}.` };
 }

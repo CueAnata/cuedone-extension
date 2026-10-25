@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CueDone Private One Active Task preview</title>
+    <link rel="stylesheet" href="./src/shared/styles.css" />
+    <link id="view-css" rel="stylesheet" href="./src/popup/popup.css" />
+    <style>
+      body.debug { outline: 0; }
+      .preview-hidden { display: none !important; }
+    </style>
+  </head>
+  <body
+    class="popup-view"
+    data-presentation="personal"
+    data-personal-presentation="private"
+    data-personal-task-layout="one-active"
+  >
+    <header class="app-header">
+      <img class="logo-mark" src="./icons/icon48.png" alt="" width="32" height="32" />
+      <div class="brand-text">
+        <h1>CueDone</h1>
+        <p class="tagline">See it. Do it. CueDone.</p>
+      </div>
+      <div class="header-controls">
+        <div class="view-switch" role="group" aria-label="CueDone view">
+          <button type="button" class="view-switch-button is-current" data-preview-view="top">Top</button>
+          <button type="button" class="view-switch-button" data-preview-view="side">Side</button>
+        </div>
+        <div class="mode-switch" role="group" aria-label="CueDone presentation">
+          <button type="button" class="view-switch-button is-current">Personal</button>
+          <button type="button" class="view-switch-button">Client</button>
+        </div>
+      </div>
+    </header>
+    <main class="app-main">
+      <section class="personal-settings">
+        <div class="personal-settings-head">
+          <p class="personal-list-label" id="personal-list-label">Using Private list</p>
+          <button class="personal-settings-toggle is-open" type="button" aria-expanded="true">
+            <span class="personal-settings-gear" aria-hidden="true">&#9881;</span>
+            <span>Settings</span>
+          </button>
+        </div>
+        <div class="personal-settings-panel">
+          <div class="personal-pref-row">
+            <p class="personal-pref-label">Personal presentation</p>
+            <div class="mode-switch" role="group">
+              <button type="button" class="view-switch-button is-current">Private</button>
+              <button type="button" class="view-switch-button">Public</button>
+            </div>
+          </div>
+          <p class="personal-settings-note">
+            Private and Public are separate lists. This is a presentation choice,
+            not a lock or account.
+          </p>
+          <div class="personal-task-layout-settings" hidden>
+            <div class="personal-pref-row personal-task-layout-row">
+              <p class="personal-pref-label">Task layout</p>
+              <div class="mode-switch personal-task-layout-switch">
+                <button type="button" class="view-switch-button">Full list</button>
+                <button type="button" class="view-switch-button is-current">One active task</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="personal-one-active" hidden>
+        <div class="personal-one-active-head">
+          <div>
+            <p class="personal-one-active-kicker">NOW</p>
+            <p class="personal-one-active-progress">1 of 2 complete</p>
+          </div>
+          <button class="personal-full-list-toggle" type="button">Review full list</button>
+        </div>
+        <p class="personal-one-active-waiting">0 tasks waiting</p>
+        <div class="personal-one-active-track">
+          <div class="personal-one-active-fill" style="width: 50%"></div>
+        </div>
+      </section>
+      <ul id="task-list" class="task-list" aria-label="Tasks">
+        <li class="task-item is-complete">
+          <span class="drag-handle">⋮⋮</span>
+          <label class="task-label">
+            <input class="task-checkbox" type="checkbox" checked />
+            <span class="task-text">Outline the project update</span>
+          </label>
+          <div class="task-actions">
+            <button class="icon-button" type="button" disabled>↑</button>
+            <button class="icon-button" type="button">↓</button>
+            <button class="icon-button" type="button">×</button>
+          </div>
+        </li>
+        <li class="task-item is-current-task">
+          <span class="drag-handle">⋮⋮</span>
+          <label class="task-label">
+            <input class="task-checkbox" type="checkbox" />
+            <span class="task-text">Write the project update for Monday</span>
+          </label>
+          <div class="task-actions">
+            <button class="icon-button" type="button">↑</button>
+            <button class="icon-button" type="button" disabled>↓</button>
+            <button class="icon-button" type="button">×</button>
+          </div>
+          <button class="one-active-complete-button" type="button" hidden>Complete</button>
+        </li>
+      </ul>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const view = params.get("view") === "side" ? "side" : "top";
+      const list = params.get("list") === "public" ? "public" : "private";
+      const settings = params.get("settings") !== "closed";
+      const layout = params.get("layout") === "full-list" ? "full-list" : "one-active";
+      const oneActive = layout === "one-active" && list === "private";
+      document.body.className = view === "side" ? "sidepanel-view" : "popup-view";
+      document.body.dataset.presentation = "personal";
+      document.body.dataset.personalPresentation = list;
+      document.body.dataset.personalTaskLayout = oneActive ? "one-active" : "full-list";
+      document.getElementById("view-css").href =
+        view === "side" ? "./src/sidepanel/sidepanel.css" : "./src/popup/popup.css";
+      for (const button of document.querySelectorAll("[data-preview-view]")) {
+        button.classList.toggle("is-current", button.dataset.previewView === view);
+      }
+      document.getElementById("personal-list-label").textContent =
+        list === "public" ? "Using Public list" : "Using Private list";
+      document.getElementById("task-list").setAttribute(
+        "aria-label",
+        list === "public" ? "Public agenda" : "Tasks"
+      );
+      const presentationButtons = document.querySelectorAll(
+        ".personal-settings-panel > .personal-pref-row .view-switch-button"
+      );
+      presentationButtons[0].classList.toggle("is-current", list === "private");
+      presentationButtons[1].classList.toggle("is-current", list === "public");
+      const panel = document.querySelector(".personal-settings-panel");
+      const toggle = document.querySelector(".personal-settings-toggle");
+      panel.hidden = !settings;
+      toggle.classList.toggle("is-open", settings);
+      toggle.setAttribute("aria-expanded", String(settings));
+      const layoutSettings = document.querySelector(".personal-task-layout-settings");
+      layoutSettings.hidden = list !== "private";
+      const layoutButtons = layoutSettings.querySelectorAll(".view-switch-button");
+      layoutButtons[0].classList.toggle("is-current", !oneActive);
+      layoutButtons[1].classList.toggle("is-current", oneActive);
+      const summary = document.querySelector(".personal-one-active");
+      summary.hidden = !oneActive;
+      const taskItems = [...document.querySelectorAll(".task-item")];
+      const activeItem = taskItems.find((item) => item.classList.contains("is-current-task"));
+      const completeButton = activeItem.querySelector(".one-active-complete-button");
+      const reviewButton = document.querySelector(".personal-full-list-toggle");
+
+      function showReview(reviewOpen) {
+        for (const item of taskItems) {
+          item.classList.toggle("preview-hidden", oneActive && !reviewOpen && item !== activeItem);
+        }
+        activeItem.classList.toggle("is-one-active-card", oneActive && !reviewOpen);
+        completeButton.hidden = !oneActive || reviewOpen;
+        reviewButton.textContent = reviewOpen ? "Show current task" : "Review full list";
+        reviewButton.setAttribute("aria-expanded", String(reviewOpen));
+      }
+
+      showReview(oneActive && params.get("review") === "full");
+      reviewButton.addEventListener("click", () => {
+        showReview(reviewButton.getAttribute("aria-expanded") !== "true");
+      });
+    </script>
+  </body>
+</html>

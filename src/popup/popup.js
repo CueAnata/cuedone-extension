@@ -1,4 +1,3 @@
-import { mountTaskList } from "../shared/task-list.js";
 import { startPresentationMode } from "../shared/mode-switch.js";
 import { wireViewSwitch } from "../shared/view-switch.js";
 import {
@@ -27,7 +26,7 @@ if (shouldRestoreSideFromPopup(preferredView)) {
 }
 
 function mountTopView() {
-  mountTaskList(document.getElementById("app"));
+  (globalThis.mountTaskList || window.mountTaskList)(document.getElementById("app"));
   startPresentationMode(document.querySelector(".mode-switch"));
 
   wireViewSwitch(document.querySelector(".view-switch"), {

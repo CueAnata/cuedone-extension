@@ -7,6 +7,20 @@ const sideHtml = readFileSync("src/sidepanel/sidepanel.html", "utf8");
 const popupJs = readFileSync("src/popup/popup.js", "utf8");
 const sideJs = readFileSync("src/sidepanel/sidepanel.js", "utf8");
 const taskListJs = readFileSync("src/shared/task-list.js", "utf8");
+const layoutPreviewHtml = readFileSync("layout-preview.html", "utf8");
+
+test("layout preview opens directly as Private One Active Task with local assets", () => {
+  assert.match(layoutPreviewHtml, /href="\.\/src\/shared\/styles\.css"/);
+  assert.match(layoutPreviewHtml, /href="\.\/src\/popup\/popup\.css"/);
+  assert.match(layoutPreviewHtml, /src="\.\/icons\/icon48\.png"/);
+  assert.doesNotMatch(layoutPreviewHtml, /(?:href|src)="\//);
+  assert.match(layoutPreviewHtml, /data-personal-presentation="private"/);
+  assert.match(layoutPreviewHtml, /data-personal-task-layout="one-active"/);
+  assert.match(layoutPreviewHtml, /Outline the project update/);
+  assert.match(layoutPreviewHtml, /Write the project update for Monday/);
+  assert.match(layoutPreviewHtml, /Review full list/);
+  assert.match(layoutPreviewHtml, /function showReview\(reviewOpen\)/);
+});
 
 test("Top and Side are equal working views with the compact header control", () => {
   for (const html of [popupHtml, sideHtml]) {
@@ -28,11 +42,12 @@ test("Top and Side are equal working views with the compact header control", () 
 test("shared task entry supports setup and work mode in both views", () => {
   assert.match(taskListJs, /Done/);
   assert.match(taskListJs, /\+ Add task/);
-  assert.match(taskListJs, /saveTaskEntryOpen\(false\)/);
+  assert.match(taskListJs, /save: saveTaskEntryOpen, load: loadTaskEntryOpen/);
+  assert.match(taskListJs, /value: false, apply: applyEntryMode/);
   assert.match(taskListJs, /saveTaskEntryOpen\(true\)/);
 });
 
-test("Personal and Client share the same task list presentation switch", () => {
+test("Personal and Client share a presentation switch and the existing Private list", () => {
   for (const html of [popupHtml, sideHtml]) {
     assert.match(html, /data-mode="personal"/);
     assert.match(html, /data-mode="client"/);
@@ -42,6 +57,10 @@ test("Personal and Client share the same task list presentation switch", () => {
   assert.match(sideJs, /startPresentationMode/);
   assert.match(taskListJs, /from "\.\/task-store\.js"/);
   assert.equal(taskListJs.includes("cuedone.tasks"), false);
+  assert.equal(taskListJs.includes("cuedone.publicTasks"), false);
+  assert.match(taskListJs, /loadList/);
+  assert.match(taskListJs, /saveList/);
+  assert.match(taskListJs, /activeListKind/);
 });
 
 test("Client View includes Simple, Celebrate, and an independent Sound control", () => {
@@ -50,6 +69,8 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(taskListJs, /data-completion-sound="off"/);
   assert.match(taskListJs, /data-completion-sound="on"/);
   assert.match(taskListJs, /class="client-settings-toggle"/);
+  assert.match(taskListJs, /class="client-settings-gear"/);
+  assert.match(taskListJs, /class="client-settings-label"/);
   assert.match(taskListJs, /aria-expanded="false"/);
   assert.match(taskListJs, /aria-controls="client-settings-panel"/);
   assert.match(taskListJs, /id="client-settings-panel" class="client-settings-panel" hidden/);
@@ -107,7 +128,7 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   assert.match(completeHandler, /takeCompletionSnapshot\(id\)/);
   assert.match(completeHandler, /completed: checkbox\.checked/);
   assert.match(completeHandler, /maybeCelebrate\(plan\)/);
-  assert.match(completeHandler, /await saveTasks\(tasks\)/);
+  assert.match(completeHandler, /await saveList\(kind, tasks\)/);
   assert.doesNotMatch(completeHandler, /toggleTask/);
   assert.ok(
     completeHandler.indexOf("playCelebrationSound") <
@@ -119,10 +140,10 @@ test("Client View includes Simple, Celebrate, and an independent Sound control",
   );
   assert.ok(
     completeHandler.indexOf("maybeCelebrate(plan)") <
-      completeHandler.indexOf("await saveTasks(tasks)")
+      completeHandler.indexOf("await saveList(kind, tasks)")
   );
   assert.doesNotMatch(
-    taskListJs.slice(taskListJs.indexOf("onTasksChanged((nextTasks)")),
+    taskListJs.slice(taskListJs.indexOf("onListChanged((kind, nextTasks)")),
     /maybeCelebrate/
   );
   assert.match(taskListJs, /onFinalSoundChanged/);
@@ -172,13 +193,18 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   const setter = taskListJs.slice(setterStart, setterEnd);
   assert.match(setter, /settingsPanel\.hidden = !expanded/);
   assert.match(setter, /setAttribute\("aria-expanded", String\(expanded\)\)/);
+  assert.match(setter, /classList\.toggle\("is-open", expanded\)/);
+  assert.match(setter, /clientSettingsDoneInline\.hidden = !expanded/);
   assert.doesNotMatch(setter, /save|play|task|Celebrate/);
+  assert.match(taskListJs, /class="client-settings-actions"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"/);
+  assert.match(taskListJs, /✓ Save/);
 
   const toggleStart = taskListJs.indexOf(
     'settingsToggle.addEventListener("click"'
   );
   const toggleEnd = taskListJs.indexOf(
-    "onPresentationModeChanged",
+    'async function saveClientSettingsAndReturn',
     toggleStart
   );
   const toggleHandler = taskListJs.slice(toggleStart, toggleEnd);
@@ -186,14 +212,33 @@ test("Client Settings is a collapsed, accessible presentation-only panel", () =>
   assert.match(toggleHandler, /aria-expanded/);
   assert.doesNotMatch(toggleHandler, /save|play|task|Celebrate/);
 
+  assert.doesNotMatch(panelMarkup, /class="client-settings-done"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"[^>]*>✓ Save/);
+  assert.match(taskListJs, /clientSettingsDoneInline\.hidden = !expanded/);
+  const doneStart = taskListJs.indexOf('async function saveClientSettingsAndReturn');
+  const doneEnd = taskListJs.indexOf(
+    'personalSettingsToggle.addEventListener("click"',
+    doneStart
+  );
+  const doneHandler = taskListJs.slice(doneStart, doneEnd);
+  assert.match(doneHandler, /setSettingsPanelOpen\(false\)/);
+  assert.match(taskListJs, /clientSettingsDoneInline\.addEventListener\("click"/);
+  assert.match(doneHandler, /await saveSetting\.flush\(\)/);
+  assert.match(doneHandler, /applyEntryMode\(showTaskEntry\)/);
+  assert.match(doneHandler, /showTaskEntry = visibleTasks\(\)\.length === 0/);
+  assert.doesNotMatch(doneHandler, /maybeCelebrate|playClient/);
+
   assert.ok(
     taskListJs.indexOf('class="client-motivator"') > panelEnd,
     "reward controls must remain outside Settings"
   );
 });
 
-test("Start a New List is shared, explicit, synchronized, and separate from Reset List", () => {
-  assert.match(taskListJs, /Start a New List/);
+test("Review and Continue is shared, explicit, synchronized, and separate from Reset List", () => {
+  assert.match(taskListJs, /Review &amp; Continue/);
+  assert.match(taskListJs, /Choose tasks to keep/);
+  assert.match(taskListJs, /Continue with Selected Tasks/);
+  assert.match(taskListJs, /Start Empty List/);
   assert.match(taskListJs, /Choose unfinished tasks to carry over/);
   assert.match(taskListJs, /Completed tasks and unfinished\s+tasks you deselect will be removed/);
   assert.match(taskListJs, /class="create-new-list-button"/);
@@ -238,9 +283,10 @@ test("Start a New List is shared, explicit, synchronized, and separate from Rese
   assert.match(cancelHandler, /setCarryoverOpen\(false\)/);
   assert.doesNotMatch(cancelHandler, /save|tasks\s*=|clearCelebration|render\(/);
 
-  const syncStart = taskListJs.indexOf("onTasksChanged((nextTasks)");
+  const syncStart = taskListJs.indexOf("onListChanged((kind, nextTasks)");
   const syncEnd = taskListJs.indexOf("onTaskEntryOpenChanged", syncStart);
   const syncHandler = taskListJs.slice(syncStart, syncEnd);
+  assert.match(syncHandler, /kind !== currentListKind/);
   assert.match(syncHandler, /pendingSynchronizedTasks/);
   assert.match(syncHandler, /applySynchronizedTasks/);
   assert.match(syncHandler, /Carryover choices were refreshed/);
@@ -275,10 +321,249 @@ test("Final and task sound controls adapt at narrow Client widths without changi
     css,
     /\.popup-view\[data-presentation="client"\] \.task-item\s*\{[\s\S]*?grid-template-columns:\s*var\(--control\) minmax\(0, 1fr\)/
   );
-  assert.doesNotMatch(css, /body\[data-presentation="personal"\]/);
+  assert.doesNotMatch(
+    css,
+    /body\[data-presentation="personal"\](?!\[data-personal-presentation="public"\]) \.task-item/
+  );
 });
 
-test("Reset List appears only when every task is complete and confirms before unchecking", () => {
+test("Personal Settings is a collapsed Private/Public selector that isolates lists", () => {
+  assert.match(taskListJs, /class="personal-settings-toggle"/);
+  assert.match(taskListJs, /aria-controls="personal-settings-panel"/);
+  assert.match(taskListJs, /id="personal-settings-panel" class="personal-settings-panel" hidden/);
+  assert.match(taskListJs, /data-personal-presentation="private"/);
+  assert.match(taskListJs, /data-personal-presentation="public"/);
+  assert.match(taskListJs, /Using Private list/);
+  assert.match(taskListJs, /formatActiveListLabel/);
+  assert.match(taskListJs, /personalSettingsToggleLabel\.textContent = expanded \? "Save" : "Settings"/);
+  assert.match(taskListJs, /personalSettingsToggleIcon\.textContent = expanded \? "✓" : "⚙"/);
+  assert.match(taskListJs, /not a lock or account/);
+  assert.match(taskListJs, /savePersonalPresentation/);
+  assert.match(taskListJs, /visibleTasksForActiveList/);
+  assert.match(taskListJs, /prepareListSwitch/);
+  assert.match(taskListJs, /showActiveList/);
+
+  const switchStart = taskListJs.indexOf("async function requestPersonalPresentation");
+  const switchEnd = taskListJs.indexOf("function setSettingsPanelOpen", switchStart);
+  const switchFn = taskListJs.slice(switchStart, switchEnd);
+  assert.match(switchFn, /await savePersonalPresentation\(requested\)/);
+  assert.match(switchFn, /Your current list is unchanged/);
+  assert.doesNotMatch(switchFn, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const prepareStart = taskListJs.indexOf("function prepareListSwitch");
+  const prepare = taskListJs.slice(
+    prepareStart,
+    taskListJs.indexOf("async function showActiveList", prepareStart)
+  );
+  assert.match(prepare, /setCarryoverOpen\(false\)/);
+  assert.match(prepare, /input\.value = ""/);
+  assert.match(prepare, /clearPreviousCompletionState/);
+  assert.doesNotMatch(prepare, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-text/
+  );
+  assert.match(
+    css,
+    /\.popup-view\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-item/
+  );
+  const compact = css.match(
+    /@media \(max-width: 420px\) \{\s*\n\s*\.sidepanel-view\[data-presentation="personal"\]\[data-personal-presentation="public"\][\s\S]*?\n\}/
+  )?.[0];
+  assert.ok(compact);
+  assert.match(
+    compact,
+    /\.sidepanel-view\[data-presentation="personal"\]\[data-personal-presentation="public"\] \.task-label/
+  );
+});
+
+test("Personal Private One Active Task is persistent, reviewable, and presentation-only", () => {
+  assert.match(taskListJs, /data-personal-task-layout="full-list"/);
+  assert.match(taskListJs, /data-personal-task-layout="one-active"/);
+  assert.match(taskListJs, /class="personal-one-active" hidden/);
+  assert.match(taskListJs, /class="personal-full-list-toggle"/);
+  assert.match(taskListJs, /aria-controls="task-list"/);
+  assert.match(taskListJs, /class="one-active-complete-button"/);
+  assert.match(taskListJs, /savePersonalTaskLayout/);
+  assert.match(taskListJs, /onPersonalTaskLayoutChanged/);
+  assert.match(taskListJs, /personalOneActiveAllowed/);
+  assert.match(taskListJs, /personalOneActiveState/);
+  assert.match(taskListJs, /formatWaitingTaskCount/);
+
+  const renderStart = taskListJs.indexOf("function render()");
+  const renderEnd = taskListJs.indexOf(
+    'function persistClientSequence',
+    renderStart
+  );
+  const render = taskListJs.slice(renderStart, renderEnd);
+  assert.match(render, /const shown = visibleTasks\(\)/);
+  assert.match(render, /reviewAll: personalFullListOpen/);
+  assert.match(render, /oneActiveState\.visibleTasks/);
+  assert.match(render, /sequenceEntries\.forEach/);
+  assert.match(render, /shown\.findIndex/);
+  assert.match(render, /is-one-active-card/);
+  assert.doesNotMatch(render, /saveList|deleteTask|reorderTasks/);
+
+  const completeStart = taskListJs.indexOf(
+    'if (event.target.closest(".one-active-complete-button"))'
+  );
+  const completeEnd = taskListJs.indexOf(
+    'if (event.target.closest(".delete-button"))',
+    completeStart
+  );
+  const complete = taskListJs.slice(completeStart, completeEnd);
+  assert.match(complete, /captureCompletionSnapshot/);
+  assert.match(complete, /dispatchEvent\(new Event\("change"/);
+
+  const modeChange = taskListJs.slice(
+    taskListJs.indexOf("onPresentationModeChanged((next) => {"),
+    taskListJs.indexOf("onPersonalPresentationChanged", completeEnd)
+  );
+  assert.match(modeChange, /render\(\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\][\s\S]*?\.task-item\.is-one-active-card/
+  );
+  assert.doesNotMatch(
+    css,
+    /body\[data-presentation="client"\][^}]*is-one-active-card/
+  );
+});
+
+test("Personal Private audio is isolated, saved after completion, and silent in Public", () => {
+  assert.match(taskListJs, /class="personal-audio-settings" hidden/);
+  assert.match(taskListJs, /data-personal-completion-sound="off"/);
+  assert.match(taskListJs, /data-personal-completion-sound="on"/);
+  assert.match(taskListJs, /id="personal-task-sound"/);
+  assert.match(taskListJs, /id="personal-final-sound"/);
+  assert.match(taskListJs, /option value="bubble-pop">Bubble Pop/);
+  assert.match(taskListJs, /option value="current">Current tone/);
+  assert.match(taskListJs, /class="personal-task-sound-preview sound-preview-button"/);
+  assert.match(taskListJs, /class="personal-final-sound-preview sound-preview-button"/);
+  assert.match(taskListJs, /savePersonalCompletionSound/);
+  assert.match(taskListJs, /savePersonalTaskSound/);
+  assert.match(taskListJs, /savePersonalFinalSound/);
+  assert.match(taskListJs, /onPersonalCompletionSoundChanged/);
+  assert.match(taskListJs, /planPersonalPrivateAudio/);
+  assert.match(taskListJs, /playPersonalPrivateAudio/);
+  assert.match(taskListJs, /applyActiveAudioForView/);
+  assert.match(taskListJs, /stopCelebrationAudio/);
+
+  const completeHandler = taskListJs.slice(
+    taskListJs.indexOf('list.addEventListener("change"'),
+    taskListJs.indexOf('list.addEventListener("click"')
+  );
+  assert.ok(
+    completeHandler.indexOf("await saveList(kind, tasks)") <
+      completeHandler.indexOf("playPersonalPrivateAudio(personalAudio)")
+  );
+  assert.match(completeHandler, /playPersonalPrivateAudio\(personalAudio\)/);
+  const failStart = completeHandler.indexOf("} catch {");
+  assert.doesNotMatch(
+    completeHandler.slice(failStart),
+    /playPersonalPrivateAudio|playCelebrationSound|playTaskSound/
+  );
+
+  const personalPreview = taskListJs.slice(
+    taskListJs.indexOf(
+      'personalFinalSoundPreviewButton.addEventListener("click"'
+    ),
+    taskListJs.indexOf('list.addEventListener("pointerdown"')
+  );
+  assert.match(personalPreview, /canPlayPersonalAudio\(\)/);
+  assert.match(personalPreview, /personalSound !== "on"/);
+  assert.doesNotMatch(personalPreview, /dataset\.completionSound/);
+
+  const switchFn = taskListJs.slice(
+    taskListJs.indexOf("onPresentationModeChanged((next) => {"),
+    taskListJs.indexOf("onRewardChanged((reward) => {")
+  );
+  assert.match(switchFn, /applyActiveAudioForView\(\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\]\s*\n\s*\.personal-audio-settings:not\(\[hidden\]\)/
+  );
+  assert.match(css, /\.personal-task-sound-row/);
+  assert.match(
+    css,
+    /@media \(max-width: 420px\) \{[\s\S]*?\.personal-final-sound-select/
+  );
+});
+
+test("Personal Private affirmations and session endings stay isolated and silent", () => {
+  assert.match(taskListJs, /class="personal-message-settings" hidden/);
+  assert.match(taskListJs, /data-personal-affirmation="off"/);
+  assert.match(taskListJs, /Finish for now/);
+  assert.match(taskListJs, /Continue list/);
+  assert.match(taskListJs, /All-tasks-completed message/);
+  assert.match(taskListJs, /Stopping with unfinished tasks/);
+  assert.match(taskListJs, /savePersonalAffirmation/);
+  assert.match(taskListJs, /savePersonalCompleteMessage/);
+  assert.match(taskListJs, /savePersonalPauseMessage/);
+  assert.match(taskListJs, /savePersonalEnding/);
+  assert.match(taskListJs, /refreshRandomAffirmation/);
+  assert.match(taskListJs, /createEndingState\("complete"/);
+  assert.match(taskListJs, /createEndingState\("pause"/);
+  assert.match(taskListJs, /clearStaleEnding/);
+  assert.match(taskListJs, /textContent = affirmationText/);
+  assert.match(taskListJs, /personalEndingText\.textContent/);
+
+  const completeHandler = taskListJs.slice(
+    taskListJs.indexOf('list.addEventListener("change"'),
+    taskListJs.indexOf('list.addEventListener("click"')
+  );
+  assert.ok(
+    completeHandler.indexOf("await saveList(kind, tasks)") <
+      completeHandler.indexOf('createEndingState("complete"')
+  );
+  assert.match(completeHandler, /playPersonalPrivateAudio\(personalAudio\)/);
+
+  const finishHandler = taskListJs.slice(
+    taskListJs.indexOf('finishForNowButton.addEventListener("click"'),
+    taskListJs.indexOf('continueListButton.addEventListener("click"')
+  );
+  assert.doesNotMatch(finishHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+  assert.doesNotMatch(finishHandler, /saveList|resetCompletedTasks|setCarryoverOpen/);
+
+  const continueHandler = taskListJs.slice(
+    taskListJs.indexOf('continueListButton.addEventListener("click"'),
+    taskListJs.indexOf('list.addEventListener("pointerdown"')
+  );
+  assert.match(continueHandler, /clearEndingState/);
+  assert.doesNotMatch(continueHandler, /playCelebrationSound|playTaskSound|maybeCelebrate/);
+
+  const persistFn = taskListJs.slice(
+    taskListJs.indexOf("async function persist(nextTasks, { clearEnding = false, resetVisualProgress = false } = {})"),
+    taskListJs.indexOf("function render()")
+  );
+  assert.match(
+    persistFn,
+    /saveList\(kind, tasks, \{[\s\S]*clearEnding,[\s\S]*breakTimer: resumedBreakTimer/
+  );
+  assert.match(persistFn, /clearStaleEnding\(kind, clearEnding\)/);
+
+  const css = readFileSync("src/shared/styles.css", "utf8");
+  assert.match(css, /\.personal-affirmation \{/);
+  assert.match(css, /\.personal-ending \{/);
+  assert.match(css, /\.personal-ending-icon/);
+  assert.match(css, /\.personal-ending\.is-complete/);
+  assert.match(css, /\.personal-ending\.is-pause/);
+  assert.match(taskListJs, /personal-ending-icon/);
+  assert.match(taskListJs, /is-complete/);
+  assert.match(taskListJs, /is-pause/);
+  assert.match(
+    css,
+    /body\[data-presentation="personal"\]\[data-personal-presentation="private"\]\s*\n\s*\.personal-message-settings:not\(\[hidden\]\)/
+  );
+});
+
+test("Reset List supports checked tasks and confirms before unchecking", () => {
   assert.match(taskListJs, /Reset List/);
   assert.match(taskListJs, /Start this list again\?/);
   assert.match(taskListJs, /canResetList/);
@@ -310,8 +595,12 @@ test("Reset List appears only when every task is complete and confirms before un
     confirmStart,
     taskListJs.indexOf("doneButton.addEventListener")
   );
-  assert.match(confirmHandler, /resetCompletedTasks\(tasks\)/);
-  assert.match(confirmHandler, /await persist\(next\)/);
+  assert.match(confirmHandler, /resetCompletedTasks\(shown, \{ allowPartial: true \}\)/);
+  assert.match(confirmHandler, /await persist\(next, \{ clearEnding: true, resetVisualProgress: true \}\)/);
+  assert.match(
+    confirmHandler,
+    /saveTasks: \(next\) =>[\s\S]*saveList\(kind, next, \{[\s\S]*clearEnding: true,[\s\S]*breakTimer: resumedBreakTimer/
+  );
   assert.doesNotMatch(confirmHandler, /deleteTask/);
   assert.doesNotMatch(confirmHandler, /saveReward/);
   assert.doesNotMatch(confirmHandler, /saveCompletionStyle/);
@@ -329,4 +618,28 @@ test("Reset List appears only when every task is complete and confirms before un
     maybeCelebrate.indexOf("showFinalTrail") <
       maybeCelebrate.indexOf('kind: "final"')
   );
+});
+
+test("Client sequence uses one section card and one top Settings Save", () => {
+  assert.doesNotMatch(taskListJs, /class="client-settings-done"/);
+  assert.match(taskListJs, /class="client-settings-done-inline"[^>]*>✓ Save/);
+  assert.match(taskListJs, /taskList\.className = "client-part-tasks"/);
+  assert.match(taskListJs, /taskList\.append\(item\)/);
+  assert.match(taskListJs, /root\.classList\.toggle\("client-settings-open", expanded\)/);
+  assert.match(taskListJs, /root\.querySelector\("#clear-all-btn"\)/);
+});
+
+test("empty Client lists reopen with task entry visible in either sequence layout", () => {
+  assert.match(taskListJs, /applyEntryMode\(savedEntryOpen \|\| \(isClientMode\(\) && visibleTasks\(\)\.length === 0\)\)/);
+});
+
+test("Client sequence hides global entry without changing full-list entry preferences", () => {
+  assert.match(taskListJs, /classList\.toggle\("client-sequence-active", client && clientSequence\.enabled\)/);
+});
+
+test("Personal Settings hides working list presentation without modifying tasks",()=>{
+ const start=taskListJs.indexOf("function setPersonalSettingsPanelOpen");
+ const handler=taskListJs.slice(start,taskListJs.indexOf("function paintPersonalPresentation",start));
+ assert.match(handler,/classList\.toggle\("personal-settings-open", expanded\)/);
+ assert.doesNotMatch(handler,/saveList|deleteTask|resetCompletedTasks/);
 });

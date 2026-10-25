@@ -12,14 +12,20 @@ import {
   shouldAssignToolbarPopup,
   shouldRestoreSideFromPopup,
   taskEntryVisibility,
+  PERSONAL_PRESENTATION_KEY,
+  PERSONAL_TASK_LAYOUT_KEY,
   PRESENTATION_MODE_KEY,
   END_MOTIVATOR_KEY,
   REWARD_KEY,
+  loadPersonalPresentation,
+  loadPersonalTaskLayout,
   loadPresentationMode,
   loadEndMotivator,
   loadReward,
   normalizePresentationMode,
   normalizeEndMotivator,
+  savePersonalPresentation,
+  savePersonalTaskLayout,
   savePresentationMode,
   saveEndMotivator,
   saveReward,
@@ -45,6 +51,33 @@ import {
   saveFinalCelebration,
   saveFinalSound,
   saveTaskSound,
+  PERSONAL_COMPLETION_SOUND_KEY,
+  PERSONAL_FINAL_SOUND_KEY,
+  PERSONAL_TASK_SOUND_KEY,
+  loadPersonalCompletionSound,
+  loadPersonalFinalSound,
+  loadPersonalTaskSound,
+  onPersonalCompletionSoundChanged,
+  onPersonalFinalSoundChanged,
+  onPersonalTaskSoundChanged,
+  onPersonalTaskLayoutChanged,
+  savePersonalCompletionSound,
+  savePersonalFinalSound,
+  savePersonalTaskSound,
+  PERSONAL_AFFIRMATION_KEY,
+  PERSONAL_COMPLETE_MESSAGE_KEY,
+  PERSONAL_PAUSE_MESSAGE_KEY,
+  PERSONAL_ENDING_KEY,
+  loadPersonalAffirmation,
+  loadPersonalCompleteMessage,
+  loadPersonalEnding,
+  loadPersonalPauseMessage,
+  onPersonalAffirmationChanged,
+  onPersonalEndingChanged,
+  savePersonalAffirmation,
+  savePersonalCompleteMessage,
+  savePersonalEnding,
+  savePersonalPauseMessage,
 } from "../src/shared/preferences.js";
 
 function mockChromeStorage(initial = {}) {
@@ -182,6 +215,34 @@ test("presentation mode defaults to Personal and persists Client separately from
   assert.equal(await loadPresentationMode(), "client");
 });
 
+test("Personal presentation defaults to Private and persists Public separately", async () => {
+  const store = mockChromeStorage();
+  assert.equal(await loadPersonalPresentation(), "private");
+  await savePersonalPresentation("public");
+  assert.equal(store[PERSONAL_PRESENTATION_KEY], "public");
+  assert.equal(await loadPersonalPresentation(), "public");
+  await savePersonalPresentation("not-a-list");
+  assert.equal(await loadPersonalPresentation(), "private");
+});
+
+test("Personal task layout defaults to Full list and synchronizes One active task", async () => {
+  const store = mockChromeStorage();
+  const observed = [];
+  const unsubscribe = onPersonalTaskLayoutChanged((value) =>
+    observed.push(value)
+  );
+
+  assert.equal(await loadPersonalTaskLayout(), "full-list");
+  await savePersonalTaskLayout("one-active");
+  assert.equal(store[PERSONAL_TASK_LAYOUT_KEY], "one-active");
+  assert.equal(await loadPersonalTaskLayout(), "one-active");
+  await savePersonalTaskLayout("first-then");
+  unsubscribe();
+
+  assert.equal(await loadPersonalTaskLayout(), "full-list");
+  assert.deepEqual(observed, ["one-active", "full-list"]);
+});
+
 test("end motivator is optional, trimmed, and persisted locally", async () => {
   const store = mockChromeStorage();
   assert.equal(normalizeEndMotivator(undefined), "");
@@ -258,15 +319,15 @@ test("final celebration preference persists locally", async () => {
   assert.equal(await loadFinalCelebration(), "balloons");
 });
 
-test("final sound defaults to the existing tone and persists valid choices", async () => {
+test("final sound defaults to Random and persists valid choices", async () => {
   const store = mockChromeStorage();
-  assert.equal(normalizeFinalSound(undefined), "current");
+  assert.equal(normalizeFinalSound(undefined), "random");
   assert.equal(normalizeFinalSound("yay"), "yay");
   assert.equal(normalizeFinalSound("applause"), "applause");
   assert.equal(normalizeFinalSound("trumpet-fanfare"), "trumpet-fanfare");
   assert.equal(normalizeFinalSound("hurrah"), "hurrah");
-  assert.equal(normalizeFinalSound("confetti"), "current");
-  assert.equal(await loadFinalSound(), "current");
+  assert.equal(normalizeFinalSound("confetti"), "random");
+  assert.equal(await loadFinalSound(), "random");
   await saveFinalSound("hurrah");
   assert.equal(store[FINAL_SOUND_KEY], "hurrah");
   assert.equal(await loadFinalSound(), "hurrah");
@@ -280,19 +341,19 @@ test("final sound changes synchronize through shared local storage", async () =>
   await saveFinalSound("not-a-choice");
   unsubscribe();
   await saveFinalSound("yay");
-  assert.deepEqual(observed, ["trumpet-fanfare", "current"]);
+  assert.deepEqual(observed, ["trumpet-fanfare", "random"]);
 });
 
 test("task sound defaults to Bubble Pop and persists every valid choice", async () => {
   const store = mockChromeStorage();
-  assert.equal(normalizeTaskSound(undefined), "bubble-pop");
+  assert.equal(normalizeTaskSound(undefined), "random");
   assert.equal(normalizeTaskSound("none"), "none");
   assert.equal(normalizeTaskSound("bubble-pop"), "bubble-pop");
   assert.equal(normalizeTaskSound("soft-click"), "soft-click");
   assert.equal(normalizeTaskSound("wood-tap"), "wood-tap");
   assert.equal(normalizeTaskSound("random"), "random");
-  assert.equal(normalizeTaskSound("current"), "bubble-pop");
-  assert.equal(await loadTaskSound(), "bubble-pop");
+  assert.equal(normalizeTaskSound("current"), "random");
+  assert.equal(await loadTaskSound(), "random");
   await saveTaskSound("wood-tap");
   assert.equal(store[TASK_SOUND_KEY], "wood-tap");
   assert.equal(await loadTaskSound(), "wood-tap");
@@ -306,11 +367,117 @@ test("task sound changes synchronize through shared local storage", async () => 
   await saveTaskSound("not-a-choice");
   unsubscribe();
   await saveTaskSound("soft-click");
-  assert.deepEqual(observed, ["random", "bubble-pop"]);
+  assert.deepEqual(observed, ["random", "random"]);
+});
+
+test("Personal audio preferences persist separately from Client audio", async () => {
+  const store = mockChromeStorage();
+  assert.equal(await loadPersonalCompletionSound(), "off");
+  assert.equal(await loadPersonalTaskSound(), "random");
+  assert.equal(await loadPersonalFinalSound(), "random");
+  await saveCompletionSound("on");
+  await saveTaskSound("wood-tap");
+  await saveFinalSound("hurrah");
+  assert.equal(await loadPersonalCompletionSound(), "off");
+  assert.equal(await loadPersonalTaskSound(), "random");
+  assert.equal(await loadPersonalFinalSound(), "random");
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("soft-click");
+  await savePersonalFinalSound("applause");
+  assert.equal(store[PERSONAL_COMPLETION_SOUND_KEY], "on");
+  assert.equal(store[PERSONAL_TASK_SOUND_KEY], "soft-click");
+  assert.equal(store[PERSONAL_FINAL_SOUND_KEY], "applause");
+  assert.equal(store[COMPLETION_SOUND_KEY], "on");
+  assert.equal(store[TASK_SOUND_KEY], "wood-tap");
+  assert.equal(store[FINAL_SOUND_KEY], "hurrah");
+  assert.equal(await loadCompletionSound(), "on");
+  assert.equal(await loadTaskSound(), "wood-tap");
+  assert.equal(await loadFinalSound(), "hurrah");
+});
+
+test("Personal affirmation and ending preferences persist separately from Client", async () => {
+  const store = mockChromeStorage();
+  assert.deepEqual(await loadPersonalAffirmation(), {
+    enabled: false,
+    choice: "random",
+    customText: "",
+    resolvedId: null,
+  });
+  assert.equal((await loadPersonalCompleteMessage()).choice, "random");
+  assert.equal((await loadPersonalPauseMessage()).choice, "random");
+  assert.deepEqual(await loadPersonalEnding(), { kind: "none", text: "" });
+  await saveCompletionSound("on");
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "random",
+    customText: "",
+    resolvedId: "one-step",
+  });
+  await savePersonalCompleteMessage({ choice: "you-did-it", customText: "" });
+  await savePersonalPauseMessage({ choice: "custom", customText: "  Pause here  " });
+  await savePersonalEnding({ kind: "pause", text: "Done for now." });
+  assert.equal(store[COMPLETION_SOUND_KEY], "on");
+  assert.deepEqual(store[PERSONAL_AFFIRMATION_KEY], {
+    enabled: true,
+    choice: "random",
+    customText: "",
+    resolvedId: "one-step",
+  });
+  assert.equal(store[PERSONAL_COMPLETE_MESSAGE_KEY].choice, "you-did-it");
+  assert.equal(store[PERSONAL_PAUSE_MESSAGE_KEY].customText, "Pause here");
+  assert.deepEqual(store[PERSONAL_ENDING_KEY], {
+    kind: "pause",
+    text: "Done for now.",
+  });
+  assert.equal(await loadCompletionSound(), "on");
+});
+
+test("Personal ending state synchronizes through shared local storage", async () => {
+  mockChromeStorage();
+  const endings = [];
+  const affirmations = [];
+  const stopEnding = onPersonalEndingChanged((value) => endings.push(value));
+  const stopAffirmation = onPersonalAffirmationChanged((value) =>
+    affirmations.push(value)
+  );
+  await savePersonalEnding({ kind: "complete", text: "You did it!" });
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "next-step",
+    customText: "",
+    resolvedId: null,
+  });
+  stopEnding();
+  stopAffirmation();
+  await savePersonalEnding({ kind: "none", text: "" });
+  assert.deepEqual(endings, [{ kind: "complete", text: "You did it!" }]);
+  assert.equal(affirmations[0].enabled, true);
+});
+
+test("Personal audio preference changes synchronize through shared local storage", async () => {
+  mockChromeStorage();
+  const sounds = [];
+  const tasks = [];
+  const finals = [];
+  const stopSound = onPersonalCompletionSoundChanged((value) => sounds.push(value));
+  const stopTask = onPersonalTaskSoundChanged((value) => tasks.push(value));
+  const stopFinal = onPersonalFinalSoundChanged((value) => finals.push(value));
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("random");
+  await savePersonalFinalSound("yay");
+  stopSound();
+  stopTask();
+  stopFinal();
+  await savePersonalCompletionSound("off");
+  await savePersonalTaskSound("none");
+  await savePersonalFinalSound("hurrah");
+  assert.deepEqual(sounds, ["on"]);
+  assert.deepEqual(tasks, ["random"]);
+  assert.deepEqual(finals, ["yay"]);
 });
 
 test("saving Client presentation or motivator does not alter tasks", async () => {
-  mockChromeStorage();
+  const store = mockChromeStorage();
   const { TASKS_STORAGE_KEY, loadTasks, saveTasks } = await import(
     "../src/shared/task-store.js"
   );
@@ -325,8 +492,25 @@ test("saving Client presentation or motivator does not alter tasks", async () =>
   await saveFinalCelebration("butterflies");
   await saveFinalSound("applause");
   await saveTaskSound("soft-click");
+  await savePersonalPresentation("public");
+  await savePersonalTaskLayout("one-active");
+  await savePersonalCompletionSound("on");
+  await savePersonalTaskSound("none");
+  await savePersonalFinalSound("yay");
+  await savePersonalAffirmation({
+    enabled: true,
+    choice: "custom",
+    customText: "Keep going",
+    resolvedId: null,
+  });
+  await savePersonalCompleteMessage({ choice: "all-done", customText: "" });
+  await savePersonalPauseMessage({ choice: "every-step", customText: "" });
+  await savePersonalEnding({ kind: "complete", text: "You did it!" });
   assert.deepEqual(await loadTasks(), tasks);
+  assert.equal(store[PERSONAL_TASK_LAYOUT_KEY], "one-active");
   assert.equal(TASKS_STORAGE_KEY, "cuedone.tasks");
+  const { loadPublicTasks } = await import("../src/shared/task-store.js");
+  assert.deepEqual(await loadPublicTasks(), []);
 });
 
 test("Client presentation CSS is scoped and does not restyle Personal View", async () => {
@@ -350,4 +534,53 @@ test("Client presentation CSS is scoped and does not restyle Personal View", asy
   for (const occurrence of css.split(".is-current-task").slice(0, -1)) {
     assert.match(occurrence, /\[data-presentation="client"\]/);
   }
+});
+
+test("Personal Settings snapshot round-trips explicit disabled values and selected sounds", async () => {
+  const preferences = await import("../src/shared/preferences.js");
+  const { normalizeBreakTimerModel } = await import("../src/shared/break-clock.js");
+  const store = mockChromeStorage();
+  await preferences.savePersonalSettingsSnapshot({
+    presentation:"private",layout:"full-list",progress:"off",theme:"coffee",sound:"off",
+    taskSound:"none",finalSound:"applause",affirmation:{enabled:false,choice:"random"},
+    completeMessage:{choice:"none"},pauseMessage:{choice:"none"},
+    breakTimer:normalizeBreakTimerModel(),notifications:false,
+  });
+  assert.equal(store[preferences.PERSONAL_PLANT_THEME_KEY],"off");
+  assert.equal(store[preferences.PERSONAL_COMPLETION_SOUND_KEY],"off");
+  assert.equal(store[preferences.PERSONAL_BREAK_NOTIFICATIONS_KEY],false);
+  assert.equal(store[preferences.PERSONAL_AFFIRMATION_KEY].enabled,false);
+  assert.equal(store[preferences.PERSONAL_BREAK_TIMER_KEY].clock.enabled,false);
+  assert.equal(await preferences.loadPersonalPlantTheme(),"off");
+  assert.equal(await preferences.loadPersonalCompletionSound(),"off");
+  assert.equal(await preferences.loadPersonalVisualTheme(),"coffee");
+  assert.equal(await preferences.loadPersonalTaskSound(),"none");
+  assert.equal(await preferences.loadPersonalFinalSound(),"applause");
+  assert.equal(await preferences.loadPersonalBreakNotifications(),false);
+  const previous = structuredClone(store);
+  await preferences.savePersonalSettingsSnapshot({presentation:"public"});
+  for (const key of Object.keys(previous).filter(key=>key!==preferences.PERSONAL_PRESENTATION_KEY)) assert.deepEqual(store[key],previous[key]);
+});
+
+test("expanded final choices persist independently for Personal and Client including Random", async () => {
+  mockChromeStorage();
+  for(const name of ["random","party-horn","whip-crack","cash-register","chiptune-blip","rimshot","jackpot-coins","gong"]) {
+    await saveFinalSound(name); assert.equal(await loadFinalSound(),name);
+    await savePersonalFinalSound(name); assert.equal(await loadPersonalFinalSound(),name);
+  }
+  await saveFinalSound("random");
+  assert.equal(await loadPersonalFinalSound(),"gong");
+});
+
+test("explicitly saved Current tone remains selected despite Random default", async () => {
+  mockChromeStorage();
+  await saveFinalSound("current"); await savePersonalFinalSound("current");
+  assert.equal(await loadFinalSound(),"current");
+  assert.equal(await loadPersonalFinalSound(),"current");
+});
+
+test("saved task sound None and Bubble Pop survive the Random default", async () => {
+  mockChromeStorage(); await saveTaskSound("none"); await savePersonalTaskSound("bubble-pop");
+  assert.equal(await loadTaskSound(),"none");
+  assert.equal(await loadPersonalTaskSound(),"bubble-pop");
 });

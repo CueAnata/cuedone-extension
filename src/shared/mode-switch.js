@@ -1,3 +1,4 @@
+import { createSettingsSaver } from "./settings-save.js";
 import {
   loadPresentationMode,
   normalizePresentationMode,
@@ -48,22 +49,36 @@ export function wireModeSwitch(root, { currentMode, onPersonal, onClient }) {
 export async function startPresentationMode(switchRoot) {
   const mode = await loadPresentationMode();
   applyPresentationMode(mode);
+  let savedMode = mode;
+  const showError = (message) => {
+    const alert = document.querySelector(".personal-list-error");
+    if (alert) {
+      alert.textContent = message;
+      alert.hidden = !message;
+    }
+  };
+  const saveSetting = createSettingsSaver(showError);
+  function apply(mode) {
+    savedMode = mode;
+    applyPresentationMode(mode);
+    paint(mode);
+  }
+  function request(mode) {
+    return saveSetting({
+      save: savePresentationMode,
+      load: loadPresentationMode,
+      value: mode,
+      apply,
+      restore: () => apply(savedMode),
+    });
+  }
   const { paint } = wireModeSwitch(switchRoot, {
     currentMode: mode,
-    async onPersonal() {
-      applyPresentationMode("personal");
-      paint("personal");
-      await savePresentationMode("personal");
-    },
-    async onClient() {
-      applyPresentationMode("client");
-      paint("client");
-      await savePresentationMode("client");
-    },
+    onPersonal: () => request("personal"),
+    onClient: () => request("client"),
   });
 
   onPresentationModeChanged((next) => {
-    applyPresentationMode(next);
-    paint(next);
+    apply(next);
   });
 }
