@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Group, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, Raycaster, Vector3 } from 'three';
-import { applyFixedPanelPose, PANEL_WIDTH_METERS, PANEL_HEIGHT_METERS } from './fixed-panel.ts';
+import { applyFixedPanelPose, faceCenterPanel, PANEL_WIDTH_METERS, PANEL_HEIGHT_METERS } from './fixed-panel.ts';
 
 function close(actual: number, expected: number) {assert.ok(Math.abs(actual-expected)<1e-9, `${actual} != ${expected}`);}
 function fixed(panel: Group) {
@@ -50,4 +50,21 @@ test('scene and viewport retain fixed metrics, viewer-origin tracking and scroll
   const ui=readFileSync(new URL('../public/ui/task-panel.uikitml',import.meta.url),'utf8');
   assert.match(ui,/width: 80;/); assert.match(ui,/height: 100;/); assert.match(ui,/overflow: scroll;/);
   assert.match(ui,/id="entry-done-button"/); assert.match(ui,/id="task-input"/);
+});
+
+test('face centering tracks the viewing direction and child ray targets after head movement',()=>{
+  const head=new Group(), dashboard=new Group(), parent=new Group(), panel=new Group(); parent.add(panel);
+  head.position.set(0.3,1.6,0.2); head.rotation.set(-0.2,0.6,0);
+  parent.position.set(0.7,1.3,-1.8); parent.rotation.y=0.7; parent.scale.setScalar(0.792);
+  faceCenterPanel(dashboard,head);
+  applyFixedPanelPose(panel,dashboard.matrixWorld);
+  const local=head.worldToLocal(panel.getWorldPosition(new Vector3()));
+  close(local.x,0); close(local.y,0); close(local.z,-1.5);
+  close(panel.getWorldQuaternion(new Quaternion()).angleTo(head.getWorldQuaternion(new Quaternion())),0);
+  const geometry=new PlaneGeometry(0.8,1), material=new MeshBasicMaterial();
+  const target=new Mesh(geometry,material); panel.add(target); panel.updateWorldMatrix(true,true);
+  const origin=head.getWorldPosition(new Vector3());
+  const direction=panel.getWorldPosition(new Vector3()).sub(origin).normalize();
+  assert.ok(new Raycaster(origin,direction).intersectObject(target).length);
+  geometry.dispose(); material.dispose();
 });

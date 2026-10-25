@@ -280,8 +280,8 @@ h2 {
 .pollen-line { position: absolute; pointer-events: none; left: 8%; right: 6%; top: 50%; height: 2px; background: #ecba28; box-shadow: 0 0 6px #ffd651; transform: scaleX(0); transform-origin: left; }
 [data-completed="true"] .pollen-line { transform: scaleX(1); }
 .task-bee { display: none; position: absolute; left: 7%; top: 25%; pointer-events: none; }
-.pollinating .pollen-line { animation: pollen 1.1s linear both; }
-.pollinating .task-bee { display: block; animation: bee 1.1s linear both; }
+.pollinating .pollen-line { animation: pollen 2.4s linear both; }
+.pollinating .task-bee { display: block; animation: bee 2.4s linear both; }
 .browser-bottom-bar { flex-wrap: wrap; margin-top: 12px; }
 .browser-bottom-bar button { flex: 1; padding: 8px; }
 .browser-done { width: 100%; margin-top: 12px; font-size: 1.3rem; }
@@ -331,3 +331,19 @@ h2 {
 .browser-entry-row .browser-button { min-width: 76px; }
 .browser-entry-row input { min-width: 0; }
 .browser-panel .browser-button:hover { filter: brightness(0.95); }
+
+/* Completion graphics track the text area, independently of the larger checkbox. */
+.browser-panel .browser-task-row { display: flex; align-items: center; gap: 12px; min-height: 76px; }
+.task-checkbox { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 3px solid #96550c; border-radius: 8px; font-size: 28px; line-height: 1; }
+.task-label { position: relative; flex: 1; min-width: 0; line-height: 1.5; }
+.task-label .pollen-line { left: 0; right: 0; top: 50%; }
+.task-label .task-bee { left: 0; top: calc(50% - 0.75em); }
+[data-completed="true"] .task-label-text { text-decoration: line-through; text-decoration-color: #b78113; text-decoration-thickness: 2px; }
+@keyframes bee { 0% { left: 0; transform: translateY(0); } 25% { transform: translateY(-2px); } 50% { transform: translateY(2px); } 75% { transform: translateY(-2px); } 99% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+
+/* Keep native task entry outside the only scrolling body. */
+.browser-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 4px); overflow: hidden; }
+.browser-header { flex: 0 0 auto; }
+#browser-panel-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+#browser-task-list { max-height: none; overflow: visible; }
+.browser-task-form { flex: 0 0 auto; }

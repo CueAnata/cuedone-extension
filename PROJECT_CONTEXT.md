@@ -409,3 +409,58 @@ This does not control placement or visibility of Horizon OS browser windows.
 Physical Quest keyboard, targeting, tracking stability and coexistence remain
 hardware verification items. No extension UI, task data, commit or deployment
 is included in this layout change.
+
+
+### Quest live feedback follow-up — October 24, 2026
+The user clarified that CueDone MUST remain a real immersive AR floating board
+beside existing multitasked workspace windows. A browser-only replacement does
+not satisfy the product requirement. WebXR still requests immersive-ar with
+transparent composition; no claim is made that alpha controls OS window visibility.
+Meta documents Seamless Multitasking for system windows during immersive apps:
+https://www.meta.com/help/quest/172903867975450/
+Actual coexistence with the user's specific browser/workstation app and Horizon OS
+version is a required hardware check and remains unresolved.
+
+The expanded 0.8 x 1.0 m card starts face-centered 1.5 m away. Its restored top
+pinch bar permits manual placement alongside the workspace; release holds that
+pose for the session, and Recenter to face restores tracking of the viewing pose.
+There is no idle drift. Tracking loss, system-focus changes and suspension cancel
+an active drag. Task visuals and ray targets share the same transformed panel.
+Visible-blurred keeps the board/garden visible while stopping audio and gestures.
+
+The body is the single immersive scroll region, with large explicit Scroll up /
+Scroll down controls. Task input and its Done button are pinned siblings outside
+the scroll region, so five or more tasks cannot push Done out of reach. The
+browser companion uses the same pinned-entry arrangement. Collapse hides entry
+without discarding a draft. Task rows center text vertically beside enlarged
+checkbox visuals (8 UIKit units spatially / 40px in browser); the whole row
+remains the completion hit target. Bee/pollen duration is now 2.4s instead of
+1.1s, and their track belongs to the task label area rather than the full row.
+Wrapped browser labels also have text-level strike-through. All task persistence,
+Enter/Done save behavior, controller exclusion and reduced-motion rules remain.
+These are local changes; no new native app, backend, commit or deployment is implied.
+
+The current acceptance target is Quest Browser workspace windows. The user also
+wants coexistence with Windows desktop applications and Steam/macOS desktop
+workspaces if feasible. Those are compatibility targets, not authorization for
+new desktop streaming, a native app, handoff, remote networking or a backend.
+Browser app windows and desktop-streaming hosts must be verified separately;
+coexistence is not yet established by the local interaction fixes.
+Validation: 77 unit tests, TypeScript and production build pass. Isolated browser
+checks confirm five tasks with entry focused, 40px checkbox visuals, and Done
+outside the scroll region. Quest-only drag/scroll, keyboard and OS multitasking
+verification is still pending; no live coexistence success is claimed.
+
+
+### Quest Enter/Return repair — October 24, 2026
+Task entry must add immediately on an explicit Enter/Return action, clear only
+after saving, and remain open/focused for another task. Add Task only focuses;
+ordinary typing never saves. The native event adapter now accepts Enter/Return,
+NumpadEnter and legacy keycode 13, including keyup-only keyboard actions. New
+non-repeat keydowns are never locked behind a missing soft-keyboard keyup.
+Composition stays guarded, and duplicate follow-up events remain suppressed.
+The immersive UIKit native input is explicitly associated with its own native
+form and submit control, matching the browser input's form-submit fallback.
+Native keyboard listeners run in capture phase. Done keeps its existing explicit
+finish flow, while storage failure retains the draft. This repair is local until
+committed and deployed; physical Quest keyboard validation remains required.

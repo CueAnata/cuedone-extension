@@ -128,6 +128,13 @@ export class TaskPanelSystem extends createSystem({}) {
       this.render(panel);
     });
     bind('settings-toggle', () => {this.settingsOpen = !this.settingsOpen; this.render(panel);});
+    const body = panel.requireElementById<UIKit.Container>('panel-body');
+    for(const [id, direction] of [['scroll-up', -1], ['scroll-down', 1]] as const) {
+      const button = panel.requireElementById(id);
+      const scroll = () => {const [x,y] = body.scrollPosition.value; body.scrollPosition.value = [x,Math.max(0,Math.min(body.maxScrollPosition.value[1] ?? 0,y+direction*24))];};
+      button.addEventListener('click',scroll);
+      this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
+    }
     bind('show-add-button', () => this.openTaskEntry(panel, taskInput));
     bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
@@ -204,11 +211,12 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.input.addEventListener('input', onBrowserInput);
     const spatialKeyboard = taskInput.input.element;
     spatialKeyboard.enterKeyHint = 'enter';
+    spatialKeyboard.setAttribute('form', 'spatial-task-form');
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
     this.cleanupFuncs.push(
       bindTaskEntry(this.browser.input, () => {void this.addTask(panel, taskInput);}, this.browser.form),
-      bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}),
+      bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form')),
     );
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
     this.browser.newListButton.addEventListener('click', onBrowserNewList);
@@ -386,7 +394,7 @@ export class TaskPanelSystem extends createSystem({}) {
     if (await pending) {
       this.reviewingNewList = false;
       this.collapsed = false;
-    this.entryOpen = true;
+      this.entryOpen = true;
       this.reviewingClear = false;
       if (this.draft === submittedDraft) {
         this.draft = '';
@@ -430,16 +438,20 @@ export class TaskPanelSystem extends createSystem({}) {
     browserList.replaceChildren();
     for(const task of this.session.tasks) {
       const fresh = animate && this.previousTasks.get(task.id) === false && task.completed;
-      const row = new UIKit.Container({width: '100%', minHeight: 10, flexShrink: 0, padding: 2, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'column'});
+      const row = new UIKit.Container({width: '100%', minHeight: 10, flexShrink: 0, padding: 2, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'row', alignItems: 'center', gap: 2});
       row.name = `Task-${task.id}`;
-      const text = new UIKit.Text({text: `${task.completed ? '[x]' : '[ ]'} ${task.text}`, fontSize: 2.8, color: '#332D25', width: '100%'});
-      row.add(text);
-      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: '7%', positionTop: '50%', height: 0.35, width: task.completed && !fresh ? '86%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
+      const check = new UIKit.Container({width: 8, height: 8, flexShrink: 0, borderWidth: 0.5, borderColor: '#96550C', borderRadius: 1, justifyContent: 'center', alignItems: 'center', pointerEvents: 'none'});
+      check.add(new UIKit.Text({text: task.completed ? 'X' : '', fontSize: 4, color: '#713F08'}));
+      const label = new UIKit.Container({flexGrow: 1, flexShrink: 1, minWidth: 0, minHeight: 6, positionType: 'relative', justifyContent: 'center', pointerEvents: 'none'});
+      const text = new UIKit.Text({text: task.text, fontSize: 2.8, color: '#332D25', width: '100%', verticalAlign: 'center'});
+      label.add(text);
+      row.add(check, label);
+      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: task.completed && !fresh ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
       pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
-      const bee = new UIKit.Container({positionType: 'absolute', positionTop: '35%', positionLeft: '7%', width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
+      const bee = new UIKit.Container({positionType: 'absolute', positionTop: '30%', positionLeft: 0, width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
       for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
       for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
-      row.add(pollen, bee);
+      label.add(pollen, bee);
       row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
       list.add(row);
       this.rows.push({row, pollen, bee, id: task.id, elapsed: fresh ? 0 : -1});
@@ -448,10 +460,15 @@ export class TaskPanelSystem extends createSystem({}) {
       button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
       button.disabled = disabled || task.completed;
       button.dataset.completed = String(task.completed);
-      const label = document.createElement('span'); label.textContent = `${task.completed ? '✓' : '○'} ${task.text}`;
+      const checkbox = document.createElement('span'); checkbox.className = 'task-checkbox';
+      checkbox.textContent = task.completed ? '✓' : ''; checkbox.setAttribute('aria-hidden', 'true');
+      const browserLabel = document.createElement('span'); browserLabel.className = 'task-label';
+      const labelText = document.createElement('span'); labelText.className = 'task-label-text'; labelText.textContent = task.text;
+      browserLabel.append(labelText);
       const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
       const beeIcon = document.createElement('span'); beeIcon.className = 'task-bee'; beeIcon.textContent = '🐝'; beeIcon.setAttribute('aria-hidden', 'true');
-      button.append(label, line, beeIcon);
+      browserLabel.append(line, beeIcon);
+      button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
       button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
       const item = document.createElement('div'); item.setAttribute('role', 'listitem'); item.append(button);
@@ -474,9 +491,9 @@ export class TaskPanelSystem extends createSystem({}) {
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
-      entry.elapsed = motion && visible ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/1.1) : 1;
-      entry.pollen.setProperties({width: `${entry.elapsed*86}%`});
-      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${7+entry.elapsed*86}%`, positionTop: `${35+Math.sin(entry.elapsed*40)*8}%`});
+      entry.elapsed = motion && visible ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/2.4) : 1;
+      entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
+      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;
     }
   }
@@ -504,6 +521,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
       this.session.message === 'Task complete.' || this.remoteFeedback);
+    panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('scroll-controls').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('panel-surface').setProperties({height: this.collapsed ? 'auto' : 100});
     panel.requireElementById('settings-toggle').setProperties({display: this.collapsed ? 'none' : 'flex'});
@@ -580,7 +599,7 @@ export class TaskPanelSystem extends createSystem({}) {
         active == null,
     });
     panel.requireElementById('task-controls').setProperties({
-      display: this.reviewingNewList || !this.entryOpen ? 'none' : 'flex',
+      display: this.collapsed || this.reviewingNewList || !this.entryOpen ? 'none' : 'flex',
     });
     panel.requireElementById('new-list-button').setProperties({
       display: this.reviewingNewList ? 'none' : 'flex',
@@ -623,7 +642,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const reviewTitle = this.reviewingClear ? 'Clear all tasks?' : 'Start a new list?';
     panel.requireElementById('new-list-title').setProperties({text: reviewTitle});
     required<HTMLElement>('#browser-new-list-title').textContent = reviewTitle;
-    panel.requireElementById('done-button').setProperties({display: done ? 'flex' : 'none'});
+    panel.requireElementById('done-button').setProperties({display: done && !this.collapsed ? 'flex' : 'none'});
     required<HTMLElement>('#browser-done-button').hidden = !done;
     this.renderRows(panel, disabled);
     this.renderBrowser(isLoading, isSaving, loadFailed);
@@ -656,7 +675,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.reviewingNewList || !this.entryOpen;
+    this.browser.form.hidden = this.collapsed || this.reviewingNewList || !this.entryOpen;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;

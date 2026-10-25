@@ -1,11 +1,12 @@
-import { createSystem, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
+import { createSystem, UIKit, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
 import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion } from 'three';
 import { DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
   SPATIAL_KEY, type SpatialSettings } from './spatial-state.js';
 import { SpatialThemes } from './spatial-themes.js';
 import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
-import { applyFixedPanelPose } from './fixed-panel.js';
+import { applyFixedPanelPose, faceCenterPanel } from './fixed-panel.js';
+import { PanelDrag } from './panel-drag.js';
 import { ZenAudio } from './zen-audio.js';
 
 const progress = new GardenProgress();
@@ -15,6 +16,10 @@ export function publishSpatialProgress(tasks: readonly SpatialTask[], animate: b
 
 export class SpatialPresentationSystem extends createSystem({}) {
   private readonly root = new Group();
+  private readonly drag = new PanelDrag(this.root);
+  private dragHand: 'left' | 'right' | null = null;
+  private faceLocked = true;
+  private handle!: UIKit.Container;
   private readonly themes = new SpatialThemes();
   private readonly tween = new ProgressTween();
   private readonly audio = new ZenAudio();
@@ -42,6 +47,27 @@ export class SpatialPresentationSystem extends createSystem({}) {
   init(): void {
     this.panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     this.root.name = 'CueDone personal spatial dashboard';
+    this.handle = this.panel.requireElementById<UIKit.Container>('grab-handle');
+    this.handle.setProperties({
+      onPointerDown: event => {
+        if(this.world.visibilityState.value !== VisibilityState.Visible || this.drag.owner !== null)return;
+        const hand = (['left','right'] as const).find(hand =>
+          this.world.input.xr.multiPointers[hand].getPointer('ray').id === event.pointerId &&
+          this.world.input.xr.getPrimaryInputSource(hand)?.hand);
+        if(!hand || !this.drag.begin(event.pointerId,event.ray,event.point))return;
+        event.stopPropagation(); this.dragHand = hand;
+        this.handle.setPointerCapture(event.pointerId);
+      },
+      onPointerMove: event => {if(this.drag.owner === event.pointerId) {event.stopPropagation(); this.drag.move(event.pointerId,event.ray);}},
+      onPointerUp: event => {
+        if(this.drag.owner !== event.pointerId)return;
+        event.stopPropagation(); this.drag.end(event.pointerId); this.dragHand = null;
+        this.handle.releasePointerCapture(event.pointerId); this.faceLocked = false;
+        this.renderControls();
+      },
+      onPointerCancel: () => this.cancelMove(),
+      onClick: event => event.stopPropagation(),
+    });
     this.world.scene.add(this.root);
     this.placeFixedPanel();
     // Keep the authored panel under its ECS parent. IWSDK restores that parent
@@ -69,7 +95,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const controls: Array<[string, () => void]> = [
       ['spatial-motion', () => this.change({motion: !this.settings.motion})],
       ['spatial-sound', () => {void this.change({zenSound: !this.settings.zenSound}, this.unlockAudio());}],
-      ['spatial-recenter', () => this.placeFixedPanel()],
+      ['spatial-recenter', () => {this.cancelMove(); this.faceLocked = true; this.placeFixedPanel(); this.renderControls();}],
       ['spatial-retry', () => this.load()],
     ];
     for (const [id, action] of controls) {
@@ -92,7 +118,8 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.cleanupFuncs.push(this.world.onXRFrame(frame => this.frame(frame)));
     this.cleanupFuncs.push(this.world.visibilityState.subscribe(() => {
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
-      this.root.visible = visible;
+      this.root.visible = visible || this.world.visibilityState.value === VisibilityState.VisibleBlurred;
+      if(!visible)this.cancelMove();
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
@@ -104,12 +131,14 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const ended = () => {
       this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       this.activeSession = undefined;
+      this.cancelMove(); this.faceLocked = true;
       this.fadeMesh.visible = false;
       this.placeFixedPanel();
     };
     this.world.renderer.xr.addEventListener('sessionend', ended);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', ended));
     this.cleanupFuncs.push(() => {
+      this.cancelMove();
       this.audio.dispose();
       this.themes.dispose();
       this.root.removeFromParent();
@@ -196,13 +225,18 @@ export class SpatialPresentationSystem extends createSystem({}) {
     browser.style.setProperty('--readable-scale', String(this.settings.scale));
   }
 
+  private cancelMove(): void {
+    const id = this.drag.owner;
+    if(id === null)return;
+    this.drag.cancel(); this.dragHand = null;
+    if(this.handle.hasPointerCapture(id))this.handle.releasePointerCapture(id);
+  }
+
   private placeFixedPanel(): void {
-    // Keep the ECS-owned parent; convert one world transform for rendering AND hits.
-    applyFixedPanelPose(this.panel);
-    this.root.position.set(0, 0, -1.5);
-    this.root.quaternion.identity();
-    this.root.scale.setScalar(1);
+    if(this.faceLocked && this.drag.owner === null)
+      faceCenterPanel(this.root, this.world.playerSpaceEntities.head.object3D!);
     this.root.updateWorldMatrix(true, false);
+    applyFixedPanelPose(this.panel, this.root.matrixWorld);
   }
 
   private frame(frame: XRFrame): void {
@@ -217,6 +251,10 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.revision = progress.revision;
       this.tween.set(progress.total ? progress.complete / progress.total : 0, false);
     }
+    if(this.drag.owner !== null) {
+      const source=this.dragHand && this.world.input.xr.getPrimaryInputSource(this.dragHand);
+      if(!source?.hand || !frame.getPose(source.targetRaySpace,space))this.cancelMove();
+    }
     this.placeFixedPanel();
     const size=this.panel.document.computedSize;
     if(size) this.themes.trellis.fit(size.width*0.01*this.panel.document.scale.x,
@@ -229,8 +267,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   update(delta: number): void {
+    this.drag.tick(delta);
     const visible = this.world.visibilityState.value === VisibilityState.Visible;
-    this.root.visible = visible;
+    this.root.visible = visible || this.world.visibilityState.value === VisibilityState.VisibleBlurred;
     if (!visible) { this.fadeMesh.visible = false; this.themes.trellis.cancel(); this.audio.stop();this.finaleAudioPending=false; return; }
     const motion = this.settings.motion && !this.media.matches;
     if (this.revision !== progress.revision) {
@@ -255,7 +294,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private renderControls(): void {
     for(const [id, text] of [
       ['spatial-scale', 'Panel size: 0.8 x 1.0 m (fixed)'],
-      ['spatial-placement', 'Panel: Fixed at (0, 0, -1.5)'],
+      ['spatial-placement', this.faceLocked ? 'Panel: Face centered' : 'Panel: Placed by hand'],
     ]) {
       this.panel.requireElementById(id).setProperties({text, disabled: true});
       const browser = document.getElementById(`browser-${id}`) as HTMLButtonElement;

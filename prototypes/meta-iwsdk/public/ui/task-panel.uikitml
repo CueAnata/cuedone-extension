@@ -4,7 +4,7 @@
     width: 80;
     height: 100;
     max-height: 100;
-    overflow: scroll;
+    overflow: hidden;
     padding-top: 3.5;
     padding-right: 4;
     padding-bottom: 3.5;
@@ -131,6 +131,7 @@
   }
 
   .task-controls {
+    flex-shrink: 0;
     flex-direction: column;
     width: 100%;
     gap: 1.7;
@@ -308,6 +309,7 @@
   }
 </style>
 <Panel id="panel-surface" class="panel-root">
+  <button id="grab-handle" class="grab-handle">Pinch here to move</button>
   <div class="brand-row">
     <div style="flex-direction: column; flex-grow: 1; flex-shrink: 1; min-width: 0">
       <div style="flex-direction: row; align-items: flex-start"><span class="brand">CueDone</span><span style="font-size: 1.8; font-weight: 700; color: #17130f">TM</span></div>
@@ -316,9 +318,10 @@
     <button id="collapse-toggle" class="settings-toggle"></button>
     <button id="settings-toggle" class="settings-toggle"></button>
   </div>
-  <div id="panel-body" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
+  <div id="panel-body" style="flex-grow: 1; flex-shrink: 1; min-height: 0; overflow: scroll; flex-direction: column; width: 100%; gap: 1.6">
+  <div id="body-content" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
-  <div id="task-list" style="flex-direction: column; width: 100%; max-height: 48; overflow: scroll; gap: 1"></div>
+  <div id="task-list" style="flex-direction: column; width: 100%; flex-shrink: 0; gap: 1"></div>
   <div class="task-card" style="display: none">
     <span id="task-text" class="task-text">Loading...</span>
   </div>
@@ -331,20 +334,7 @@
     <button id="clear-button" class="action">Clear All</button>
     <button id="show-add-button" class="action">Add Task</button>
   </div>
-  <button id="done-button" class="carry-button" style="display: none">Done</button>
-  <div id="task-controls" class="task-controls" style="display: none">
-    <span class="label">Add a task</span>
-    <div class="entry-row">
-    <Input
-      id="task-input"
-      class="input"
-      placeholder="Type a short task"
-    ></Input>
-      <button id="entry-done-button" class="entry-done">Done</button>
-    </div>
-    <span class="review-copy">Enter adds a task. Done finishes.</span>
-    <button id="complete-button" class="action complete" style="display: none">Complete</button>
-  </div>
+
   <span id="status-text" class="status">Loading your local list...</span>
   <button id="new-list-button" class="new-list-button">New List</button>
   <div id="new-list-review" class="new-list-review" style="display: none">
@@ -372,7 +362,7 @@
     <button id="spatial-motion" class="action">Ambient motion: On</button>
   </div>
   <button id="spatial-sound" class="new-list-button">Garden sound: Off</button>
-  <button id="spatial-recenter" class="new-list-button">Restore fixed panel</button>
+  <button id="spatial-recenter" class="new-list-button">Recenter to face</button>
   <button id="spatial-retry" class="small-button" style="display: none">Retry appearance</button>
   <span id="spatial-input-status" class="review-copy">Hands only: aim and pinch, or touch.</span>
   <span id="spatial-status" class="review-copy">Stay seated or within your Quest boundary.</span>
@@ -384,4 +374,23 @@
     </button>
   </div>
   </div>
+  </div>
+  <div id="scroll-controls" class="action-row" style="flex-shrink: 0">
+    <button id="scroll-up" class="action">Scroll up</button>
+    <button id="scroll-down" class="action">Scroll down</button>
+  </div>
+  <div id="task-controls" class="task-controls" style="display: none">
+    <span class="label">Add a task</span>
+    <div class="entry-row">
+    <Input
+      id="task-input"
+      class="input"
+      placeholder="Type a short task"
+    ></Input>
+      <button id="entry-done-button" class="entry-done">Done</button>
+    </div>
+    <span class="review-copy">Enter adds a task. Done finishes.</span>
+    <button id="complete-button" class="action complete" style="display: none">Complete</button>
+  </div>
+  <button id="done-button" class="carry-button" style="display: none">Done</button>
 </Panel>
