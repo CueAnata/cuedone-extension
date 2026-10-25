@@ -1801,6 +1801,7 @@ async function mountTaskList(root) {
       <div class="lattice-pillar lattice-pillar--left" aria-hidden="true"><div class="lattice-vine lattice-vine--left" aria-hidden="true"></div></div>
       <div class="lattice-pillar lattice-pillar--right" aria-hidden="true"><div class="lattice-vine lattice-vine--right" aria-hidden="true"></div></div>
       <div class="lattice-vine lattice-vine--top" aria-hidden="true"></div>
+      <div class="lattice-pillar lattice-pillar--bottom" aria-hidden="true"></div>
       <div class="lattice-content">
         <ul id="task-list" class="task-list" aria-label="Tasks"></ul>
         <p class="empty-state">No tasks yet. Add one to get started.</p>
@@ -3826,6 +3827,16 @@ async function mountTaskList(root) {
     root.classList.remove("is-editing");
     root.removeAttribute("data-mode");
     input.focus();
+  });
+
+  // Task Input Fix: Enter/Return adds task immediately without Done click
+  input.addEventListener("keydown", (event) => {
+    if (event.isComposing) return;
+    const isEnter = event.key === "Enter" || event.key === "Return" || event.code === "NumpadEnter" || event.keyCode === 13;
+    if (!isEnter || event.repeat) return;
+    event.preventDefault();
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.dispatchEvent(new Event("submit", { cancelable: true }));
   });
 
   resetButton.addEventListener("click", () => {
