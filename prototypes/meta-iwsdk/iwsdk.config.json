@@ -15,16 +15,11 @@
       "features": {
         "handTracking": {
           "required": true
-        },
-        "anchors": true
+        }
       },
       "referenceSpace": {
-        "type": "bounded-floor",
-        "required": false,
-        "fallbackOrder": [
-          "local-floor",
-          "local"
-        ]
+        "type": "local",
+        "required": true
       }
     },
     "input": {
@@ -36,13 +31,13 @@
       "camera": {
         "position": [
           0,
-          1.45,
-          0.8
+          0,
+          0
         ],
         "lookAt": [
           0,
-          1.45,
-          -1.05
+          0,
+          -1.5
         ]
       }
     },

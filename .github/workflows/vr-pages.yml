@@ -2,7 +2,7 @@ name: Build and publish Personal VR to Pages
 
 on:
   push:
-    branches: [vr-personal-prototype]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

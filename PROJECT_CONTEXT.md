@@ -387,3 +387,25 @@ inside an immersive session. Existing required hand tracking and controller
 exclusion remain unchanged. Physical Quest pinch, native keyboard, window
 coexistence and comfort require headset verification. No extension UI, icons,
 backend, task storage namespace, deployment or sync behavior is changed.
+
+
+### Fixed centered spatial layout — October 24, 2026
+The requested expanded immersive panel is exactly 0.8 m wide by 1.0 m high:
+80 x 100 UIKit centimeters, intrinsic document sizing and world scale 1.
+World position is (0, 0, -1.5), with identity world orientation. A local
+viewer-origin XR reference space replaces floor-origin placement so y=0 is near
+initial eye height. This is a fixed world pose, not continuous viewer following.
+The same ECS-parent-compensated transform drives the UIKit visuals, inputs,
+Done and hand-ray/poke hit tests. Saved scale, wrist placement and room anchors
+no longer alter spatial geometry; their stored preferences remain intact.
+Manual dragging and anchor restoration are inactive; Restore fixed panel reapplies
+the exact pose. Browser text scaling and garden motion/sound remain independent.
+Collapse still shows only the header with natural height; expansion restores the
+exact 0.8 x 1.0 m card. Overflow scrolls without growing the card or losing tasks.
+No panel idle animation or viewer-facing rotation is applied. Session entry,
+resume, keyboard activity and head/hand movement never reposition the panel.
+Alpha passthrough and hands-only input remain in the existing IWSDK renderer.
+This does not control placement or visibility of Horizon OS browser windows.
+Physical Quest keyboard, targeting, tracking stability and coexistence remain
+hardware verification items. No extension UI, task data, commit or deployment
+is included in this layout change.

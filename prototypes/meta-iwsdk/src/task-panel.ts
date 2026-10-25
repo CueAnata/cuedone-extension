@@ -505,7 +505,7 @@ export class TaskPanelSystem extends createSystem({}) {
     publishSpatialProgress(this.session.tasks,
       this.session.message === 'Task complete.' || this.remoteFeedback);
     panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
-    panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('panel-surface').setProperties({height: this.collapsed ? 'auto' : 100});
     panel.requireElementById('settings-toggle').setProperties({display: this.collapsed ? 'none' : 'flex'});
     this.collapseUp?.setProperties({display: this.collapsed ? 'none' : 'flex'});
     this.collapseDown?.setProperties({display: this.collapsed ? 'flex' : 'none'});

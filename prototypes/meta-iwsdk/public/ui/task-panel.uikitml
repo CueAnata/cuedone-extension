@@ -2,7 +2,8 @@
   .panel-root {
     flex-direction: column;
     width: 80;
-    max-height: 105;
+    height: 100;
+    max-height: 100;
     overflow: scroll;
     padding-top: 3.5;
     padding-right: 4;
@@ -29,6 +30,7 @@
   }
 
   .brand-row {
+    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
@@ -305,8 +307,7 @@
     text-align: center;
   }
 </style>
-<Panel class="panel-root">
-  <button id="grab-handle" class="grab-handle">Hold pinch here to move</button>
+<Panel id="panel-surface" class="panel-root">
   <div class="brand-row">
     <div style="flex-direction: column; flex-grow: 1; flex-shrink: 1; min-width: 0">
       <div style="flex-direction: row; align-items: flex-start"><span class="brand">CueDone</span><span style="font-size: 1.8; font-weight: 700; color: #17130f">TM</span></div>
@@ -315,7 +316,7 @@
     <button id="collapse-toggle" class="settings-toggle"></button>
     <button id="settings-toggle" class="settings-toggle"></button>
   </div>
-  <div id="panel-body" style="flex-direction: column; width: 100%; gap: 1.6">
+  <div id="panel-body" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
   <div id="task-list" style="flex-direction: column; width: 100%; max-height: 48; overflow: scroll; gap: 1"></div>
   <div class="task-card" style="display: none">
@@ -371,7 +372,7 @@
     <button id="spatial-motion" class="action">Ambient motion: On</button>
   </div>
   <button id="spatial-sound" class="new-list-button">Garden sound: Off</button>
-  <button id="spatial-recenter" class="new-list-button">Recenter panel</button>
+  <button id="spatial-recenter" class="new-list-button">Restore fixed panel</button>
   <button id="spatial-retry" class="small-button" style="display: none">Retry appearance</button>
   <span id="spatial-input-status" class="review-copy">Hands only: aim and pinch, or touch.</span>
   <span id="spatial-status" class="review-copy">Stay seated or within your Quest boundary.</span>
