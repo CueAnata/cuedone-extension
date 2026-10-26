@@ -601,6 +601,11 @@ export class TaskPanelSystem extends createSystem({}) {
     panel.requireElementById('collapse-toggle').name = this.collapsed ? 'Expand CueDone' : 'Collapse CueDone';
     required<HTMLElement>('#browser-panel-body').hidden = this.collapsed;
     required<HTMLElement>('#browser-settings-toggle').hidden = this.collapsed;
+    const collapsedBar = required<HTMLElement>('#browser-collapsed-bar');
+    const collapsedText = required<HTMLElement>('#browser-collapsed-text');
+    collapsedBar.hidden = !this.collapsed;
+    collapsedText.textContent = `${this.session.completedCount}/${this.session.tasks.length} Complete [ Garden 🌿 ]`;
+    required<HTMLElement>('#browser-panel').dataset.collapsed = String(this.collapsed);
     const collapse = required<HTMLButtonElement>('#browser-collapse-toggle');
     collapse.textContent = this.collapsed ? '⌄' : '⌃';
     collapse.setAttribute('aria-expanded', String(!this.collapsed));

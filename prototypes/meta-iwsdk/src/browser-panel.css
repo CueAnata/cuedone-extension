@@ -12,13 +12,13 @@
 
 body {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  max-width: 360px;
-  margin: 0 auto;
+  margin: 0;
   padding: 2px;
   background:
     radial-gradient(circle at top right, rgb(255 175 54 / 28%), transparent 32rem),
@@ -43,7 +43,10 @@ button {
 .browser-panel {
   position: relative;
   z-index: 2;
-  width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
   max-width: 320px;
   margin: 0 auto;
   padding: 6px;
@@ -52,6 +55,31 @@ button {
   background: #fffdf8;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
 }
+
+#browser-collapsed-bar {
+  display: none;
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 6px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fff8e9, #ffedcf);
+  border: 1px solid #dbbf91;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: #332d25;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#browser-collapsed-bar[hidden] { display: none !important; }
+.browser-panel[data-collapsed="true"] #browser-collapsed-bar { display: block; }
+.browser-panel[data-collapsed="true"] #browser-panel-body,
+.browser-panel[data-collapsed="true"] #browser-task-view,
+.browser-panel[data-collapsed="true"] .browser-now-card,
+.browser-panel[data-collapsed="true"] #browser-task-form,
+.browser-panel[data-collapsed="true"] .browser-status { display: none !important; }
+
 
 .browser-header,
 .browser-summary,
