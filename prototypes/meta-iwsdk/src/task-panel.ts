@@ -382,35 +382,17 @@ export class TaskPanelSystem extends createSystem({}) {
       return;
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
-    const run = finalTaskAR.begin(this.session.tasks);
-    if(!run)return;
-    let entryError = '';
-    // The final check-off supplies user activation; storage is awaited afterwards.
-    const entered = launchAR(this.world, required<HTMLElement>('#xr-overlay'), undefined,
-      session => finalTaskAR.attach(run, session)).catch(error => {
-        entryError = error instanceof Error ? error.message : 'AR is unavailable.';
-        finalTaskAR.cancel(run); return false;
-      });
     const pending = this.session.completeTask(taskId);
     this.render(panel);
     const saved = await pending;
-    if(saved)finalTaskAR.saved(run, this.session.tasks);
-    else finalTaskAR.cancel(run);
     this.render(panel);
-    // Always activate 2D/CSS finale overlay so celebration plays even if WebXR fails
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
     if(isFinal && trellis) {
       trellis.classList.add('is-ar-finale');
-      // Ensure overlay is removed exactly 4500ms after finale starts, and XR session is ended
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 4500);
-    }
-    if(!await entered) {
-      finalTaskAR.cancel(run);
-      if(saved && entryError)this.session.message = 'Task saved. Could not open the final AR animation: '+entryError;
-      // Keep 2D finale visible even when XR fails — do not cancel overlay
     }
     this.render(panel);
   }
