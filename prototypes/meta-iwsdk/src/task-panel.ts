@@ -86,6 +86,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private remoteFeedback = false;
   private allowRemoteFeedback = false;
   private syncQueued = false;
+  private audioContext: AudioContext | null = null;
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
@@ -371,6 +372,33 @@ export class TaskPanelSystem extends createSystem({}) {
     }
   }
 
+  private playBirdChirp(): void {
+    try {
+      const ctx = this.audioContext ??= new (window.AudioContext || (window as unknown as {webkitAudioContext: typeof AudioContext}).webkitAudioContext)();
+      if (ctx.state === 'suspended') void ctx.resume();
+      if (ctx.state !== 'running') return;
+      const now = ctx.currentTime;
+      // Simple envelope for birds, similar to ZenAudio but 2D
+      for (const [index, frequency] of [1800, 2400, 2100, 2700].entries()) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        const start = now + index * 0.28;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.35, start + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+        osc.frequency.setValueAtTime(frequency, start);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 1.45, start + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 0.88, start + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.28);
+        osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch {} };
+      }
+    } catch {}
+  }
+
   private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
     const taskId = id ?? this.session.activeTask?.id;
     if(finalTaskAR.busy || this.session.phase !== 'ready')return;
@@ -390,6 +418,8 @@ export class TaskPanelSystem extends createSystem({}) {
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
     if(isFinal && trellis) {
       trellis.classList.add('is-ar-finale');
+      // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
+      this.playBirdChirp();
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 4500);
