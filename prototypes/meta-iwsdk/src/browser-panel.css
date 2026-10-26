@@ -42,10 +42,10 @@ button {
 .browser-panel {
   position: relative;
   z-index: 2;
-  width: min(300px, 100%);
-  max-width: 300px;
+  width: min(268px, 100%);
+  max-width: 268px;
   margin: 0 auto;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid rgb(83 57 31 / 20%);
   border-radius: 16px;
   background: #fffdf8;
