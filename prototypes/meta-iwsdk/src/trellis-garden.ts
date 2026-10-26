@@ -96,10 +96,17 @@ export class TrellisGarden {
   /** Update trellis height for task count N (1-10) so frame hugs task list top 1.02 to bottom stats */
   setTaskCount(count: number): void {
     const clamped = Math.max(1, Math.min(10, Math.round(count) || 1));
-    // Base height for 4 tasks is 1.81 (1.02 - (-0.79)); each extra task adds ~0.18, each fewer removes ~0.12 but not below base
-    const extra = Math.max(0, clamped - 4) * 0.18;
-    const newBottom = -0.79 - extra;
-    const newTop = 1.02;
+    // Dynamic: N=3 compact hugs 3 tasks, N=4 base 1.81 (1.02 - (-0.79)), N=6 expands for 6 without scroll, N=10 tallest
+    let newBottom: number;
+    let newTop = 1.02;
+    if (clamped <= 4) {
+      // Compact for fewer tasks: N=4 -> -0.79, N=3 -> -0.67, N=2 -> -0.55, N=1 -> -0.43
+      newBottom = -0.79 + (4 - clamped) * 0.12;
+    } else {
+      // Expand for more tasks: N=5 -> -0.97, N=6 -> -1.15, N=10 -> -1.87
+      const extra = (clamped - 4) * 0.18;
+      newBottom = -0.79 - extra;
+    }
     if (newBottom === this.bottomY && newTop === this.topY) return;
     this.bottomY = newBottom;
     this.topY = newTop;

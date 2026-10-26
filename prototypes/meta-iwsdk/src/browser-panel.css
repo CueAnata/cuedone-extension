@@ -499,8 +499,8 @@ h2 {
 #browser-task-list { max-height: none; overflow: visible; }
 .browser-task-form { flex: 0 0 auto; }
 
-/* Five minimum-height task rows; entry and Done remain outside this region. */
-#browser-task-list { max-height: 430px; overflow-y: auto; overscroll-behavior: auto; touch-action: pan-y; }
+/* Dynamic height for 1-10 tasks — no inner scrollbar, trellis expands to fit */
+#browser-task-list { max-height: none; overflow: visible; overscroll-behavior: auto; touch-action: pan-y; }
 .browser-panel .browser-task-row { min-height: 78px; }
 
 #browser-garden.trellis-frame {
