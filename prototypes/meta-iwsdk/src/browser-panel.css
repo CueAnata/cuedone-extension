@@ -124,7 +124,7 @@ h2 {
   background: transparent;
   border: none;
   box-shadow: none;
-  padding: 68px 0 8px 0;
+  padding: 8px 0 8px 0;
 }
 
 .trellis-pillar {
@@ -206,7 +206,7 @@ h2 {
   min-width: 0;
   position: relative;
   z-index: 2;
-  margin: 0;
+  margin: 64px 0 0 0;
   overflow: visible;
 }
 
@@ -412,14 +412,17 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  padding: 12px;
-  min-width: 48px;
-  border-radius: 12px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px;
+  border-radius: 10px;
   background: #fef3c7;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -2px rgb(0 0 0 / 10%);
-  font-size: 1.25rem;
-  line-height: 1.4;
+  font-size: 1.0rem;
+  line-height: 1;
 }
 .browser-settings-toggle:hover { background: #fde68a; }
 
@@ -443,8 +446,8 @@ h2 {
 }
 .browser-header { align-items: center; flex-wrap: wrap; }
 .browser-header > div { flex: 1 1 150px; min-width: 0; }
-.browser-tagline { margin: 6px 0 0; font-size: 0.88rem; line-height: 1.4; }
-.browser-panel .browser-collapse-toggle { flex: 0 0 56px; font-size: 1.5rem; background: #ffe4b3; }
+.browser-tagline { margin: 6px 0 0; font-size: 0.88rem; line-height: 1.4; white-space: nowrap; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.browser-panel .browser-collapse-toggle { flex: 0 0 32px; width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 4px; font-size: 1.1rem; background: #ffe4b3; }
 .browser-entry-row .browser-button { min-width: 76px; }
 .browser-entry-row input { min-width: 0; }
 .browser-panel .browser-button:hover { filter: brightness(0.95); }
