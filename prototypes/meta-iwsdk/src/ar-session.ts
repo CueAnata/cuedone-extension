@@ -41,9 +41,22 @@ export async function launchAR(
     });
   };
   try {
-    // Request synchronously in the click gesture. No capability probe or retry
-    // may consume activation or silently open an immersive-vr session instead.
-    session = await xr.requestSession('immersive-ar', init);
+    // Request synchronously in the click gesture. Try immersive-ar first, fallback to immersive-vr.
+    try {
+      session = await xr.requestSession('immersive-ar', init);
+    } catch (arError) {
+      // Fallback to immersive-vr if AR unavailable (e.g., Quest Browser without AR)
+      const vrInit: XRSessionInit = {
+        ...init,
+        optionalFeatures: (init.optionalFeatures ?? []).filter(f => f !== 'dom-overlay'),
+        domOverlay: undefined,
+      };
+      try {
+        session = await xr.requestSession('immersive-vr', vrInit);
+      } catch {
+        throw arError;
+      }
+    }
     session.addEventListener('end', onEnd, {once: true});
     onSession?.(session);
     const type = await resolveReferenceSpaceType(session, reference.type,
