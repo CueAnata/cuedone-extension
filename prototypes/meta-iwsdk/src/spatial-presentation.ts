@@ -280,6 +280,8 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   update(delta: number): void {
+    // Dynamic trellis height for 1-10 tasks — ensure vines span full frame top 1.02 to bottom stats
+    if (progress.total >= 0) this.themes.trellis.setTaskCount(progress.total);
     this.drag.tick(delta);
     const state = this.world.visibilityState.value;
     const standard = state === VisibilityState.NonImmersive && !this.world.renderer.xr.isPresenting;
