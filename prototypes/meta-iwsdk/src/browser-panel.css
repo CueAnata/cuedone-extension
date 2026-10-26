@@ -152,12 +152,12 @@ h2 {
 
 .trellis-pillar--left {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1 / 4;
 }
 
 .trellis-pillar--right {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 1 / 4;
 }
 
 .trellis-pillar--bottom {
