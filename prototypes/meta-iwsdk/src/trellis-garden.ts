@@ -37,8 +37,8 @@ export class TrellisGarden {
       new MeshBasicMaterial({color:0x805538}),120);
     wood.name = 'Rectangular wooden lattice';
     const rods: Array<[number,number,number,number,number]> = [
-      [-0.48,-0.79,-0.48,1.02,0.022], [0.48,-0.79,0.48,1.02,0.022],
-      [-0.5,-0.79,0.5,-0.79,0.022], [-0.5,1.02,0.5,1.02,0.022],
+      [-0.48,-1.02,-0.48,1.02,0.022], [0.48,-1.02,0.48,1.02,0.022],
+      [-0.5,-1.02,0.5,-1.02,0.022], [-0.5,1.02,0.5,1.02,0.022],
     ];
     // Two diagonal families clipped to the rectangular frame.
     for (const slope of [-1.6,1.6]) {
@@ -46,9 +46,9 @@ export class TrellisGarden {
         const points: Array<[number,number]> = [];
         for (const x of [-0.48,0.48]) {
           const y=slope*x+intercept;
-          if(y>=-0.79 && y<=1.02) points.push([x,y]);
+          if(y>=-1.02 && y<=1.02) points.push([x,y]);
         }
-        for (const y of [-0.79,1.02]) {
+        for (const y of [-1.02,1.02]) {
           const x=(y-intercept)/slope;
           if(x> -0.48 && x<0.48) points.push([x,y]);
         }
@@ -99,7 +99,7 @@ export class TrellisGarden {
     // Anchor on inside edge of 15% lattice closest to task list, then meet at top center
     const innerX = TrellisGarden.halfWidth - 0.144;
     const x=side*(innerX*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
-    const y=-0.79+t*1.81;
+    const y=-1.02+t*2.04;
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
   }
