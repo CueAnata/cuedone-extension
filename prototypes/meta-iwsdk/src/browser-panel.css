@@ -492,15 +492,17 @@ h2 {
 [data-completed="true"] .task-label-text { text-decoration: line-through; text-decoration-color: #b78113; text-decoration-thickness: 2px; }
 @keyframes bee { 0% { left: 0; transform: translateY(0) scaleX(-1); } 25% { transform: translateY(-2px) scaleX(-1); } 50% { transform: translateY(2px) scaleX(-1); } 75% { transform: translateY(-2px) scaleX(-1); } 99% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
 
-/* Keep native task entry outside the only scrolling body. */
-.browser-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 4px); overflow: hidden; }
+/* True DOM container expansion for 1-10 tasks — no scrolling, trellis hugs task count */
+.browser-panel { display: flex; flex-direction: column; max-height: none; height: auto; overflow: visible; }
 .browser-header { flex: 0 0 auto; }
-#browser-panel-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+#browser-panel-body { flex: 0 0 auto; min-height: auto; overflow: visible; max-height: none; overscroll-behavior: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 #browser-task-list { max-height: none; overflow: visible; }
 .browser-task-form { flex: 0 0 auto; }
 
 /* Dynamic height for 1-10 tasks — no inner scrollbar, trellis expands to fit */
 #browser-task-list { max-height: none; overflow: visible; overscroll-behavior: auto; touch-action: pan-y; }
+.trellis-frame { height: auto; max-height: none; overflow: visible; }
+#browser-garden.trellis-frame { height: auto; max-height: none; }
 .browser-panel .browser-task-row { min-height: 78px; }
 
 #browser-garden.trellis-frame {
