@@ -396,14 +396,14 @@ h2 {
 .browser-task-row:focus-visible { outline: 3px solid #d97706; outline-offset: 1px; }
 .pollen-line { position: absolute; pointer-events: none; left: 8%; right: 6%; top: 50%; height: 2px; background: #ecba28; box-shadow: 0 0 6px #ffd651; transform: scaleX(0); transform-origin: left; }
 [data-completed="true"] .pollen-line { transform: scaleX(1); }
-.task-bee { display: none; position: absolute; left: 7%; top: 25%; pointer-events: none; }
+.task-bee { display: none; position: absolute; left: 7%; top: 25%; pointer-events: none; transform: scaleX(-1); }
 .pollinating .pollen-line { animation: pollen 2.4s linear both; }
 .pollinating .task-bee { display: block; animation: bee 2.4s linear both; }
 .browser-bottom-bar { flex-wrap: wrap; margin-top: 12px; }
 .browser-bottom-bar button { flex: 1; padding: 8px; }
 .browser-done { width: 100%; margin-top: 12px; font-size: 1.3rem; }
 @keyframes pollen { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes bee { 0% { left: 7%; transform: translateY(0); } 25% { transform: translateY(-4px); } 50% { transform: translateY(3px); } 75% { transform: translateY(-3px); } 99% { opacity: 1; } 100% { left: 90%; opacity: 0; } }
+@keyframes bee { 0% { left: 7%; transform: translateY(0) scaleX(-1); } 25% { transform: translateY(-4px) scaleX(-1); } 50% { transform: translateY(3px) scaleX(-1); } 75% { transform: translateY(-3px) scaleX(-1); } 99% { opacity: 1; } 100% { left: 90%; opacity: 0; } }
 .motion-off .task-bee { display: none; }
 .motion-off .pollen-line { animation: none; }
 @media (prefers-reduced-motion: reduce) { .task-bee { display: none !important; } .pollinating .pollen-line { animation: none; } }
@@ -457,9 +457,9 @@ h2 {
 .task-checkbox { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 3px solid #96550c; border-radius: 8px; font-size: 28px; line-height: 1; }
 .task-label { position: relative; flex: 1; min-width: 0; line-height: 1.5; }
 .task-label .pollen-line { left: 0; right: 0; top: 50%; }
-.task-label .task-bee { left: 0; top: calc(50% - 0.75em); }
+.task-label .task-bee { left: 0; top: calc(50% - 0.75em); transform: scaleX(-1); }
 [data-completed="true"] .task-label-text { text-decoration: line-through; text-decoration-color: #b78113; text-decoration-thickness: 2px; }
-@keyframes bee { 0% { left: 0; transform: translateY(0); } 25% { transform: translateY(-2px); } 50% { transform: translateY(2px); } 75% { transform: translateY(-2px); } 99% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+@keyframes bee { 0% { left: 0; transform: translateY(0) scaleX(-1); } 25% { transform: translateY(-2px) scaleX(-1); } 50% { transform: translateY(2px) scaleX(-1); } 75% { transform: translateY(-2px) scaleX(-1); } 99% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
 
 /* Keep native task entry outside the only scrolling body. */
 .browser-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 4px); overflow: hidden; }
