@@ -34,7 +34,7 @@ export class TrellisGarden {
     this.feedback.pointerEvents='none';this.feedback.visible=false;
     this.root.add(this.feedback);
     const wood = new InstancedMesh(new CylinderGeometry(1,1,1,6),
-      new MeshBasicMaterial({color:0x805538}),36);
+      new MeshBasicMaterial({color:0x805538}),80);
     wood.name = 'Rectangular wooden lattice';
     const rods: Array<[number,number,number,number,number]> = [
       [-0.48,-0.79,-0.48,0.79,0.022], [0.48,-0.79,0.48,0.79,0.022],
