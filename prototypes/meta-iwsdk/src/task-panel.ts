@@ -11,7 +11,7 @@ import { launchAR, finalTaskAR } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
-import { isForwardCompletion } from './garden-progress.js';
+import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
 import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
 
@@ -381,6 +381,7 @@ export class TaskPanelSystem extends createSystem({}) {
       this.render(panel); await pending; this.render(panel);
       return;
     }
+    const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
     const run = finalTaskAR.begin(this.session.tasks);
     if(!run)return;
     let entryError = '';
@@ -396,9 +397,20 @@ export class TaskPanelSystem extends createSystem({}) {
     if(saved)finalTaskAR.saved(run, this.session.tasks);
     else finalTaskAR.cancel(run);
     this.render(panel);
+    // Always activate 2D/CSS finale overlay so celebration plays even if WebXR fails
+    const isFinal = saved && isFinalCompletion(before, this.session.tasks);
+    const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
+    if(isFinal && trellis) {
+      trellis.classList.add('is-ar-finale');
+      // Ensure overlay is removed exactly 4500ms after finale starts, and XR session is ended
+      setTimeout(() => {
+        trellis.classList.remove('is-ar-finale');
+      }, 4500);
+    }
     if(!await entered) {
       finalTaskAR.cancel(run);
       if(saved && entryError)this.session.message = 'Task saved. Could not open the final AR animation: '+entryError;
+      // Keep 2D finale visible even when XR fails — do not cancel overlay
     }
     this.render(panel);
   }
