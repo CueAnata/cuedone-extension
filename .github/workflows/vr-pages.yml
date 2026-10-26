@@ -22,22 +22,22 @@ jobs:
         run: |
           set -e
           rm -rf dist
-          mkdir -p dist/shared dist/icons
-          cp src/popup/popup.html dist/index.html
-          cp src/popup/popup.css dist/popup.css
-          cp src/popup/popup.js dist/popup.js
-          cp -r src/shared/* dist/shared/
-          cp -r icons/* dist/icons/ 2>/dev/null || true
-          # Fix relative paths for dist root (GitHub Pages serves dist as site root)
-          sed -i 's|\.\./shared/|shared/|g' dist/index.html
-          sed -i 's|\.\./\.\./icons/|icons/|g' dist/index.html
-          # Ensure module scripts point correctly from dist root
-          # popup.html has <script src="../shared/task-list.js"> -> shared/task-list.js
-          # and <script src="popup.js"> stays popup.js
-          # Verify artifact
-          ls -lh dist/index.html dist/shared/styles.css dist/popup.css 2>&1 | head -n 20
-          echo "--- dist/index.html head ---"
-          head -n 30 dist/index.html
+          mkdir -p dist
+          # Root standalone index.html is the fully featured app (with src/shared/task-list.js, styles.css, celebrations.js)
+          cp index.html dist/index.html
+          cp -r src dist/src
+          cp -r icons dist/icons 2>/dev/null || true
+          # Also copy assets if present (for audio etc.)
+          cp -r assets dist/assets 2>/dev/null || true
+          echo "=== dist structure ==="
+          ls -R dist | head -n 60
+          echo "=== dist/index.html head ==="
+          head -n 25 dist/index.html
+          echo "=== check lattice continuous ==="
+          grep -q "background-repeat: repeat" dist/src/shared/styles.css && echo "continuous lattice OK" || echo "MISSING repeat"
+          grep -q "grid-template-rows: 72px" dist/src/shared/styles.css && echo "BAD has fixed rows" || echo "GOOD no fixed rows"
+          echo "=== check browser web fallback ==="
+          grep -q "webGetLocal" dist/src/platform/browser.js && echo "web fallback present" || echo "missing"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

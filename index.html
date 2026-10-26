@@ -1,13 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CueDone VR Companion</title>
-</head>
-<body>
-    <script>
-        // Explicitly include the repository subpath
-        window.location.href = "/cuedone-extension/src/platform/index.html";
-    </script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CueDone</title>
+    <link rel="stylesheet" href="src/shared/styles.css" />
+    <link rel="stylesheet" href="src/popup/popup.css" />
+  </head>
+  <body class="popup-view">
+    <header class="app-header">
+      <img
+        class="logo-mark"
+        src="icons/icon48.png"
+        alt=""
+        width="32"
+        height="32"
+      />
+      <div class="brand-text">
+        <h1>CueDone</h1>
+        <p class="tagline">See it. Do it. CueDone.</p>
+      </div>
+      <div class="header-controls">
+        <div class="view-switch" role="group" aria-label="CueDone view">
+          <button type="button" class="view-switch-button" data-view="top">
+            Top
+          </button>
+          <button type="button" class="view-switch-button" data-view="side">
+            Side
+          </button>
+        </div>
+        <div class="mode-switch" role="group" aria-label="CueDone presentation">
+          <button type="button" class="view-switch-button" data-mode="personal">
+            Personal
+          </button>
+          <button type="button" class="view-switch-button" data-mode="client">
+            Client
+          </button>
+        </div>
+      </div>
+    </header>
+    <main id="app" class="app-main"></main>
+    <script type="module" src="src/shared/task-list.js"></script>
+    <script type="module" src="src/popup/popup.js"></script>
+  </body>
 </html>
