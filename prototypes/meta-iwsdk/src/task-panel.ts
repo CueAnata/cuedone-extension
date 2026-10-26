@@ -420,6 +420,11 @@ export class TaskPanelSystem extends createSystem({}) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
+      // Auto-scroll to top so 64px headroom, vine arch, butterflies, and chirps are center stage
+      const list = document.querySelector('#browser-task-list') as HTMLElement | null;
+      if (list) list.scrollTo({top: 0, behavior: 'smooth'});
+      const panelBody = document.querySelector('#browser-panel-body') as HTMLElement | null;
+      if (panelBody) panelBody.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 4500);

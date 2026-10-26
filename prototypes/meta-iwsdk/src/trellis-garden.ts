@@ -27,28 +27,30 @@ export class TrellisGarden {
   private ratio = -1;
   private static readonly halfWidth = 0.48;
   private static readonly halfHeight = 0.79;
+  private topY = 1.02;
+  private bottomY = -0.79;
+  private wood: InstancedMesh<CylinderGeometry, MeshBasicMaterial> | null = null;
 
-  constructor() {
-    this.root.name = 'Living Trellis Garden';
-    this.feedback.name='Hand contact feedback';
-    this.feedback.pointerEvents='none';this.feedback.visible=false;
-    this.root.add(this.feedback);
+  private buildWood(): void {
+    if (this.wood) {
+      this.root.remove(this.wood);
+      this.wood.dispose();
+    }
     const wood = new InstancedMesh(new CylinderGeometry(1,1,1,6),
       new MeshBasicMaterial({color:0x805538}),120);
     wood.name = 'Rectangular wooden lattice';
     const rods: Array<[number,number,number,number,number]> = [
-      [-0.48,-0.79,-0.48,1.02,0.022], [0.48,-0.79,0.48,1.02,0.022],
-      [-0.5,-0.79,0.5,-0.79,0.022], [-0.5,1.02,0.5,1.02,0.022],
+      [-0.48,this.bottomY,-0.48,this.topY,0.022], [0.48,this.bottomY,0.48,this.topY,0.022],
+      [-0.5,this.bottomY,0.5,this.bottomY,0.022], [-0.5,this.topY,0.5,this.topY,0.022],
     ];
-    // Two diagonal families clipped to the rectangular frame.
     for (const slope of [-1.6,1.6]) {
       for (let intercept=-1.5;intercept<=1.51;intercept+=0.12) {
         const points: Array<[number,number]> = [];
         for (const x of [-0.48,0.48]) {
           const y=slope*x+intercept;
-          if(y>=-0.79 && y<=1.02) points.push([x,y]);
+          if(y>=this.bottomY && y<=this.topY) points.push([x,y]);
         }
-        for (const y of [-0.79,1.02]) {
+        for (const y of [this.bottomY,this.topY]) {
           const x=(y-intercept)/slope;
           if(x> -0.48 && x<0.48) points.push([x,y]);
         }
@@ -64,6 +66,20 @@ export class TrellisGarden {
     wood.count=rods.length;
     enableInstancedContact(wood);
     this.root.add(wood);
+    this.wood = wood;
+    // Rebuild vines to match new height
+    this.rebuildVines();
+  }
+
+  private rebuildVines(): void {
+    // Dispose old vines
+    for (const vine of this.vines) {
+      this.root.remove(vine);
+      vine.geometry.dispose();
+      (vine.material as MeshBasicMaterial).dispose();
+    }
+    this.vines.length = 0;
+    this.growthControllers.length = 0;
     for(const side of [-1,1]) {
       const path=bezierVine(t=>this.vinePoint(t,side));
       const vine=new Mesh(new TubeGeometry(path,VINE_SEGMENTS,0.014,radial,false),
@@ -73,6 +89,29 @@ export class TrellisGarden {
       vine.name=side<0?'Left flowering vine':'Right flowering vine';
       vine.geometry.setDrawRange(0,0);this.vines.push(vine);this.root.add(vine);
     }
+    // Restore progress after rebuild
+    if(this.ratio>=0) this.setProgress(this.ratio);
+  }
+
+  /** Update trellis height for task count N (1-10) so frame hugs task list top 1.02 to bottom stats */
+  setTaskCount(count: number): void {
+    const clamped = Math.max(1, Math.min(10, Math.round(count) || 1));
+    // Base height for 4 tasks is 1.81 (1.02 - (-0.79)); each extra task adds ~0.18, each fewer removes ~0.12 but not below base
+    const extra = Math.max(0, clamped - 4) * 0.18;
+    const newBottom = -0.79 - extra;
+    const newTop = 1.02;
+    if (newBottom === this.bottomY && newTop === this.topY) return;
+    this.bottomY = newBottom;
+    this.topY = newTop;
+    this.buildWood();
+  }
+
+  constructor() {
+    this.root.name = 'Living Trellis Garden';
+    this.feedback.name='Hand contact feedback';
+    this.feedback.pointerEvents='none';this.feedback.visible=false;
+    this.root.add(this.feedback);
+    this.buildWood();
     const geometry=new SphereGeometry(1,8,5);
     this.petals=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xc62828}),120);
     this.centers=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xffca28}),24);
@@ -99,7 +138,7 @@ export class TrellisGarden {
     // Anchor on inside edge of 15% lattice closest to task list, then meet at top center
     const innerX = TrellisGarden.halfWidth - 0.144;
     const x=side*(innerX*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
-    const y=-0.79+t*1.81;
+    const y=this.bottomY+t*(this.topY-this.bottomY);
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
   }
@@ -164,7 +203,7 @@ export class TrellisGarden {
     for(let i=0;i<BUTTERFLY_COUNT;i++) {
       const angle=i*Math.PI*2/BUTTERFLY_COUNT;
       const x=Math.cos(angle)*t*0.85;
-      const y=1.02+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
+      const y=this.topY+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
       const z=0.03+Math.sin(angle)*t*0.55;
       const flap=Math.sin(this.elapsed*22+i)*0.9;
       this.scratch.position.set(x,y,z);this.scratch.rotation.set(0,angle,0);
