@@ -115,7 +115,7 @@ h2 {
   position: relative;
   display: grid;
   grid-template-columns: 15% 1fr 15%;
-  grid-template-rows: 72px 1fr 32px;
+  grid-template-rows: 1fr;
   gap: 0;
   width: 100%;
   min-height: 240px;
@@ -152,9 +152,7 @@ h2 {
 }
 
 .trellis-pillar--top {
-  grid-column: 1 / 4;
-  grid-row: 1;
-  min-height: 72px;
+  display: none !important;
 }
 
 .trellis-pillar--left {
@@ -168,9 +166,7 @@ h2 {
 }
 
 .trellis-pillar--bottom {
-  grid-column: 1 / 4;
-  grid-row: 3;
-  min-height: 32px;
+  display: none !important;
 }
 
 /* 2D/CSS finale overlay — vines meeting at top-center + birds/butterflies, always plays even if WebXR fails */
@@ -212,12 +208,15 @@ h2 {
 
 .trellis-content {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   background: linear-gradient(145deg, #fff8e9, #ffedcf);
   padding: 6px 8px 8px;
   min-width: 0;
   position: relative;
   z-index: 2;
+  margin-top: 72px;
+  margin-bottom: 32px;
+  overflow: visible;
 }
 
 #scene-container {
