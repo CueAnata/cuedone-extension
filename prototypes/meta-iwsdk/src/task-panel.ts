@@ -379,17 +379,17 @@ export class TaskPanelSystem extends createSystem({}) {
       if (ctx.state !== 'running') return;
       const now = ctx.currentTime;
       // Simple envelope for birds, similar to ZenAudio but 2D
-      for (const [index, frequency] of [1800, 2400, 2100, 2700].entries()) {
+      for (const [index, frequency] of [1200, 1650, 1350, 1950].entries()) {
         const osc = ctx.createOscillator();
         osc.type = 'sine';
-        const start = now + index * 0.28;
+        const start = now + index * 0.32;
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(0.35, start + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+        gain.gain.linearRampToValueAtTime(0.32, start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
         osc.frequency.setValueAtTime(frequency, start);
-        osc.frequency.exponentialRampToValueAtTime(frequency * 1.45, start + 0.08);
-        osc.frequency.exponentialRampToValueAtTime(frequency * 0.88, start + 0.22);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 1.22, start + 0.09);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 0.92, start + 0.24);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(start);
