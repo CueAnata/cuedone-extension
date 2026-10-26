@@ -144,6 +144,15 @@ h2 {
   overflow: visible;
 }
 
+.trellis-pillar--top,
+.trellis-pillar--bottom,
+.trellis-pillar--left,
+.trellis-pillar--right {
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+}
+
 .trellis-pillar--top {
   grid-column: 1 / 4;
   grid-row: 1;
@@ -152,12 +161,12 @@ h2 {
 
 .trellis-pillar--left {
   grid-column: 1;
-  grid-row: 1 / 4;
+  grid-row: 1 / -1;
 }
 
 .trellis-pillar--right {
   grid-column: 3;
-  grid-row: 1 / 4;
+  grid-row: 1 / -1;
 }
 
 .trellis-pillar--bottom {
