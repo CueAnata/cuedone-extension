@@ -1,4 +1,4 @@
-name: Build and publish CueDone to Pages
+name: Build and publish Personal VR to Pages
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: cuedone-pages
+  group: vr-pages
   cancel-in-progress: true
 
 jobs:
@@ -17,30 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: prototypes/meta-iwsdk/package-lock.json
       - uses: actions/configure-pages@v5
-      - name: Build standalone CueDone app
-        run: |
-          set -e
-          rm -rf dist
-          mkdir -p dist
-          # Root standalone index.html is the fully featured app (with src/shared/task-list.js, styles.css, celebrations.js)
-          cp index.html dist/index.html
-          cp -r src dist/src
-          cp -r icons dist/icons 2>/dev/null || true
-          # Also copy assets if present (for audio etc.)
-          cp -r assets dist/assets 2>/dev/null || true
-          echo "=== dist structure ==="
-          ls -R dist | head -n 60
-          echo "=== dist/index.html head ==="
-          head -n 25 dist/index.html
-          echo "=== check lattice continuous ==="
-          grep -q "background-repeat: repeat" dist/src/shared/styles.css && echo "continuous lattice OK" || echo "MISSING repeat"
-          grep -q "grid-template-rows: 72px" dist/src/shared/styles.css && echo "BAD has fixed rows" || echo "GOOD no fixed rows"
-          echo "=== check browser web fallback ==="
-          grep -q "webGetLocal" dist/src/platform/browser.js && echo "web fallback present" || echo "missing"
+      - run: npm ci
+        working-directory: prototypes/meta-iwsdk
+      - run: npm run build
+        env:
+          VR_BASE_PATH: /cuedone-extension/
+        working-directory: prototypes/meta-iwsdk
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: prototypes/meta-iwsdk/dist
 
   deploy:
     needs: build
@@ -52,6 +43,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish standalone CueDone app
+      - name: Publish built VR app
         id: deployment
         uses: actions/deploy-pages@v4
