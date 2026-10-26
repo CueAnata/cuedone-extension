@@ -42,7 +42,7 @@ export class TrellisGarden {
     ];
     // Two diagonal families clipped to the rectangular frame.
     for (const slope of [-1.6,1.6]) {
-      for (let intercept=-1.5;intercept<=1.51;intercept+=0.24) {
+      for (let intercept=-1.5;intercept<=1.51;intercept+=0.12) {
         const points: Array<[number,number]> = [];
         for (const x of [-0.48,0.48]) {
           const y=slope*x+intercept;
@@ -52,7 +52,7 @@ export class TrellisGarden {
           const x=(y-intercept)/slope;
           if(x> -0.48 && x<0.48) points.push([x,y]);
         }
-        if(points.length===2) rods.push([...points[0],...points[1],0.006]);
+        if(points.length===2) rods.push([...points[0],...points[1],0.0045]);
       }
     }
     rods.forEach(([ax,ay,bx,by,r],i) => {
