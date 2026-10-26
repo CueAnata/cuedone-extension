@@ -17,7 +17,7 @@ body {
   min-width: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  margin: 0;
+  margin: 64px 0 0 0;
   padding: 2px;
   background:
     radial-gradient(circle at top right, rgb(255 175 54 / 28%), transparent 32rem),
@@ -83,13 +83,13 @@ p {
 }
 
 h1 {
-  margin: 0;
+  margin: 64px 0 0 0;
   font-size: clamp(1.65rem, 5vw, 2.2rem);
   line-height: 1;
 }
 
 h2 {
-  margin: 0;
+  margin: 64px 0 0 0;
   font-size: 1.25rem;
 }
 
@@ -104,7 +104,7 @@ h2 {
 
 .browser-now-card {
   margin-top: 6px;
-  padding: 0;
+  padding: 8px 0 0 0;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -124,7 +124,7 @@ h2 {
   background: transparent;
   border: none;
   box-shadow: none;
-  padding: 0;
+  padding: 8px 0 0 0;
 
 }
 
@@ -207,7 +207,7 @@ h2 {
   min-width: 0;
   position: relative;
   z-index: 2;
-  margin: 0;
+  margin: 64px 0 0 0;
 
   overflow: visible;
 }
@@ -353,7 +353,7 @@ h2 {
 }
 
 .browser-new-list-review p {
-  margin: 0;
+  margin: 64px 0 0 0;
   color: #5c5143;
   line-height: 1.42;
 }
