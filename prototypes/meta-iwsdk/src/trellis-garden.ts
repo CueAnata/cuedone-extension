@@ -34,11 +34,11 @@ export class TrellisGarden {
     this.feedback.pointerEvents='none';this.feedback.visible=false;
     this.root.add(this.feedback);
     const wood = new InstancedMesh(new CylinderGeometry(1,1,1,6),
-      new MeshBasicMaterial({color:0x805538}),80);
+      new MeshBasicMaterial({color:0x805538}),120);
     wood.name = 'Rectangular wooden lattice';
     const rods: Array<[number,number,number,number,number]> = [
-      [-0.48,-0.79,-0.48,0.79,0.022], [0.48,-0.79,0.48,0.79,0.022],
-      [-0.5,-0.79,0.5,-0.79,0.022], [-0.5,0.79,0.5,0.79,0.022],
+      [-0.48,-0.79,-0.48,1.02,0.022], [0.48,-0.79,0.48,1.02,0.022],
+      [-0.5,-0.79,0.5,-0.79,0.022], [-0.5,1.02,0.5,1.02,0.022],
     ];
     // Two diagonal families clipped to the rectangular frame.
     for (const slope of [-1.6,1.6]) {
@@ -46,9 +46,9 @@ export class TrellisGarden {
         const points: Array<[number,number]> = [];
         for (const x of [-0.48,0.48]) {
           const y=slope*x+intercept;
-          if(y>=-0.79 && y<=0.79) points.push([x,y]);
+          if(y>=-0.79 && y<=1.02) points.push([x,y]);
         }
-        for (const y of [-0.79,0.79]) {
+        for (const y of [-0.79,1.02]) {
           const x=(y-intercept)/slope;
           if(x> -0.48 && x<0.48) points.push([x,y]);
         }
@@ -99,7 +99,7 @@ export class TrellisGarden {
     // Anchor on inside edge of 15% lattice closest to task list, then meet at top center
     const innerX = TrellisGarden.halfWidth - 0.144;
     const x=side*(innerX*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
-    const y=-TrellisGarden.halfHeight+t*(2*TrellisGarden.halfHeight);
+    const y=-0.79+t*1.81;
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
   }
@@ -164,7 +164,7 @@ export class TrellisGarden {
     for(let i=0;i<BUTTERFLY_COUNT;i++) {
       const angle=i*Math.PI*2/BUTTERFLY_COUNT;
       const x=Math.cos(angle)*t*0.85;
-      const y=0.79+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
+      const y=1.02+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
       const z=0.03+Math.sin(angle)*t*0.55;
       const flap=Math.sin(this.elapsed*22+i)*0.9;
       this.scratch.position.set(x,y,z);this.scratch.rotation.set(0,angle,0);
