@@ -427,7 +427,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if (panelBody) panelBody.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
-      }, 4500);
+      }, 6500);
     }
     this.render(panel);
   }
