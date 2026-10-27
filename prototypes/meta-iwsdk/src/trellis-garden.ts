@@ -93,20 +93,12 @@ export class TrellisGarden {
     if(this.ratio>=0) this.setProgress(this.ratio);
   }
 
-  /** Update trellis height for task count N (1-10) so frame hugs task list top 1.02 to bottom stats */
+  /** Fixed trellis proportions — width and vine tracks locked for all N 1-10, only DOM container height expands */
   setTaskCount(count: number): void {
-    const clamped = Math.max(1, Math.min(10, Math.round(count) || 1));
-    // Dynamic: N=3 compact hugs 3 tasks, N=4 base 1.81 (1.02 - (-0.79)), N=6 expands for 6 without scroll, N=10 tallest
-    let newBottom: number;
-    let newTop = 1.02;
-    if (clamped <= 4) {
-      // Compact for fewer tasks: N=4 -> -0.79, N=3 -> -0.67, N=2 -> -0.55, N=1 -> -0.43
-      newBottom = -0.79 + (4 - clamped) * 0.12;
-    } else {
-      // Expand for more tasks: N=5 -> -0.97, N=6 -> -1.15, N=10 -> -1.87
-      const extra = (clamped - 4) * 0.18;
-      newBottom = -0.79 - extra;
-    }
+    // Keep trellis physical width and vine tracks 100% fixed and consistent for any task count
+    // Only vertical DOM container expands via CSS height:auto, WebGL stays at fixed 1.02 to -0.79
+    const newBottom = -0.79;
+    const newTop = 1.02;
     if (newBottom === this.bottomY && newTop === this.topY) return;
     this.bottomY = newBottom;
     this.topY = newTop;
