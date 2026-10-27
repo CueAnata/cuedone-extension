@@ -58,27 +58,33 @@ button {
 
 #browser-collapsed-bar {
   display: none;
-  width: 100%;
-  padding: 8px 12px;
-  margin-top: 6px;
-  border-radius: 10px;
+  width: auto;
+  max-width: 100%;
+  padding: 6px 10px;
+  margin: 0;
+  border-radius: 20px;
   background: linear-gradient(145deg, #fff8e9, #ffedcf);
   border: 1px solid #dbbf91;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 750;
   color: #332d25;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  align-self: center;
 }
 #browser-collapsed-bar[hidden] { display: none !important; }
 .browser-panel[data-collapsed="true"] #browser-collapsed-bar { display: block; }
+.browser-panel[data-collapsed="true"] { padding: 6px 8px; gap: 0; }
 .browser-panel[data-collapsed="true"] #browser-panel-body,
 .browser-panel[data-collapsed="true"] #browser-task-view,
 .browser-panel[data-collapsed="true"] .browser-now-card,
 .browser-panel[data-collapsed="true"] #browser-task-form,
+.browser-panel[data-collapsed="true"] .browser-status,
+.browser-panel[data-collapsed="true"] #browser-task-form,
 .browser-panel[data-collapsed="true"] .browser-status { display: none !important; }
+.browser-panel[data-collapsed="true"] .browser-header { margin-bottom: 0; }
 
 
 .browser-header,
