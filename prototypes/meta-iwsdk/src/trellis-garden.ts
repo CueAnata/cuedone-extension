@@ -134,9 +134,8 @@ export class TrellisGarden {
   vinePoint(t:number,side:number):Vector3 {
     const join=Math.max(0,(t-0.78)/0.22);
     const smooth=join*join*(3-2*join);
-    // Anchor on inside edge of 15% lattice closest to task list, then meet at top center
-    const innerX = TrellisGarden.halfWidth - 0.144;
-    const x=side*(innerX*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
+    // Locked to side columns x=±0.48 so vines are never hidden behind cards nor clipped at edges
+    const x=side*(TrellisGarden.halfWidth*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
     const y=this.bottomY+t*(this.topY-this.bottomY);
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
