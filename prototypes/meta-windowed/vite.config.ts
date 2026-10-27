@@ -13,7 +13,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2022',
-    rollupOptions: { input: './index.html' },
+    rollupOptions: {
+      input: './index.html',
+      output: {
+        // Bump the release prefix to invalidate previously cached build URLs.
+        entryFileNames: 'assets/[name]-20261026-cache1-[hash].js',
+        chunkFileNames: 'assets/[name]-20261026-cache1-[hash].js',
+        assetFileNames: 'assets/[name]-20261026-cache1-[hash][extname]',
+      },
+    },
   },
   esbuild: { target: 'es2022' },
   base: './',

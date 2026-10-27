@@ -15,7 +15,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',
     target: 'esnext',
-    rollupOptions: { input: './index.html' },
+    rollupOptions: {
+      input: './index.html',
+      output: {
+        // Bump the release prefix to invalidate previously cached build URLs.
+        entryFileNames: 'assets/[name]-20261026-cache1-[hash].js',
+        chunkFileNames: 'assets/[name]-20261026-cache1-[hash].js',
+        assetFileNames: 'assets/[name]-20261026-cache1-[hash][extname]',
+      },
+    },
   },
   esbuild: { target: 'esnext' },
   // @drawcall/uikitml otherwise pulls a second three/@pmndrs/uikit graph
