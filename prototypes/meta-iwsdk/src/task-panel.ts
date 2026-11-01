@@ -67,6 +67,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private readonly session = new PersonalTaskSession(new LocalTaskStore());
   private readonly browser = browserPanelElements();
   private settingsOpen = false;
+  private finaleStyle: '2d' | '3d' = '2d';
+  private progression: 'smooth' | 'instant' = 'smooth';
   private collapsed = false;
   private collapseUp?: InstanceType<typeof ChevronUp>;
   private collapseDown?: InstanceType<typeof ChevronDown>;
@@ -90,6 +92,30 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    const settings = required<HTMLElement>('#browser-settings-panel');
+    const addChoice = (title: string, choices: [string, string][], change: (value: string) => void) => {
+      const label = document.createElement('label');
+      label.className = 'browser-setting-choice';
+      label.append(document.createTextNode(title));
+      const select = document.createElement('select');
+      for (const [value, text] of choices) select.add(new Option(text, value));
+      const onChange = () => change(select.value);
+      select.addEventListener('change', onChange);
+      label.append(select);
+      settings.insertBefore(label, required('#browser-spatial-scale'));
+      this.cleanupFuncs.push(() => {select.removeEventListener('change', onChange); label.remove();});
+    };
+    addChoice('Finale', [['2d', '2D — stay in browser'], ['3d', '3D — immersive AR']], value => {
+      this.finaleStyle = value === '3d' ? '3d' : '2d';
+    });
+    addChoice('Animation progression', [['smooth', 'Smooth'], ['instant', 'Instant']], value => {
+      this.progression = value === 'instant' ? 'instant' : 'smooth';
+    });
+    // Keep entry into AR available from both the list and Settings.
+    this.browser.root.append(this.browser.xrButton);
+    required('#browser-garden').removeAttribute('role');
+    required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
+      'Garden progress follows each completed task. Choose a 2D or immersive 3D finale in Settings.';
     const gear = new Settings({width: 3, height: 3, color: '#332D25'});
     const settingsButton = panel.requireElementById<UIKit.Container>('settings-toggle');
     settingsButton.name = 'Settings';
@@ -134,6 +160,7 @@ export class TaskPanelSystem extends createSystem({}) {
       this.render(panel);
       required<HTMLElement>('#browser-panel-body').scrollTop = 0;
       panel.requireElementById<UIKit.Container>('panel-body').scrollPosition.value = [0,0];
+      if(this.isBrowser()) required<HTMLButtonElement>(open ? '#browser-settings-done' : '#browser-settings-toggle').focus();
     };
     bind('settings-toggle', () => showSettings(!this.settingsOpen));
     bind('settings-done', () => showSettings(false));
@@ -410,13 +437,28 @@ export class TaskPanelSystem extends createSystem({}) {
       return;
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
+    const arRun = this.finaleStyle === '3d' ? finalTaskAR.begin(before) : undefined;
+    if(arRun) {
+      void launchAR(this.world, required<HTMLElement>('#xr-overlay'), navigator.xr,
+        session => finalTaskAR.attach(arRun, session)).then(started => {
+        if(!started) finalTaskAR.cancel(arRun);
+      }).catch(() => {
+        finalTaskAR.cancel(arRun);
+        this.session.message = 'Immersive AR is unavailable. Your task remains saved.';
+        this.render(panel);
+      });
+    }
     const pending = this.session.completeTask(taskId);
     this.render(panel);
     const saved = await pending;
     this.render(panel);
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
+    if(arRun) {
+      if(isFinal) finalTaskAR.saved(arRun, this.session.tasks);
+      else finalTaskAR.cancel(arRun);
+    }
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
-    if(isFinal && trellis) {
+    if(isFinal && trellis && !arRun) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
@@ -554,7 +596,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     if(finalTaskAR.error && this.session.message !== finalTaskAR.error) {this.session.message = finalTaskAR.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
-    const motion = this.motionEnabled && !this.reducedMotion.matches;
+    const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     this.browser.root.classList.toggle('motion-off', !motion);
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
@@ -588,7 +630,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
-      this.session.message === 'Task complete.' || this.remoteFeedback);
+      this.progression === 'smooth' && (this.session.message === 'Task complete.' || this.remoteFeedback));
     panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('scroll-controls').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('task-view').setProperties({display: this.settingsOpen ? 'none' : 'flex'});
