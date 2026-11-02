@@ -116,14 +116,19 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const enterBrowser=document.getElementById('browser-xr-button')!;
     enterSpatial.addEventListener('click',unlock);enterBrowser.addEventListener('click',unlock);
     this.cleanupFuncs.push(()=>{enterSpatial.removeEventListener('click',unlock);enterBrowser.removeEventListener('click',unlock);});
+    // A final-task click can launch AR without using the Enter XR button.
+    const taskList=document.getElementById('browser-task-list')!;
+    const unlockTaskAudio=()=>{if(this.ready && this.settings.zenSound)unlock();};
+    taskList.addEventListener('click',unlockTaskAudio,true);
+    this.cleanupFuncs.push(()=>taskList.removeEventListener('click',unlockTaskAudio,true));
     this.load();
     this.cleanupFuncs.push(watchLocalStorage(window,[SPATIAL_KEY],()=>this.refreshSettings()));
-    this.cleanupFuncs.push(this.world.onXRFrame(frame => this.frame(frame)));
+    this.cleanupFuncs.push(this.world.onXRFrame((frame,delta) => this.frame(frame,delta)));
     this.cleanupFuncs.push(this.world.visibilityState.subscribe(() => {
       const visible = this.world.visibilityState.value === VisibilityState.Visible;
       this.root.visible = visible || this.world.visibilityState.value === VisibilityState.VisibleBlurred;
       if(!visible)this.cancelMove();
-      this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
+      this.audio.setAmbient(false);this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       if (visible) {
         this.revision = -1; // Resume at saved progress without replaying a tween.
         this.tween.set(finalTaskAR.waiting ? taskRatio(finalTaskAR.before) : (progress.total ? progress.complete / progress.total : 0), false);
@@ -132,7 +137,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.renderControls();
     }));
     const ended = () => {
-      this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
+      this.audio.setAmbient(false);this.audio.stop();this.finaleAudioPending=false;this.themes.trellis.cancel();
       this.activeSession = undefined;
       this.cancelMove(); this.faceLocked = true;
       this.fadeMesh.visible = false;
@@ -242,13 +247,15 @@ export class SpatialPresentationSystem extends createSystem({}) {
     applyFixedPanelPose(this.panel, this.root.matrixWorld);
   }
 
-  private frame(frame: XRFrame): void {
+  private frame(frame: XRFrame,delta: number): void {
     if (!this.ready || this.world.visibilityState.value !== VisibilityState.Visible) return;
     const session = this.world.xrSession;
     const space = this.world.xrReferenceSpace;
     if (!session || !space || !frame.getViewerPose(space)) return;
     if (session !== this.activeSession) {
       this.activeSession = session;
+      this.audio.setAmbient(false);
+      this.audio.setAmbient(this.settings.zenSound);
       this.placeFixedPanel();
       this.fade = 0.3;
       this.revision = progress.revision;
@@ -277,6 +284,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.forward.set(0,0,-1).applyQuaternion(this.rotation);this.up.set(0,1,0).applyQuaternion(this.rotation);
     this.soundPosition.set(0,0.79,0.04);this.themes.trellis.root.localToWorld(this.soundPosition);
     this.audio.update(this.position,this.forward,this.up,this.soundPosition);
+    // IWSDK invokes this from Three's session.requestAnimationFrame loop.
+    // Advance immersive particles exactly once, before the XR frame renders.
+    this.advanceGarden(delta,true);
   }
 
   update(delta: number): void {
@@ -319,6 +329,17 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.revision = progress.revision;
     }
     if(!motion && !(visible && finalTaskAR.waiting))this.tween.set(progress.ratio,false);
+    if(standard)this.advanceGarden(delta,false);
+    if(visible) {
+      this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
+      this.fadeMesh.visible = this.fade > 0;
+      this.fadeMesh.material.opacity = this.fade/0.3;
+      this.world.playerSpaceEntities.head.object3D!.getWorldPosition(this.fadeMesh.position);
+    }
+  }
+
+  private advanceGarden(delta:number,visible:boolean):void {
+    const motion = this.settings.motion && !this.media.matches;
     if(visible) {
       this.audio.setAmbient(this.ready && this.settings.zenSound); this.audio.tick(delta);
     } else {
@@ -326,12 +347,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
     this.themes.update(this.tween.tick(delta),progress.total > 0,delta,motion);
     if(this.themes.trellis.update(delta,motion) && visible)this.playGardenCue();
-    if(visible) {
-      this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
-      this.fadeMesh.visible = this.fade > 0;
-      this.fadeMesh.material.opacity = this.fade/0.3;
-      this.world.playerSpaceEntities.head.object3D!.getWorldPosition(this.fadeMesh.position);
-    }
   }
 
   private renderControls(): void {
