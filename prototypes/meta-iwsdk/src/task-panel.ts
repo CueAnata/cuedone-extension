@@ -653,14 +653,11 @@ export class TaskPanelSystem extends createSystem({}) {
       const item = document.createElement('div');
       item.className = 'task-item';
       item.setAttribute('role', 'listitem');
-      item.style.minWidth = '0';
-      Object.assign(button.style, {flex: '1 1 0', minWidth: '0'});
       const editBtn = document.createElement('button');
       editBtn.type = 'button'; editBtn.className = 'task-edit-btn';
       editBtn.textContent = '✏️'; editBtn.title = 'Edit task';
       editBtn.setAttribute('aria-label', `Edit task: ${task.text}`);
       editBtn.disabled = disabled;
-      Object.assign(editBtn.style, {flex: '0 0 36px', minHeight: '44px'});
       editBtn.addEventListener('click', event => {
         event.stopPropagation();
         if(this.session.phase !== 'ready' || item.querySelector('input'))return;
@@ -668,7 +665,6 @@ export class TaskPanelSystem extends createSystem({}) {
         editor.type = 'text'; editor.value = task.text; editor.maxLength = 200;
         editor.className = 'inline-task-edit-input'; editor.enterKeyHint = 'done';
         editor.setAttribute('aria-label', 'Edit task text');
-        Object.assign(editor.style, {flex: '1 1 0', minWidth: '0'});
         button.replaceWith(editor);
         let finished = false;
         const cancel = () => {finished = true; editor.replaceWith(button); editBtn.focus({preventScroll: true});};

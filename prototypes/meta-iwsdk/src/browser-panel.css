@@ -674,10 +674,24 @@ h2 {
 #browser-task-list > [role="listitem"] { min-width: 0; }
 
 .task-item {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+/* Keep the pencil outside the card and inside the scrolling cream gutter. */
+#browser-task-list {
+  padding: 4px 44px 4px 4px;
+}
+
+.task-item > .browser-task-row,
+.task-item > .inline-task-edit-input {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .task-text {
@@ -685,6 +699,12 @@ h2 {
 }
 
 .task-edit-btn {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  min-height: 44px;
   background: none;
   border: none;
   cursor: pointer;
@@ -700,6 +720,7 @@ h2 {
 .inline-task-edit-input {
   flex-grow: 1;
   width: 100%;
+  min-height: 78px;
   padding: 4px 8px;
   font-size: 14px;
   border: 1px solid #d4a373;
