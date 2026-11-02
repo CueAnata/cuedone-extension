@@ -514,7 +514,7 @@ h2 {
 
 /* Dynamic height for 1-10 tasks — no inner scrollbar, trellis expands to fit */
 #browser-task-list { max-height: none; overflow: visible; overscroll-behavior: auto; touch-action: pan-y; }
-.trellis-frame { height: auto; max-height: none; overflow: visible; }
+.trellis-frame { height: auto; max-height: none; overflow: hidden; }
 #browser-garden.trellis-frame { height: auto; max-height: none; }
 .browser-panel .browser-task-row { min-height: 78px; }
 
@@ -539,7 +539,7 @@ h2 {
     repeating-linear-gradient(-45deg, transparent 0 10px, #79502f 10px 12px, transparent 12px 22px);
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  overflow: visible;
+  overflow: hidden;
 }
 .trellis-content { margin: 0; border: 1px solid #dbbf91; border-radius: 6px; }
 .browser-bottom-bar {
@@ -586,17 +586,12 @@ h2 {
 .trellis-frame { grid-template-columns: minmax(0, 15%) minmax(0, 1fr) minmax(0, 15%); }
 .trellis-pillar--left,
 .trellis-pillar--right { min-width: 0; overflow: clip; contain: inline-size; }
-/* Keep the side vines within the inner borders, with a full-width arch opening. */
+/* The geometry now reserves petal clearance; no mask may cut the arch in half. */
 .trellis-frame #scene-container {
-  inset: 4px;
-  overflow: clip;
+  inset: 8px;
+  overflow: hidden;
   contain: size layout paint;
-  mask-image:
-    linear-gradient(#000, #000),
-    linear-gradient(to right, #000 0 15%, transparent 15% 85%, #000 85% 100%);
-  mask-size: 100% 80px, 100% 100%;
-  mask-position: top center;
-  mask-repeat: no-repeat;
+  mask-image: none;
 }
 .trellis-frame #scene-container canvas { max-width: 100%; overflow: clip; }
 .trellis-pillar,
@@ -626,3 +621,59 @@ h2 {
 }
 .browser-panel[data-collapsed="true"] { padding-bottom: 6px; }
 .browser-panel[data-collapsed="true"] #browser-xr-button { display: none; }
+
+/* Reserve the viewport for the frame and AR control; only task items scroll. */
+.browser-panel:not([data-collapsed="true"]) {
+  height: calc(100dvh - 84px - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 84px - env(safe-area-inset-bottom));
+  margin: 0 auto 80px;
+  padding-bottom: 6px;
+  overflow: hidden;
+}
+#browser-panel-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#browser-task-view {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.browser-now-card {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.browser-bottom-bar { flex: 0 0 auto; }
+#browser-garden.trellis-frame {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+}
+.trellis-content {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+.task-list-container,
+#browser-task-list {
+  height: 100%;
+  max-height: 320px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  align-content: start;
+  grid-auto-rows: max-content;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+#browser-settings-panel { min-height: 0; overflow-y: auto; }

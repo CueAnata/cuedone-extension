@@ -134,16 +134,20 @@ export class TrellisGarden {
   vinePoint(t:number,side:number):Vector3 {
     const join=Math.max(0,(t-0.78)/0.22);
     const smooth=join*join*(3-2*join);
-    // Locked to side columns x=±0.48 so vines are never hidden behind cards nor clipped at edges
-    const x=side*(TrellisGarden.halfWidth*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
-    const y=this.bottomY+t*(this.topY-this.bottomY);
+    // Reserve space for the full petals (0.048) and leaves, not just the tube.
+    // Keep the final join below the top beam so its flowers remain fully visible.
+    const inset = 0.075;
+    const x=(side*(TrellisGarden.halfWidth-inset)+Math.sin(t*Math.PI*16)*0.008)*(1-smooth);
+    const y=this.bottomY+inset+t*(this.topY-this.bottomY-2*inset);
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
   }
 
   /** Size to the actual UIKit board, leaving the lattice visible on each edge. */
   fit(width:number,height:number):void {
-    this.root.scale.set((width+0.15)/0.96,(height+0.18)/1.58,1);
+    // Fit the complete frame, including its asymmetric top, inside the board.
+    this.root.scale.set(width/(2*TrellisGarden.halfWidth+0.05),height/(this.topY-this.bottomY+0.05),1);
+    this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
   }
 
   setProgress(ratio:number):void {
