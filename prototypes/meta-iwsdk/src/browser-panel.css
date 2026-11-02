@@ -674,6 +674,31 @@ h2 {
 }
 #browser-task-list > [role="listitem"] { min-width: 0; }
 
+.trellis-lock-btn {
+  background: #fffaf0;
+  border: 1px solid #d4a373;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.trellis-lock-btn:hover {
+  background: #faedcd;
+}
+
+/* Locked state styling */
+.trellis-lock-btn.locked {
+  background: #e9edc9;
+  border-color: #ccd5ae;
+}
+
 .task-item {
   position: relative;
   display: flex;
