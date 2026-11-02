@@ -5,7 +5,7 @@ import { DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
 import { SpatialThemes } from './spatial-themes.js';
 import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
-import { applyFixedPanelPose, faceCenterPanel } from './fixed-panel.js';
+import { applyFixedPanelPose, faceCenterPanel, billboardPanel } from './fixed-panel.js';
 import { PanelDrag } from './panel-drag.js';
 import { finalTaskAR } from './ar-session.js';
 import { taskRatio } from './spatial-state.js';
@@ -266,6 +266,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private placeFixedPanel(): void {
     if(this.faceLocked && this.drag.owner === null)
       faceCenterPanel(this.root, this.world.playerSpaceEntities.head.object3D!);
+    else billboardPanel(this.root,this.world.playerSpaceEntities.head.object3D!);
     this.root.updateWorldMatrix(true, false);
     applyFixedPanelPose(this.panel, this.root.matrixWorld);
   }

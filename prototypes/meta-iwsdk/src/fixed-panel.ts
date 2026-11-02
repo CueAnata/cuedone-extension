@@ -25,11 +25,22 @@ export function faceCenterPanel(panel: Object3D, head: Object3D): void {
   head.getWorldPosition(headPosition);
   head.getWorldQuaternion(headRotation);
   panel.position.set(0, 0, -1.5).applyQuaternion(headRotation).add(headPosition);
-  facing.copy(headPosition).sub(panel.position);
+  billboardPanel(panel,head);
+}
+
+/** Rotate a placed panel toward the viewer without changing its position. */
+export function billboardPanel(panel:Object3D,head:Object3D):void {
+  head.getWorldPosition(headPosition);
+  panel.getWorldPosition(facing);
+  facing.subVectors(headPosition,facing);
   facing.y = 0;
   // Looking straight up/down has no stable horizontal heading.
   if(facing.lengthSq() > 1e-8) {
-    panel.quaternion.setFromAxisAngle(upright, Math.atan2(facing.x, facing.z));
+    headRotation.setFromAxisAngle(upright, Math.atan2(facing.x, facing.z));
+    if(panel.parent) {
+      panel.parent.getWorldQuaternion(panel.quaternion);
+      panel.quaternion.invert().multiply(headRotation);
+    } else panel.quaternion.copy(headRotation);
   }
   panel.updateWorldMatrix(true, false);
 }

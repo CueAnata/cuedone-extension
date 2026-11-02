@@ -118,8 +118,8 @@ export class TrellisGarden {
     for(const mesh of [this.petals,this.centers,this.leaves])enableInstancedContact(mesh);
     this.petals.name='Vine flowers';this.leaves.name='Vine leaves';
     this.root.add(this.petals,this.centers,this.leaves);
-    this.wings=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xffffff,side:DoubleSide,transparent:true}),BUTTERFLY_COUNT*2);
-    this.bodies=new InstancedMesh(geometry,new MeshBasicMaterial({color:0x4c3829,transparent:true}),BUTTERFLY_COUNT);
+    this.wings=new InstancedMesh(geometry,new MeshBasicMaterial({color:0xffffff,side:DoubleSide,transparent:true,depthWrite:false}),BUTTERFLY_COUNT*2);
+    this.bodies=new InstancedMesh(geometry,new MeshBasicMaterial({color:0x4c3829,transparent:true,depthWrite:false}),BUTTERFLY_COUNT);
     this.wings.name='Completion butterflies';
     this.wings.pointerEvents=this.bodies.pointerEvents='none';
     const colors=[0xffc869,0xf2a2a0,0xe9ddba,0x9dc6c0];

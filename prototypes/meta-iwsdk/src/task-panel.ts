@@ -506,8 +506,20 @@ export class TaskPanelSystem extends createSystem({}) {
     const final = this.isBrowser() && this.session.unfinishedTaskCount === 1 &&
       this.session.tasks.some(task => task.id === taskId && !task.completed);
     if(!final) {
+      const wasFinal = this.session.unfinishedTaskCount === 1 &&
+        this.session.tasks.some(task => task.id === taskId && !task.completed);
       const pending = this.session.completeTask(taskId);
-      this.render(panel); await pending; this.render(panel);
+      this.render(panel); const saved = await pending; this.render(panel);
+      if(saved && wasFinal && !this.isBrowser()) {
+        // Bind the last bee sweep to the successful save, even if a storage
+        // refresh already rendered the completed row before this continuation.
+        const entry=this.rows.find(row => row.id === taskId);
+        if(entry) {
+          entry.elapsed=0;
+          entry.pollen.setProperties({width:'0%'});
+          entry.bee.setProperties({display:'flex',positionLeft:0});
+        }
+      }
       return;
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));

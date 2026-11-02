@@ -2,7 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Group, Mesh, MeshBasicMaterial, PlaneGeometry, Quaternion, Raycaster, Vector3 } from 'three';
-import { applyFixedPanelPose, faceCenterPanel, PANEL_WIDTH_METERS, PANEL_HEIGHT_METERS } from './fixed-panel.ts';
+import { applyFixedPanelPose, faceCenterPanel, billboardPanel, PANEL_WIDTH_METERS, PANEL_HEIGHT_METERS } from './fixed-panel.ts';
+
+test('placed panel follows the viewer with upright rotation while keeping its position',()=>{
+  const panel=new Group(),head=new Group(),parent=new Group();parent.add(panel);
+  parent.rotation.y=0.7;parent.position.set(0.2,0.3,-0.1);
+  panel.position.set(0.4,1.2,-1.5);
+  const position=panel.getWorldPosition(new Vector3());
+  for(const x of [-1,0,1]) {
+    head.position.set(x,1.7,0.5);head.rotation.z=0.8;
+    billboardPanel(panel,head);
+    close(panel.getWorldPosition(new Vector3()).distanceTo(position),0);
+    const rotation=panel.getWorldQuaternion(new Quaternion());
+    const normal=new Vector3(0,0,1).applyQuaternion(rotation);
+    const toward=head.position.clone().sub(position);toward.y=0;toward.normalize();
+    close(normal.distanceTo(toward),0);
+    close(new Vector3(0,1,0).applyQuaternion(rotation).y,1);
+  }
+});
 
 function close(actual: number, expected: number) {assert.ok(Math.abs(actual-expected)<1e-9, `${actual} != ${expected}`);}
 function fixed(panel: Group) {
