@@ -548,6 +548,22 @@ h2 {
   line-height: 1.25;
 }
 #browser-show-add-button { grid-column: 1 / -1; }
+.browser-bottom-bar { margin: 0 0 12px; }
+.browser-bottom-bar .browser-task-form {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-width: 0;
+}
+.trellis-frame { grid-template-columns: minmax(0, 15%) minmax(0, 1fr) minmax(0, 15%); }
+.trellis-pillar--left,
+.trellis-pillar--right { min-width: 0; overflow: clip; contain: inline-size; }
+/* The browser renderer shares one canvas: expose only its two vine columns. */
+.trellis-frame #scene-container {
+  overflow: clip;
+  contain: size layout paint;
+  mask-image: linear-gradient(to right, #000 0 15%, transparent 15% 85%, #000 85% 100%);
+}
+.trellis-frame #scene-container canvas { max-width: 100%; overflow: clip; }
 .trellis-pillar,
 #scene-container,
 #scene-container canvas { overflow: visible; }

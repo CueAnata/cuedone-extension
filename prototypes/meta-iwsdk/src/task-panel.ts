@@ -113,6 +113,10 @@ export class TaskPanelSystem extends createSystem({}) {
     });
     // Keep entry into AR available from both the list and Settings.
     this.browser.root.append(this.browser.xrButton);
+    const actions = required<HTMLElement>('.browser-bottom-bar');
+    const garden = required<HTMLElement>('#browser-garden');
+    garden.before(actions);
+    actions.append(this.browser.form);
     required('#browser-garden').removeAttribute('role');
     required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
       'Garden progress follows each completed task. Choose a 2D or immersive 3D finale in Settings.';
@@ -176,7 +180,11 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
-    bind('show-add-button', () => this.openTaskEntry(panel, taskInput));
+    bind('show-add-button', () => {
+      if(this.isBrowser() && this.browser.input.value.trim()) {
+        void this.addTask(panel, taskInput);
+      } else this.openTaskEntry(panel, taskInput);
+    });
     bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
@@ -259,7 +267,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
     const onTaskKeydown = (event: KeyboardEvent) => {
       if(event.isComposing || event.keyCode === 229)return;
-      if(event.key !== 'Enter' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
+      if(!['Enter', 'Return'].includes(event.key) && !['Enter', 'NumpadEnter'].includes(event.code) && event.keyCode !== 13)return;
       event.preventDefault();
       if(event.repeat)return;
       returnHandled = true;
@@ -404,7 +412,7 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
-    if(this.session.phase !== 'ready' || this.reviewingNewList || !this.entryOpen || this.addingTask)return false;
+    if(this.session.phase !== 'ready' || this.reviewingNewList || (!this.entryOpen && !this.isBrowser()) || this.addingTask)return false;
     const wasBrowser = this.isBrowser();
     const keyboard = wasBrowser ? this.browser.input : input.input.element;
     // Read the native value at submission, including the final soft-keyboard edit.
@@ -425,7 +433,7 @@ export class TaskPanelSystem extends createSystem({}) {
     } finally {
       this.addingTask = false;
       this.render(panel);
-      if(keepFocus && !this.finishingEntry && this.entryOpen && wasBrowser === this.isBrowser() &&
+      if(keepFocus && !this.finishingEntry && (this.entryOpen || wasBrowser) && wasBrowser === this.isBrowser() &&
         (document.activeElement === keyboard || document.activeElement === document.body))this.focusTaskEntry(input);
     }
   }
@@ -827,7 +835,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || !this.entryOpen;
+    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
