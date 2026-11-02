@@ -92,6 +92,14 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    required<HTMLElement>('.browser-header').after(this.browser.form);
+    this.browser.input.enterKeyHint = 'enter';
+    const header = required<HTMLElement>('.browser-header');
+    const headerSize = new ResizeObserver(() => {
+      this.browser.root.style.setProperty('--browser-header-height', `${header.getBoundingClientRect().height}px`);
+    });
+    headerSize.observe(header);
+    this.cleanupFuncs.push(() => headerSize.disconnect());
     const settings = required<HTMLElement>('#browser-settings-panel');
     const addChoice = (title: string, choices: [string, string][], change: (value: string) => void) => {
       const label = document.createElement('label');
@@ -259,7 +267,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
     const onTaskKeydown = (event: KeyboardEvent) => {
       if(event.isComposing || event.keyCode === 229)return;
-      if(event.key !== 'Enter' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
+      if(event.key !== 'Enter' && event.key !== 'Return' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
       event.preventDefault();
       if(event.repeat)return;
       returnHandled = true;
@@ -404,7 +412,7 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
-    if(this.session.phase !== 'ready' || this.reviewingNewList || !this.entryOpen || this.addingTask)return false;
+    if(this.session.phase !== 'ready' || this.reviewingNewList || (!this.entryOpen && !this.isBrowser()) || this.addingTask)return false;
     const wasBrowser = this.isBrowser();
     const keyboard = wasBrowser ? this.browser.input : input.input.element;
     // Read the native value at submission, including the final soft-keyboard edit.
@@ -425,7 +433,7 @@ export class TaskPanelSystem extends createSystem({}) {
     } finally {
       this.addingTask = false;
       this.render(panel);
-      if(keepFocus && !this.finishingEntry && this.entryOpen && wasBrowser === this.isBrowser() &&
+      if(keepFocus && !this.finishingEntry && (this.entryOpen || wasBrowser) && wasBrowser === this.isBrowser() &&
         (document.activeElement === keyboard || document.activeElement === document.body))this.focusTaskEntry(input);
     }
   }
@@ -827,7 +835,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || !this.entryOpen;
+    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;

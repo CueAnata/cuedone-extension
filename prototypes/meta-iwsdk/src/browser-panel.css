@@ -575,3 +575,40 @@ h2 {
 }
 .browser-panel[data-collapsed="true"] { padding-bottom: 6px; }
 .browser-panel[data-collapsed="true"] #browser-xr-button { display: none; }
+
+/* Keep entry beside the header while the working list moves underneath it. */
+.browser-panel > .browser-header {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #fffdf8;
+}
+.browser-panel > .browser-task-form {
+  position: sticky;
+  top: var(--browser-header-height, 82px);
+  z-index: 6;
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px;
+}
+.browser-panel > .browser-task-form .browser-entry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.browser-panel > .browser-task-form input { width: 100%; min-width: 0; font-size: 1rem; }
+#browser-garden.trellis-frame {
+  margin-top: 8px;
+  padding-top: 88px;
+  overflow: hidden;
+}
+.trellis-frame .trellis-pillar--left,
+.trellis-frame .trellis-pillar--right {
+  position: absolute;
+  top: 88px;
+  bottom: 22px;
+  width: 15%;
+  overflow: hidden;
+}
+.trellis-frame .trellis-pillar--left { left: 0; }
+.trellis-frame .trellis-pillar--right { right: 0; }
+.trellis-frame #scene-container { inset: 8px; overflow: hidden; }

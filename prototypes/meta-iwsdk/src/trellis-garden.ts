@@ -134,16 +134,31 @@ export class TrellisGarden {
   vinePoint(t:number,side:number):Vector3 {
     const join=Math.max(0,(t-0.78)/0.22);
     const smooth=join*join*(3-2*join);
-    // Locked to side columns x=±0.48 so vines are never hidden behind cards nor clipped at edges
-    const x=side*(TrellisGarden.halfWidth*(1-smooth))+Math.sin(t*Math.PI*16)*0.016;
-    const y=this.bottomY+t*(this.topY-this.bottomY);
+    // Center the tracks in the 15% lattice columns, reserving petal clearance.
+    const x=(side*(TrellisGarden.halfWidth*0.85)+Math.sin(t*Math.PI*16)*0.006)*(1-smooth);
+    const y=this.bottomY+0.09+t*(this.topY-this.bottomY-0.18);
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
   }
 
   /** Size to the actual UIKit board, leaving the lattice visible on each edge. */
   fit(width:number,height:number):void {
-    this.root.scale.set((width+0.15)/0.96,(height+0.18)/1.58,1);
+    const panel = typeof document === 'undefined' ? null : document.getElementById('browser-panel');
+    const frame = panel && !panel.hidden ? document.getElementById('browser-garden') : null;
+    const rect = frame?.getBoundingClientRect();
+    const viewport = frame?.querySelector('#scene-container')?.getBoundingClientRect();
+    if(rect && viewport && viewport.width > 0 && viewport.height > 0) {
+      // Match the companion camera, keeping pixel alignment independent of task count.
+      const visibleHeight = 2*1.6*Math.tan(25*Math.PI/180);
+      const visibleWidth = visibleHeight*rect.width/rect.height;
+      this.root.scale.x = visibleWidth*((rect.width-8)*0.425/viewport.width)/(TrellisGarden.halfWidth*0.85);
+      const top = 36, bottom = Math.max(top+1, viewport.height-22);
+      this.root.scale.y = visibleHeight*(bottom-top)/viewport.height/(this.topY-this.bottomY-0.18);
+      this.root.position.set(0,visibleHeight*(0.5-top/viewport.height)-(this.topY-0.09)*this.root.scale.y,0);
+      return;
+    }
+    this.root.scale.set(width/1.01,height/(this.topY-this.bottomY+0.05),1);
+    this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
   }
 
   setProgress(ratio:number):void {
