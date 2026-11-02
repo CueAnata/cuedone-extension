@@ -73,6 +73,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private collapseUp?: InstanceType<typeof ChevronUp>;
   private collapseDown?: InstanceType<typeof ChevronDown>;
   private entryOpen = false;
+  private browserEntryFinished = false;
   private addingTask = false;
   private finishingEntry = false;
   private reviewingClear = false;
@@ -93,13 +94,27 @@ export class TaskPanelSystem extends createSystem({}) {
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     required<HTMLElement>('.browser-header').after(this.browser.form);
-    this.browser.input.enterKeyHint = 'enter';
+    // Reuse the existing form rather than nesting a second form around the input.
+    this.browser.input.setAttribute('form', this.browser.form.id);
+    this.browser.input.enterKeyHint = 'go';
+    this.browser.root.style.setProperty('overflow-anchor', 'none');
     const header = required<HTMLElement>('.browser-header');
     const headerSize = new ResizeObserver(() => {
       this.browser.root.style.setProperty('--browser-header-height', `${header.getBoundingClientRect().height}px`);
     });
     headerSize.observe(header);
     this.cleanupFuncs.push(() => headerSize.disconnect());
+    const reopenEntry = document.createElement('button');
+    reopenEntry.type = 'button';
+    reopenEntry.id = 'browser-reopen-entry';
+    reopenEntry.className = 'browser-button browser-outline';
+    reopenEntry.textContent = 'Edit tasks';
+    reopenEntry.setAttribute('aria-controls', this.browser.form.id);
+    header.append(reopenEntry);
+    const onReopenEntry = () => this.openTaskEntry(panel,
+      panel.requireElementById<TaskInput>('task-input'));
+    reopenEntry.addEventListener('click', onReopenEntry);
+    this.cleanupFuncs.push(() => {reopenEntry.removeEventListener('click', onReopenEntry); reopenEntry.remove();});
     const settings = required<HTMLElement>('#browser-settings-panel');
     const addChoice = (title: string, choices: [string, string][], change: (value: string) => void) => {
       const label = document.createElement('label');
@@ -184,7 +199,10 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
-    bind('show-add-button', () => this.openTaskEntry(panel, taskInput));
+    bind('show-add-button', () => {
+      if(this.isBrowser()) this.browser.form.requestSubmit();
+      else this.openTaskEntry(panel, taskInput);
+    });
     bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
@@ -270,17 +288,17 @@ export class TaskPanelSystem extends createSystem({}) {
       if(event.key !== 'Enter' && event.key !== 'Return' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
       event.preventDefault();
       if(event.repeat)return;
-      returnHandled = true;
-      submitBrowserTask();
+      if(!returnHandled)this.browser.form.requestSubmit();
     };
     const onTaskBeforeInput = (event: InputEvent) => {
       if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
       event.preventDefault();
-      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
+      if(!returnHandled)this.browser.form.requestSubmit();
     };
     const resetReturn = () => {returnHandled = false;};
     const onTaskSubmit = (event: SubmitEvent) => {
       event.preventDefault();
+      event.stopPropagation();
       if(!returnHandled) {returnHandled = true; submitBrowserTask();}
     };
     this.browser.input.addEventListener('keydown', onTaskKeydown);
@@ -384,6 +402,7 @@ export class TaskPanelSystem extends createSystem({}) {
     if(this.session.phase !== 'ready' || this.reviewingNewList)return;
     this.collapsed = false;
     this.entryOpen = true;
+    this.browserEntryFinished = false;
     this.render(panel);
     this.focusTaskEntry(input);
   }
@@ -400,11 +419,12 @@ export class TaskPanelSystem extends createSystem({}) {
       input.input.uncontrolledSignal.value = '';
       this.browser.input.value = '';
       this.entryOpen = false;
+      this.browserEntryFinished = true;
       this.session.message = 'Task entry finished. Your list is saved.';
       input.input.blur();
       this.browser.input.blur();
       this.render(panel);
-      if(this.isBrowser())required<HTMLButtonElement>('#browser-show-add-button').focus();
+      if(this.isBrowser())required<HTMLButtonElement>('#browser-reopen-entry').focus({preventScroll: true});
     } finally {
       this.finishingEntry = false;
       this.render(panel);
@@ -419,10 +439,20 @@ export class TaskPanelSystem extends createSystem({}) {
     const submitted = keyboard.value;
     this.draft = submitted;
     const keepFocus = document.activeElement === keyboard;
+    const scrollTargets = wasBrowser ? [document.scrollingElement, this.browser.root,
+      document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
+      .filter((element): element is Element => element !== null)
+      .map(element => ({element, top: element.scrollTop, left: element.scrollLeft})) : [];
+    const restoreScroll = () => {
+      for(const {element, top, left} of scrollTargets) {
+        element.scrollTop = top; element.scrollLeft = left;
+      }
+    };
     this.addingTask = true;
     try {
       const pending = this.session.add(submitted);
       this.render(panel);
+      restoreScroll();
       const saved = await pending;
       if(saved && this.draft === submitted) {
         this.draft = '';
@@ -435,6 +465,7 @@ export class TaskPanelSystem extends createSystem({}) {
       this.render(panel);
       if(keepFocus && !this.finishingEntry && (this.entryOpen || wasBrowser) && wasBrowser === this.isBrowser() &&
         (document.activeElement === keyboard || document.activeElement === document.body))this.focusTaskEntry(input);
+      restoreScroll();
     }
   }
 
@@ -835,7 +866,10 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList;
+    const entryFinished = this.browserEntryFinished && !this.entryOpen;
+    this.browser.root.dataset.entryFinished = String(entryFinished);
+    required<HTMLElement>('#browser-reopen-entry').hidden = !entryFinished || this.collapsed || this.settingsOpen;
+    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || entryFinished;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;

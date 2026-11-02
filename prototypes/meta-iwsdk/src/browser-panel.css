@@ -612,3 +612,25 @@ h2 {
 .trellis-frame .trellis-pillar--left { left: 0; }
 .trellis-frame .trellis-pillar--right { right: 0; }
 .trellis-frame #scene-container { inset: 8px; overflow: hidden; }
+
+/* Done gives the garden the space previously occupied by entry controls. */
+.browser-panel[data-entry-finished="true"] .browser-bottom-bar,
+.browser-panel[data-entry-finished="true"] #browser-status-text,
+.browser-panel[data-entry-finished="true"] #browser-task-view > .browser-entry-help {
+  display: none;
+}
+.browser-panel[data-entry-finished="true"] #browser-garden {
+  margin-top: 4px;
+  min-height: min(60dvh, 520px);
+}
+.browser-panel[data-entry-finished="true"] #browser-task-list {
+  max-height: max(100px, calc(60dvh - 180px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.browser-panel #browser-reopen-entry {
+  min-height: 40px;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
