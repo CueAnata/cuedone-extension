@@ -528,13 +528,26 @@ h2 {
   border: 4px solid #79502f;
   border-radius: 4px;
   background-image:
-    repeating-linear-gradient(45deg, transparent 0 18px, #79502f 18px 22px, transparent 22px 40px),
-    repeating-linear-gradient(-45deg, transparent 0 18px, #79502f 18px 22px, transparent 22px 40px);
+    repeating-linear-gradient(45deg, transparent 0 10px, #79502f 10px 12px, transparent 12px 22px),
+    repeating-linear-gradient(-45deg, transparent 0 10px, #79502f 10px 12px, transparent 12px 22px);
   background-size: 100% 100%;
   background-repeat: no-repeat;
   overflow: visible;
 }
 .trellis-content { margin: 0; border: 1px solid #dbbf91; border-radius: 6px; }
+.browser-bottom-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.browser-panel .browser-bottom-bar .browser-button {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 8px;
+  line-height: 1.25;
+}
+#browser-show-add-button { grid-column: 1 / -1; }
 .trellis-pillar,
 #scene-container,
 #scene-container canvas { overflow: visible; }

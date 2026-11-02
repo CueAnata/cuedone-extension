@@ -255,8 +255,39 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.setAttribute('form', 'spatial-task-form');
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
+    let returnHandled = false;
+    const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
+    const onTaskKeydown = (event: KeyboardEvent) => {
+      if(event.isComposing || event.keyCode === 229)return;
+      if(event.key !== 'Enter' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
+      event.preventDefault();
+      if(event.repeat)return;
+      returnHandled = true;
+      submitBrowserTask();
+    };
+    const onTaskBeforeInput = (event: InputEvent) => {
+      if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
+      event.preventDefault();
+      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
+    };
+    const resetReturn = () => {returnHandled = false;};
+    const onTaskSubmit = (event: SubmitEvent) => {
+      event.preventDefault();
+      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
+    };
+    this.browser.input.addEventListener('keydown', onTaskKeydown);
+    this.browser.input.addEventListener('beforeinput', onTaskBeforeInput);
+    this.browser.input.addEventListener('input', resetReturn);
+    this.browser.input.addEventListener('blur', resetReturn);
+    this.browser.form.addEventListener('submit', onTaskSubmit);
     this.cleanupFuncs.push(
-      bindTaskEntry(this.browser.input, () => {void this.addTask(panel, taskInput);}, this.browser.form),
+      () => {
+        this.browser.input.removeEventListener('keydown', onTaskKeydown);
+        this.browser.input.removeEventListener('beforeinput', onTaskBeforeInput);
+        this.browser.input.removeEventListener('input', resetReturn);
+        this.browser.input.removeEventListener('blur', resetReturn);
+        this.browser.form.removeEventListener('submit', onTaskSubmit);
+      },
       bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form')),
     );
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
@@ -594,6 +625,10 @@ export class TaskPanelSystem extends createSystem({}) {
 
   update(delta: number): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    // CSS owns the browser lattice; retain the surrounding 3D vines and flowers.
+    // Restore the wooden mesh in immersive mode, where the CSS frame is absent.
+    const wood = this.world.scene.getObjectByName('Rectangular wooden lattice');
+    if(wood) wood.visible = !this.isBrowser();
     if(finalTaskAR.error && this.session.message !== finalTaskAR.error) {this.session.message = finalTaskAR.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
