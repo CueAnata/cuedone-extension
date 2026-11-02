@@ -641,3 +641,34 @@ h2 {
   padding: 8px 10px;
   font-size: 0.85rem;
 }
+
+/* Keep one fixed garden viewport; task count changes only the inner scroll area. */
+#browser-garden.trellis-frame,
+.browser-panel[data-entry-finished="true"] #browser-garden {
+  height: 460px;
+  min-height: 460px;
+  max-height: 460px;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.trellis-content {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+#browser-task-list,
+.browser-panel[data-entry-finished="true"] #browser-task-list {
+  height: 240px;
+  max-height: 240px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  align-content: start;
+  grid-auto-rows: max-content;
+  touch-action: pan-y;
+}
+#browser-task-list > [role="listitem"] { min-width: 0; }

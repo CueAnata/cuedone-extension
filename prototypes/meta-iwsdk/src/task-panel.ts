@@ -531,11 +531,9 @@ export class TaskPanelSystem extends createSystem({}) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
-      // Auto-scroll to top so 64px headroom, vine arch, butterflies, and chirps are center stage
+      // Only task contents scroll; the garden viewport stays in place.
       const list = document.querySelector('#browser-task-list') as HTMLElement | null;
       if (list) list.scrollTo({top: 0, behavior: 'smooth'});
-      const panelBody = document.querySelector('#browser-panel-body') as HTMLElement | null;
-      if (panelBody) panelBody.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 6500);
@@ -613,6 +611,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.disposeRows();
     const list = panel.requireElementById<UIKit.Container>('task-list');
     const browserList = required<HTMLElement>('#browser-task-list');
+    const listScrollTop = browserList.scrollTop;
     browserList.replaceChildren();
     for(const task of this.session.tasks) {
       const fresh = animate && this.previousTasks.get(task.id) === false && task.completed;
@@ -658,6 +657,7 @@ export class TaskPanelSystem extends createSystem({}) {
       list.add(this.emptyRow);
       browserList.textContent = message;
     }
+    browserList.scrollTop = listScrollTop;
     this.previousTasks = new Map(this.session.tasks.map(task => [task.id, task.completed]));
   }
 
