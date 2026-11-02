@@ -117,6 +117,8 @@ export class TaskPanelSystem extends createSystem({}) {
     const garden = required<HTMLElement>('#browser-garden');
     garden.before(actions);
     actions.append(this.browser.form);
+    required<HTMLElement>('.browser-entry-row').append(required('#browser-show-add-button'));
+    this.browser.input.enterKeyHint = 'enter';
     required('#browser-garden').removeAttribute('role');
     required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
       'Garden progress follows each completed task. Choose a 2D or immersive 3D finale in Settings.';
@@ -263,39 +265,10 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.setAttribute('form', 'spatial-task-form');
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
-    let returnHandled = false;
-    const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
-    const onTaskKeydown = (event: KeyboardEvent) => {
-      if(event.isComposing || event.keyCode === 229)return;
-      if(!['Enter', 'Return'].includes(event.key) && !['Enter', 'NumpadEnter'].includes(event.code) && event.keyCode !== 13)return;
-      event.preventDefault();
-      if(event.repeat)return;
-      returnHandled = true;
-      submitBrowserTask();
-    };
-    const onTaskBeforeInput = (event: InputEvent) => {
-      if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
-      event.preventDefault();
-      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
-    };
-    const resetReturn = () => {returnHandled = false;};
-    const onTaskSubmit = (event: SubmitEvent) => {
-      event.preventDefault();
-      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
-    };
-    this.browser.input.addEventListener('keydown', onTaskKeydown);
-    this.browser.input.addEventListener('beforeinput', onTaskBeforeInput);
-    this.browser.input.addEventListener('input', resetReturn);
-    this.browser.input.addEventListener('blur', resetReturn);
-    this.browser.form.addEventListener('submit', onTaskSubmit);
     this.cleanupFuncs.push(
-      () => {
-        this.browser.input.removeEventListener('keydown', onTaskKeydown);
-        this.browser.input.removeEventListener('beforeinput', onTaskBeforeInput);
-        this.browser.input.removeEventListener('input', resetReturn);
-        this.browser.input.removeEventListener('blur', resetReturn);
-        this.browser.form.removeEventListener('submit', onTaskSubmit);
-      },
+      // Capture native Return before UI handlers; also handle keyup-only and
+      // beforeinput virtual keyboards without submitting the same action twice.
+      bindTaskEntry(this.browser.input, () => {void this.addTask(panel, taskInput);}, this.browser.form),
       bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form')),
     );
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
