@@ -273,12 +273,13 @@ export class TaskPanelSystem extends createSystem({}) {
     const isEnter = (event: KeyboardEvent) => event.key === 'Enter' || event.key === 'Return' ||
       event.code === 'NumpadEnter' || event.keyCode === 13;
     const onTaskKeydown = (event: KeyboardEvent) => {
-      if(!isEnter(event) || composing || event.isComposing || event.keyCode === 229)return;
+      const questEnter = event.key === 'Enter' || event.keyCode === 13;
+      if((!questEnter && !isEnter(event)) || composing || event.isComposing)return;
       event.preventDefault(); event.stopPropagation();
       if(event.repeat)return;
       enterHandled = true;
       // addTask reads the current input immediately and clears it after saving.
-      submitTask();
+      void this.addTask(panel, taskInput);
     };
     const onTaskKeyup = (event: KeyboardEvent) => {
       if(!isEnter(event) || composing || event.isComposing)return;
@@ -524,11 +525,9 @@ export class TaskPanelSystem extends createSystem({}) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
-      // Auto-scroll to top so 64px headroom, vine arch, butterflies, and chirps are center stage
+      // Scroll task contents only; keep the frame and bottom controls stationary.
       const list = document.querySelector('#browser-task-list') as HTMLElement | null;
       if (list) list.scrollTo({top: 0, behavior: 'smooth'});
-      const panelBody = document.querySelector('#browser-panel-body') as HTMLElement | null;
-      if (panelBody) panelBody.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 6500);

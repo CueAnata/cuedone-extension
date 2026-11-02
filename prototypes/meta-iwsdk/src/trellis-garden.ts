@@ -136,8 +136,10 @@ export class TrellisGarden {
     const smooth=join*join*(3-2*join);
     // Reserve space for the full petals (0.048) and leaves, not just the tube.
     // Keep the final join below the top beam so its flowers remain fully visible.
-    const inset = 0.075;
-    const x=(side*(TrellisGarden.halfWidth-inset)+Math.sin(t*Math.PI*16)*0.008)*(1-smooth);
+    const inset = 0.09;
+    // A 15% side column is centered 42.5% of the frame width from its center.
+    const trackCenter = TrellisGarden.halfWidth * 0.85;
+    const x=(side*trackCenter+Math.sin(t*Math.PI*16)*0.006)*(1-smooth);
     const y=this.bottomY+inset+t*(this.topY-this.bottomY-2*inset);
     const z=0.025+side*Math.cos(t*Math.PI*16)*0.016*(1-smooth);
     return new Vector3(x,y,z);
@@ -145,6 +147,26 @@ export class TrellisGarden {
 
   /** Size to the actual UIKit board, leaving the lattice visible on each edge. */
   fit(width:number,height:number):void {
+    const browserPanel = typeof document === 'undefined' ? null : document.getElementById('browser-panel');
+    const frame = browserPanel && !browserPanel.hidden ? document.getElementById('browser-garden') : null;
+    const canvasBox = frame?.querySelector('#scene-container')?.getBoundingClientRect();
+    const frameBox = frame?.getBoundingClientRect();
+    if(canvasBox && frameBox && canvasBox.width > 0 && canvasBox.height > 0) {
+      // Match the companion camera (50° at z=1.6) and the CSS column centers.
+      // Pixel-based fitting keeps the tracks aligned as viewport height changes.
+      const visibleHeight = 2 * 1.6 * Math.tan(25 * Math.PI / 180);
+      const visibleWidth = visibleHeight * frameBox.width / frameBox.height;
+      const innerWidth = frameBox.width - 8; // two 4px lattice borders
+      this.root.scale.x = visibleWidth * (innerWidth * 0.425 / canvasBox.width) /
+        (TrellisGarden.halfWidth * 0.85);
+      const top = 36;
+      const bottom = Math.max(top + 1, canvasBox.height - 22);
+      const low = this.bottomY + 0.09;
+      const high = this.topY - 0.09;
+      this.root.scale.y = visibleHeight * (bottom - top) / canvasBox.height / (high - low);
+      this.root.position.set(0, visibleHeight * (0.5 - top / canvasBox.height) - high * this.root.scale.y, 0);
+      return;
+    }
     // Fit the complete frame, including its asymmetric top, inside the board.
     this.root.scale.set(width/(2*TrellisGarden.halfWidth+0.05),height/(this.topY-this.bottomY+0.05),1);
     this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
