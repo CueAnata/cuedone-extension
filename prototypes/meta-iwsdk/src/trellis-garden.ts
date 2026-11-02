@@ -142,8 +142,9 @@ export class TrellisGarden {
   }
 
   /** Size to the actual UIKit board, leaving the lattice visible on each edge. */
-  fit(width:number,height:number):void {
-    const panel = typeof document === 'undefined' ? null : document.getElementById('browser-panel');
+  fit(width:number,height:number,presentation:'browser'|'immersive' = 'immersive'):void {
+    const panel = presentation === 'browser' && typeof document !== 'undefined'
+      ? document.getElementById('browser-panel') : null;
     const frame = panel && !panel.hidden ? document.getElementById('browser-garden') : null;
     const rect = frame?.getBoundingClientRect();
     const viewport = frame?.querySelector('#scene-container')?.getBoundingClientRect();
@@ -158,7 +159,11 @@ export class TrellisGarden {
       this.root.position.set(0,visibleHeight*(0.5-top/viewport.height)-(this.topY-0.09)*this.root.scale.y,0);
       return;
     }
-    this.root.scale.set(width/1.01,height/(this.topY-this.bottomY+0.05),1);
+    // Fit the vine tracks just outside the opaque UIKit board, with 4 cm
+    // clearance per edge. Browser pixels must never size the VR/AR frame.
+    this.root.scale.set((width+0.08)/(2*TrellisGarden.halfWidth*0.85),
+      (height+0.08)/(this.topY-this.bottomY-0.18),1);
+    this.root.position.x=0;
     this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
   }
 

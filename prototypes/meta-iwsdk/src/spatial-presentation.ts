@@ -271,7 +271,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.placeFixedPanel();
     const size=this.panel.document.computedSize;
     if(size) this.themes.trellis.fit(size.width*0.01*this.panel.document.scale.x,
-      size.height*0.01*this.panel.document.scale.y);
+      size.height*0.01*this.panel.document.scale.y, 'immersive');
     const head=this.world.playerSpaceEntities.head.object3D!;
     head.getWorldPosition(this.position);head.getWorldQuaternion(this.rotation);
     this.forward.set(0,0,-1).applyQuaternion(this.rotation);this.up.set(0,1,0).applyQuaternion(this.rotation);
@@ -295,7 +295,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       const rect = document.getElementById('browser-garden')!.getBoundingClientRect();
       this.root.visible = rect.width > 0 && rect.height > 0;
       this.root.position.set(0,0,0); this.root.quaternion.identity();
-      this.themes.trellis.fit(0.8,1);
+      this.themes.trellis.fit(0.8,1, 'browser');
       if(this.root.visible) {
         const width = Math.round(rect.width), height = Math.round(rect.height);
         this.world.renderer.getSize(this.browserSize);
