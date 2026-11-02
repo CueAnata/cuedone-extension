@@ -468,9 +468,16 @@ h2 {
 #xr-overlay:xr-overlay { background: transparent; }
 #overlay-exit-button { position: absolute; right: 12px; bottom: 12px; pointer-events: auto; }
 
-.browser-entry-row { display: flex; align-items: stretch; gap: 8px; }
-.browser-entry-row input { width: 0; min-width: 0; flex: 1; }
-.browser-entry-row button { flex: 0 0 auto; }
+.browser-entry-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; width: 100%; }
+.browser-panel .browser-entry-row input {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  padding: 12px;
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+.browser-entry-row button { justify-self: end; }
 .browser-entry-help { margin: 0; font-size: 0.8rem; color: #665240; }
 
 /* Generous visible hand-ray targets, including narrow pinned browser windows. */
@@ -492,7 +499,7 @@ h2 {
 /* Completion graphics track the text area, independently of the larger checkbox. */
 .browser-panel .browser-task-row { display: flex; align-items: center; gap: 12px; min-height: 76px; flex-wrap: nowrap; word-break: normal; overflow-wrap: break-word; }
 .task-checkbox { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 3px solid #96550c; border-radius: 8px; font-size: 28px; line-height: 1; }
-.task-label { position: relative; flex: 1 1 0; min-width: 0; width: 0; line-height: 1.5; overflow-wrap: break-word; word-break: normal; white-space: normal; }
+.task-label { position: relative; flex: 1 1 auto; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
 .task-label .pollen-line { left: 0; right: 0; top: 50%; }
 .task-label .task-bee { left: 0; top: calc(50% - 0.75em); transform: scaleX(-1); }
 [data-completed="true"] .task-label-text { text-decoration: line-through; text-decoration-color: #b78113; text-decoration-thickness: 2px; }
@@ -553,6 +560,22 @@ h2 {
   grid-column: 1 / -1;
   margin: 0;
   min-width: 0;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px;
+}
+.trellis-content,
+#browser-task-list,
+.browser-task-item { width: 100%; min-width: 0; }
+#browser-task-list { grid-template-columns: minmax(0, 1fr); padding: 0; }
+.browser-task-item { display: grid; grid-template-columns: minmax(0, 1fr); }
+.browser-panel .browser-task-row {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 10px;
+  gap: 10px;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 .trellis-frame { grid-template-columns: minmax(0, 15%) minmax(0, 1fr) minmax(0, 15%); }
 .trellis-pillar--left,

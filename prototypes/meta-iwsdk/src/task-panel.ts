@@ -619,7 +619,10 @@ export class TaskPanelSystem extends createSystem({}) {
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
       button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
-      const item = document.createElement('div'); item.setAttribute('role', 'listitem'); item.append(button);
+      const item = document.createElement('div');
+      item.className = 'browser-task-item';
+      item.setAttribute('role', 'listitem');
+      item.append(button);
       browserList.append(item);
     }
     if(!this.session.tasks.length) {
