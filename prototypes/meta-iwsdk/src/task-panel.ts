@@ -93,6 +93,10 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    document.getElementById('browser-done-button')?.remove();
+    panel.requireElementById('done-button').setProperties({display: 'none'});
+    required<HTMLElement>('#browser-reset-button').textContent = 'Reset List';
+    panel.requireElementById('reset-button').setProperties({text: 'Reset List'});
     required<HTMLElement>('.browser-header').after(this.browser.form);
     // Reuse the existing form rather than nesting a second form around the input.
     this.browser.input.setAttribute('form', this.browser.form.id);
@@ -207,11 +211,6 @@ export class TaskPanelSystem extends createSystem({}) {
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
       this.openNewListReview(panel, taskInput, true);
-    });
-    bind('done-button', () => {
-      this.session.message = 'All done. Your completed list is saved.';
-      this.render(panel);
-      if(!this.isBrowser())void this.world.exitXR();
     });
     this.cleanupFuncs.push(() => this.disposeRows());
 
@@ -821,7 +820,6 @@ export class TaskPanelSystem extends createSystem({}) {
     });
 
     const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList;
-    const done = !disabled && this.session.tasks.length > 0 && this.session.unfinishedTaskCount === 0;
     panel.requireElementById('settings-panel').setProperties({display: this.settingsOpen ? 'flex' : 'none'});
     required<HTMLElement>('#browser-settings-panel').hidden = !this.settingsOpen;
     required<HTMLElement>('#browser-settings-toggle').setAttribute('aria-expanded', String(this.settingsOpen));
@@ -833,8 +831,6 @@ export class TaskPanelSystem extends createSystem({}) {
     const reviewTitle = this.reviewingClear ? 'Clear all tasks?' : 'Start a new list?';
     panel.requireElementById('new-list-title').setProperties({text: reviewTitle});
     required<HTMLElement>('#browser-new-list-title').textContent = reviewTitle;
-    panel.requireElementById('done-button').setProperties({display: done && !this.collapsed && !this.settingsOpen ? 'flex' : 'none'});
-    required<HTMLElement>('#browser-done-button').hidden = !done || this.settingsOpen;
     this.renderRows(panel, disabled);
     this.renderBrowser(isLoading, isSaving, loadFailed);
     this.queueRemoteRefresh(panel);

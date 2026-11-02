@@ -598,13 +598,13 @@ h2 {
 .browser-panel > .browser-task-form input { width: 100%; min-width: 0; font-size: 1rem; }
 #browser-garden.trellis-frame {
   margin-top: 8px;
-  padding-top: 88px;
+  padding-top: 104px;
   overflow: hidden;
 }
 .trellis-frame .trellis-pillar--left,
 .trellis-frame .trellis-pillar--right {
   position: absolute;
-  top: 88px;
+  top: 104px;
   bottom: 22px;
   width: 15%;
   overflow: hidden;
@@ -614,11 +614,18 @@ h2 {
 .trellis-frame #scene-container { inset: 8px; overflow: hidden; }
 
 /* Done gives the garden the space previously occupied by entry controls. */
-.browser-panel[data-entry-finished="true"] .browser-bottom-bar,
 .browser-panel[data-entry-finished="true"] #browser-status-text,
 .browser-panel[data-entry-finished="true"] #browser-task-view > .browser-entry-help {
   display: none;
 }
+.browser-panel[data-entry-finished="true"] #browser-show-add-button { display: none; }
+.browser-panel[data-entry-finished="true"] .browser-bottom-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: 8px;
+}
+.trellis-frame.is-ar-finale::before,
+.trellis-frame.is-ar-finale::after { top: 32px; }
 .browser-panel[data-entry-finished="true"] #browser-garden {
   margin-top: 4px;
   min-height: min(60dvh, 520px);

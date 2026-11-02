@@ -152,7 +152,8 @@ export class TrellisGarden {
       const visibleHeight = 2*1.6*Math.tan(25*Math.PI/180);
       const visibleWidth = visibleHeight*rect.width/rect.height;
       this.root.scale.x = visibleWidth*((rect.width-8)*0.425/viewport.width)/(TrellisGarden.halfWidth*0.85);
-      const top = 36, bottom = Math.max(top+1, viewport.height-22);
+      // Leave room above the entire flower radius and the finishing bloom.
+      const top = 52, bottom = Math.max(top+1, viewport.height-22);
       this.root.scale.y = visibleHeight*(bottom-top)/viewport.height/(this.topY-this.bottomY-0.18);
       this.root.position.set(0,visibleHeight*(0.5-top/viewport.height)-(this.topY-0.09)*this.root.scale.y,0);
       return;
