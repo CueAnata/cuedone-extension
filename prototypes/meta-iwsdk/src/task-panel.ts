@@ -184,11 +184,11 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
-    bind('show-add-button', () => {
-      if(this.isBrowser() && this.browser.input.value.trim()) {
-        void this.addTask(panel, taskInput);
-      } else this.openTaskEntry(panel, taskInput);
-    });
+    const onAddTask = () => {
+      if(this.isBrowser()) void this.addTask(panel, taskInput);
+      else this.openTaskEntry(panel, taskInput);
+    };
+    bind('show-add-button', onAddTask);
     bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
@@ -448,10 +448,24 @@ export class TaskPanelSystem extends createSystem({}) {
       const pending = this.session.add(submitted);
       this.render(panel);
       const saved = await pending;
+      if(saved) {
+        this.session.message = 'Saved: task added.';
+        this.rowSignature = '';
+      } else if(!submitted.trim() && this.session.phase === 'ready') {
+        this.session.message = 'Type a task, then press Enter or Add Task.';
+      }
       if(saved && this.draft === submitted) {
         this.draft = '';
         input.input.uncontrolledSignal.value = '';
         this.browser.input.value = '';
+      }
+      if(saved) {
+        // Publish the saved task count to the garden and rebuild both lists now.
+        this.render(panel);
+        if(wasBrowser) {
+          const list = required<HTMLElement>('#browser-task-list');
+          list.scrollTop = list.scrollHeight;
+        }
       }
       return saved;
     } finally {
