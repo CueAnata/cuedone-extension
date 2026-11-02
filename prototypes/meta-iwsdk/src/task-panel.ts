@@ -14,6 +14,7 @@ import { watchLocalStorage } from './local-sync.js';
 import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
 import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
+import { normalizeTaskText } from '../../../src/shared/tasks.js';
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
 
@@ -64,7 +65,8 @@ function browserPanelElements(): BrowserPanelElements {
 }
 
 export class TaskPanelSystem extends createSystem({}) {
-  private readonly session = new PersonalTaskSession(new LocalTaskStore());
+  private readonly taskStore = new LocalTaskStore();
+  private readonly session = new PersonalTaskSession(this.taskStore);
   private readonly browser = browserPanelElements();
   private settingsOpen = false;
   private finaleStyle: '2d' | '3d' = '2d';
@@ -639,7 +641,7 @@ export class TaskPanelSystem extends createSystem({}) {
       button.dataset.completed = String(task.completed);
       const checkbox = document.createElement('span'); checkbox.className = 'task-checkbox';
       checkbox.textContent = task.completed ? '✓' : ''; checkbox.setAttribute('aria-hidden', 'true');
-      const browserLabel = document.createElement('span'); browserLabel.className = 'task-label';
+      const browserLabel = document.createElement('span'); browserLabel.className = 'task-label task-text';
       const labelText = document.createElement('span'); labelText.className = 'task-label-text'; labelText.textContent = task.text;
       browserLabel.append(labelText);
       const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
@@ -648,7 +650,65 @@ export class TaskPanelSystem extends createSystem({}) {
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
       button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
-      const item = document.createElement('div'); item.setAttribute('role', 'listitem'); item.append(button);
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.setAttribute('role', 'listitem');
+      item.style.minWidth = '0';
+      Object.assign(button.style, {flex: '1 1 0', minWidth: '0'});
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button'; editBtn.className = 'task-edit-btn';
+      editBtn.textContent = '✏️'; editBtn.title = 'Edit task';
+      editBtn.setAttribute('aria-label', `Edit task: ${task.text}`);
+      editBtn.disabled = disabled;
+      Object.assign(editBtn.style, {flex: '0 0 36px', minHeight: '44px'});
+      editBtn.addEventListener('click', event => {
+        event.stopPropagation();
+        if(this.session.phase !== 'ready' || item.querySelector('input'))return;
+        const editor = document.createElement('input');
+        editor.type = 'text'; editor.value = task.text; editor.maxLength = 200;
+        editor.className = 'inline-task-edit-input'; editor.enterKeyHint = 'done';
+        editor.setAttribute('aria-label', 'Edit task text');
+        Object.assign(editor.style, {flex: '1 1 0', minWidth: '0'});
+        button.replaceWith(editor);
+        let finished = false;
+        const cancel = () => {finished = true; editor.replaceWith(button); editBtn.focus({preventScroll: true});};
+        const commitEdit = async () => {
+          if(finished || this.session.phase !== 'ready')return;
+          const text = normalizeTaskText(editor.value);
+          if(!text || text === task.text) {cancel(); return;}
+          const before = this.session.tasks;
+          if(!before.some(current => current.id === task.id && current.text === task.text)) {cancel(); return;}
+          const next = before.map(current => current.id === task.id ? {...current, text} : current);
+          finished = true; editor.readOnly = true; this.session.phase = 'saving';
+          try {
+            await this.taskStore.save(next, before);
+            this.session.tasks = next;
+            this.session.message = 'Saved: task text updated.';
+            this.rowSignature = '';
+          } catch(error) {
+            this.session.message = error instanceof Error ? error.message : 'CueDone could not save the task text.';
+            finished = false;
+            if(error instanceof Error && error.name === 'TaskConflictError') {
+              await this.session.load();
+              this.session.message = 'The list changed in another window. Review it and try again.';
+              this.rowSignature = '';
+            }
+          } finally {
+            if(this.session.phase === 'saving')this.session.phase = 'ready';
+            editor.readOnly = false;
+            this.render(panel);
+          }
+        };
+        editor.addEventListener('keydown', key => {
+          key.stopPropagation();
+          if(key.isComposing)return;
+          if(key.key === 'Enter') {key.preventDefault(); void commitEdit();}
+          else if(key.key === 'Escape') {key.preventDefault(); cancel();}
+        });
+        editor.addEventListener('blur', () => {void commitEdit();});
+        editor.focus({preventScroll: true}); editor.select();
+      });
+      item.append(button, editBtn);
       browserList.append(item);
     }
     if(!this.session.tasks.length) {

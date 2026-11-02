@@ -673,7 +673,32 @@ h2 {
 }
 #browser-task-list > [role="listitem"] { min-width: 0; }
 
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.task-text {
+  flex-grow: 1;
+}
+
+.task-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: 0.7;
+}
+
+.task-edit-btn:hover {
+  opacity: 1;
+}
+
 .inline-task-edit-input {
+  flex-grow: 1;
   width: 100%;
   padding: 4px 8px;
   font-size: 14px;
