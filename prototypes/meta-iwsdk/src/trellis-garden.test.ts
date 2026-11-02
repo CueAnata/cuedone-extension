@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TrellisGarden, VINE_SEGMENTS, BUTTERFLY_COUNT } from './trellis-garden.ts';
+import { Matrix4 } from 'three';
+test('successive XR-sized frame steps advance butterfly flight until it clears',()=>{
+  const garden=new TrellisGarden();garden.setProgress(1);garden.celebrate();
+  assert.equal(garden.update(1/90,true),true);
+  const first=new Matrix4(),next=new Matrix4();garden.wings.getMatrixAt(0,first);
+  assert.equal(garden.update(1/90,true),false);garden.wings.getMatrixAt(0,next);
+  assert.notDeepEqual(first.elements,next.elements);
+  for(let i=0;i<190;i++)garden.update(1/90,true);
+  assert.equal(garden.wings.visible,false);garden.dispose();
+});
 test('vines share the exact top-center meeting point and grow from zero to full geometry',()=>{
   const garden=new TrellisGarden();
   assert.ok(garden.vinePoint(1,-1).distanceTo(garden.vinePoint(1,1))<1e-10);

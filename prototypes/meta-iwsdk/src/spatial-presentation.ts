@@ -121,6 +121,29 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const unlockTaskAudio=()=>{if(this.ready && this.settings.zenSound)unlock();};
     taskList.addEventListener('click',unlockTaskAudio,true);
     this.cleanupFuncs.push(()=>taskList.removeEventListener('click',unlockTaskAudio,true));
+    // Resume audio after XR takes ownership, and retry from native selection
+    // gestures if the browser suspended the context during the transition.
+    let audioSession: XRSession | undefined;
+    const activateImmersiveAudio=()=>{
+      if(this.ready && this.settings.zenSound)void this.unlockAudio();
+    };
+    const started=()=>{
+      audioSession?.removeEventListener('selectstart',activateImmersiveAudio);
+      audioSession=this.world.renderer.xr.getSession() ?? undefined;
+      audioSession?.addEventListener('selectstart',activateImmersiveAudio);
+      activateImmersiveAudio();
+    };
+    const releaseAudioSession=()=>{
+      audioSession?.removeEventListener('selectstart',activateImmersiveAudio);
+      audioSession=undefined;
+    };
+    this.world.renderer.xr.addEventListener('sessionstart',started);
+    this.world.renderer.xr.addEventListener('sessionend',releaseAudioSession);
+    this.cleanupFuncs.push(()=>{
+      releaseAudioSession();
+      this.world.renderer.xr.removeEventListener('sessionstart',started);
+      this.world.renderer.xr.removeEventListener('sessionend',releaseAudioSession);
+    });
     this.load();
     this.cleanupFuncs.push(watchLocalStorage(window,[SPATIAL_KEY],()=>this.refreshSettings()));
     this.cleanupFuncs.push(this.world.onXRFrame((frame,delta) => this.frame(frame,delta)));

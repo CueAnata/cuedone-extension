@@ -215,6 +215,9 @@ export class TaskPanelSystem extends createSystem({}) {
       this.openNewListReview(panel, taskInput, true);
     });
     this.cleanupFuncs.push(() => this.disposeRows());
+    this.cleanupFuncs.push(this.world.onXRFrame((_frame,delta) => {
+      if(this.world.visibilityState.value === VisibilityState.Visible)this.animateRows(delta);
+    }));
 
     taskInput.name = 'TaskInput';
     panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
@@ -610,6 +613,8 @@ export class TaskPanelSystem extends createSystem({}) {
     if(signature === this.rowSignature)return;
     this.rowSignature = signature;
     const animate = this.session.message === 'Task complete.' || this.remoteFeedback;
+    const running = new Map(this.rows.filter(entry => entry.elapsed >= 0)
+      .map(entry => [entry.id,entry.elapsed]));
     this.disposeRows();
     const list = panel.requireElementById<UIKit.Container>('task-list');
     const browserList = required<HTMLElement>('#browser-task-list');
@@ -617,6 +622,7 @@ export class TaskPanelSystem extends createSystem({}) {
     browserList.replaceChildren();
     for(const task of this.session.tasks) {
       const fresh = animate && this.previousTasks.get(task.id) === false && task.completed;
+      const elapsed = task.completed ? (running.get(task.id) ?? (fresh ? 0 : -1)) : -1;
       const row = new UIKit.Container({width: '100%', minHeight: 10, flexShrink: 0, padding: 2, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'row', alignItems: 'center', gap: 2});
       row.name = `Task-${task.id}`;
       const check = new UIKit.Container({width: 8, height: 8, flexShrink: 0, borderWidth: 0.5, borderColor: '#96550C', borderRadius: 1, justifyContent: 'center', alignItems: 'center', pointerEvents: 'none'});
@@ -625,7 +631,7 @@ export class TaskPanelSystem extends createSystem({}) {
       const text = new UIKit.Text({text: task.text, fontSize: 2.8, color: '#332D25', width: '100%', verticalAlign: 'center'});
       label.add(text);
       row.add(check, label);
-      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: task.completed && !fresh ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
+      const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: elapsed >= 0 ? `${elapsed*100}%` : task.completed ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
       pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
       const bee = new UIKit.Container({positionType: 'absolute', positionTop: '30%', positionLeft: 0, width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
       for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
@@ -633,7 +639,7 @@ export class TaskPanelSystem extends createSystem({}) {
       label.add(pollen, bee);
       row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
       list.add(row);
-      this.rows.push({row, pollen, bee, id: task.id, elapsed: fresh ? 0 : -1});
+      this.rows.push({row, pollen, bee, id: task.id, elapsed});
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'browser-task-row';
       button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
@@ -727,10 +733,13 @@ export class TaskPanelSystem extends createSystem({}) {
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     this.browser.root.classList.toggle('motion-off', !motion);
+  }
+
+  private animateRows(delta:number):void {
+    const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
-      const visible = this.world.visibilityState.value === VisibilityState.Visible;
-      entry.elapsed = motion && visible ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/2.4) : 1;
+      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/2.4) : 1;
       entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
       entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;

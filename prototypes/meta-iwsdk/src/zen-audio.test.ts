@@ -52,3 +52,16 @@ test('ambient birds require activation, repeat with bounded voices, and stop whe
   assert.equal(sources.every(source=>source.stopped),true);
   audio.dispose();
 });
+
+test('immersive reactivation resumes suspended birds and restarts the entry cue',async()=>{
+  const {audio,c,sources}=context();
+  await audio.unlock();audio.setAmbient(true);audio.tick(1/90);
+  assert.equal(sources.length,4);
+  audio.setAmbient(false);c.state='suspended';
+  audio.setAmbient(true);audio.tick(1/90);
+  assert.equal(sources.length,4);
+  await audio.unlock();audio.tick(1/90);
+  assert.equal(sources.length,8);
+  audio.setAmbient(false);audio.tick(1/90);
+  assert.equal(sources.length,8);audio.dispose();
+});
