@@ -672,3 +672,14 @@ h2 {
   touch-action: pan-y;
 }
 #browser-task-list > [role="listitem"] { min-width: 0; }
+
+.inline-task-edit-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 14px;
+  border: 1px solid #d4a373;
+  border-radius: 4px;
+  background-color: #fffaf0;
+  color: #333;
+  outline: none;
+}
