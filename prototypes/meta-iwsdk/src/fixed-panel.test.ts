@@ -60,11 +60,23 @@ test('face centering tracks the viewing direction and child ray targets after he
   applyFixedPanelPose(panel,dashboard.matrixWorld);
   const local=head.worldToLocal(panel.getWorldPosition(new Vector3()));
   close(local.x,0); close(local.y,0); close(local.z,-1.5);
-  close(panel.getWorldQuaternion(new Quaternion()).angleTo(head.getWorldQuaternion(new Quaternion())),0);
+  const up=new Vector3(0,1,0).applyQuaternion(panel.getWorldQuaternion(new Quaternion()));
+  close(up.x,0); close(up.y,1); close(up.z,0);
   const geometry=new PlaneGeometry(0.8,1), material=new MeshBasicMaterial();
   const target=new Mesh(geometry,material); panel.add(target); panel.updateWorldMatrix(true,true);
   const origin=head.getWorldPosition(new Vector3());
   const direction=panel.getWorldPosition(new Vector3()).sub(origin).normalize();
   assert.ok(new Raycaster(origin,direction).intersectObject(target).length);
   geometry.dispose(); material.dispose();
+});
+
+test('face-centered panel stays upright through head roll and vertical gaze',()=>{
+  const head=new Group(), panel=new Group();
+  for(const pitch of [0,0.6,Math.PI/2,-Math.PI/2]) {
+    head.rotation.set(pitch,0.4,Math.PI);
+    faceCenterPanel(panel,head);
+    const up=new Vector3(0,1,0).applyQuaternion(panel.quaternion);
+    close(up.x,0); close(up.y,1); close(up.z,0);
+    close(panel.position.distanceTo(head.position),1.5);
+  }
 });

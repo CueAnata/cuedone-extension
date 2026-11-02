@@ -18,11 +18,18 @@ export function applyFixedPanelPose(panel: Object3D, pose: Matrix4 = worldPose):
 
 const headPosition = new Vector3();
 const headRotation = new Quaternion();
-/** Face-centered, 1.5 m away; no idle drift or size oscillation. */
+const facing = new Vector3();
+const upright = new Vector3(0, 1, 0);
+/** Face-centered, 1.5 m away, with world-up preserved during head tilt. */
 export function faceCenterPanel(panel: Object3D, head: Object3D): void {
   head.getWorldPosition(headPosition);
   head.getWorldQuaternion(headRotation);
   panel.position.set(0, 0, -1.5).applyQuaternion(headRotation).add(headPosition);
-  panel.quaternion.copy(headRotation);
+  facing.copy(headPosition).sub(panel.position);
+  facing.y = 0;
+  // Looking straight up/down has no stable horizontal heading.
+  if(facing.lengthSq() > 1e-8) {
+    panel.quaternion.setFromAxisAngle(upright, Math.atan2(facing.x, facing.z));
+  }
   panel.updateWorldMatrix(true, false);
 }
