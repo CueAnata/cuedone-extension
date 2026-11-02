@@ -468,16 +468,9 @@ h2 {
 #xr-overlay:xr-overlay { background: transparent; }
 #overlay-exit-button { position: absolute; right: 12px; bottom: 12px; pointer-events: auto; }
 
-.browser-entry-row { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 8px; width: 100%; }
-.browser-panel .browser-entry-row input {
-  width: 100%;
-  min-width: 0;
-  min-height: 56px;
-  padding: 12px;
-  font-size: 1.125rem;
-  line-height: 1.5;
-}
-.browser-entry-row button { justify-self: end; }
+.browser-entry-row { display: flex; align-items: stretch; gap: 8px; }
+.browser-entry-row input { width: 0; min-width: 0; flex: 1; }
+.browser-entry-row button { flex: 0 0 auto; }
 .browser-entry-help { margin: 0; font-size: 0.8rem; color: #665240; }
 
 /* Generous visible hand-ray targets, including narrow pinned browser windows. */
@@ -499,7 +492,7 @@ h2 {
 /* Completion graphics track the text area, independently of the larger checkbox. */
 .browser-panel .browser-task-row { display: flex; align-items: center; gap: 12px; min-height: 76px; flex-wrap: nowrap; word-break: normal; overflow-wrap: break-word; }
 .task-checkbox { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 3px solid #96550c; border-radius: 8px; font-size: 28px; line-height: 1; }
-.task-label { position: relative; flex: 1 1 auto; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
+.task-label { position: relative; flex: 1 1 0; min-width: 0; width: 0; line-height: 1.5; overflow-wrap: break-word; word-break: normal; white-space: normal; }
 .task-label .pollen-line { left: 0; right: 0; top: 50%; }
 .task-label .task-bee { left: 0; top: calc(50% - 0.75em); transform: scaleX(-1); }
 [data-completed="true"] .task-label-text { text-decoration: line-through; text-decoration-color: #b78113; text-decoration-thickness: 2px; }
@@ -514,7 +507,7 @@ h2 {
 
 /* Dynamic height for 1-10 tasks — no inner scrollbar, trellis expands to fit */
 #browser-task-list { max-height: none; overflow: visible; overscroll-behavior: auto; touch-action: pan-y; }
-.trellis-frame { height: auto; max-height: none; overflow: hidden; }
+.trellis-frame { height: auto; max-height: none; overflow: visible; }
 #browser-garden.trellis-frame { height: auto; max-height: none; }
 .browser-panel .browser-task-row { min-height: 78px; }
 
@@ -531,9 +524,7 @@ h2 {
 .browser-eyebrow,
 .browser-new-list-review p { margin: 0; }
 .trellis-frame {
-  --trellis-arch-headroom: 96px;
-  margin-top: 8px;
-  padding: var(--trellis-arch-headroom) 0 22px;
+  padding: 52px 0 22px;
   border: 4px solid #79502f;
   border-radius: 4px;
   background-image:
@@ -541,7 +532,7 @@ h2 {
     repeating-linear-gradient(-45deg, transparent 0 10px, #79502f 10px 12px, transparent 12px 22px);
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  overflow: hidden;
+  overflow: visible;
 }
 .trellis-content { margin: 0; border: 1px solid #dbbf91; border-radius: 6px; }
 .browser-bottom-bar {
@@ -556,56 +547,7 @@ h2 {
   padding: 12px 8px;
   line-height: 1.25;
 }
-#browser-show-add-button { grid-column: auto; }
-.browser-bottom-bar { margin: 0 0 12px; }
-.browser-bottom-bar .browser-task-form {
-  grid-column: 1 / -1;
-  margin: 0;
-  min-width: 0;
-  width: 100%;
-  grid-template-columns: minmax(0, 1fr);
-  padding: 6px;
-  gap: 6px;
-}
-.browser-bottom-bar .browser-entry-row { grid-template-columns: minmax(0, 1fr) 80px; gap: 6px; }
-.browser-panel .browser-bottom-bar .browser-button { min-height: 44px; padding: 8px; }
-.browser-panel .browser-entry-row input { min-height: 48px; padding: 10px; font-size: 1rem; }
-#browser-entry-done-button,
-.browser-task-form .browser-entry-help { display: none; }
-.trellis-content,
-#browser-task-list,
-.browser-task-item { width: 100%; min-width: 0; }
-#browser-task-list { grid-template-columns: minmax(0, 1fr); padding: 0; }
-.browser-task-item { display: grid; grid-template-columns: minmax(0, 1fr); }
-.browser-panel .browser-task-row {
-  width: 100%;
-  min-width: 0;
-  padding: 12px 10px;
-  gap: 10px;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-.trellis-frame { grid-template-columns: minmax(0, 15%) minmax(0, 1fr) minmax(0, 15%); }
-.trellis-pillar--left,
-.trellis-pillar--right {
-  position: absolute;
-  top: var(--trellis-arch-headroom);
-  bottom: 22px;
-  width: 15%;
-  min-width: 0;
-  overflow: hidden;
-  contain: inline-size;
-}
-.trellis-pillar--left { left: 0; }
-.trellis-pillar--right { right: 0; }
-/* The geometry now reserves petal clearance; no mask may cut the arch in half. */
-.trellis-frame #scene-container {
-  inset: 8px;
-  overflow: hidden;
-  contain: size layout paint;
-  mask-image: none;
-}
-.trellis-frame #scene-container canvas { max-width: 100%; overflow: clip; }
+#browser-show-add-button { grid-column: 1 / -1; }
 .trellis-pillar,
 #scene-container,
 #scene-container canvas { overflow: visible; }
@@ -633,77 +575,3 @@ h2 {
 }
 .browser-panel[data-collapsed="true"] { padding-bottom: 6px; }
 .browser-panel[data-collapsed="true"] #browser-xr-button { display: none; }
-
-/* Reserve the viewport for the frame and AR control; only task items scroll. */
-html,
-body { height: 100%; min-height: 0; overflow: hidden; }
-body { height: 100dvh; justify-content: flex-start; }
-.browser-panel:not([data-collapsed="true"]) {
-  height: calc(100dvh - 4px);
-  max-height: calc(100dvh - 4px);
-  margin: 0 auto;
-  padding-bottom: max(6px, env(safe-area-inset-bottom));
-  overflow: hidden;
-}
-#browser-xr-button {
-  position: static;
-  transform: none;
-  width: 100%;
-  flex: 0 0 auto;
-  margin-top: 6px;
-}
-#browser-panel-body {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-#browser-task-view {
-  flex: 1 1 0;
-  min-height: min-content;
-  display: flex;
-  flex-direction: column;
-}
-.browser-now-card {
-  flex: 1 1 0;
-  min-height: 340px;
-  display: flex;
-  flex-direction: column;
-}
-.browser-bottom-bar { flex: 0 0 auto; }
-#browser-task-view > .browser-list-actions,
-#browser-task-view > .browser-done,
-#browser-task-view > .browser-entry-help,
-#browser-status-text { flex: 0 0 auto; }
-#browser-status-text { min-height: 0; margin: 6px 0; padding: 6px 8px; font-size: 0.8rem; }
-#browser-task-view > .browser-entry-help { margin-top: 6px; }
-#browser-garden.trellis-frame {
-  flex: 1 1 0;
-  min-height: 0;
-  height: auto;
-  grid-template-rows: minmax(0, 1fr);
-}
-.trellis-content {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  overflow: hidden;
-}
-.task-list-container,
-#browser-task-list {
-  height: 100%;
-  max-height: 320px;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  align-content: start;
-  grid-auto-rows: max-content;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
-}
-#browser-settings-panel { min-height: 0; overflow-y: auto; }

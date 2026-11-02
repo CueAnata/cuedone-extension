@@ -14,7 +14,6 @@ import { watchLocalStorage } from './local-sync.js';
 import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
 import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
-import { normalizeTaskText } from '../../../src/shared/tasks.js';
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
 
@@ -65,8 +64,7 @@ function browserPanelElements(): BrowserPanelElements {
 }
 
 export class TaskPanelSystem extends createSystem({}) {
-  private readonly taskStore = new LocalTaskStore();
-  private readonly session = new PersonalTaskSession(this.taskStore);
+  private readonly session = new PersonalTaskSession(new LocalTaskStore());
   private readonly browser = browserPanelElements();
   private settingsOpen = false;
   private finaleStyle: '2d' | '3d' = '2d';
@@ -115,12 +113,6 @@ export class TaskPanelSystem extends createSystem({}) {
     });
     // Keep entry into AR available from both the list and Settings.
     this.browser.root.append(this.browser.xrButton);
-    const actions = required<HTMLElement>('.browser-bottom-bar');
-    const garden = required<HTMLElement>('#browser-garden');
-    garden.before(actions);
-    actions.append(this.browser.form);
-    required<HTMLElement>('.browser-entry-row').append(required('#browser-show-add-button'));
-    this.browser.input.enterKeyHint = 'enter';
     required('#browser-garden').removeAttribute('role');
     required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
       'Garden progress follows each completed task. Choose a 2D or immersive 3D finale in Settings.';
@@ -184,11 +176,7 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
-    const onAddTask = () => {
-      if(this.isBrowser()) void this.addTask(panel, taskInput);
-      else this.openTaskEntry(panel, taskInput);
-    };
-    bind('show-add-button', onAddTask);
+    bind('show-add-button', () => this.openTaskEntry(panel, taskInput));
     bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
@@ -267,57 +255,37 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.setAttribute('form', 'spatial-task-form');
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
-    let composing = false;
-    let enterHandled = false;
-    const submitTask = () => {void this.addTask(panel, taskInput);};
-    const isEnter = (event: KeyboardEvent) => event.key === 'Enter' || event.key === 'Return' ||
-      event.code === 'NumpadEnter' || event.keyCode === 13;
+    let returnHandled = false;
+    const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
     const onTaskKeydown = (event: KeyboardEvent) => {
-      const questEnter = event.key === 'Enter' || event.keyCode === 13;
-      if((!questEnter && !isEnter(event)) || composing || event.isComposing)return;
-      event.preventDefault(); event.stopPropagation();
+      if(event.isComposing || event.keyCode === 229)return;
+      if(event.key !== 'Enter' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
+      event.preventDefault();
       if(event.repeat)return;
-      enterHandled = true;
-      // addTask reads the current input immediately and clears it after saving.
-      void this.addTask(panel, taskInput);
-    };
-    const onTaskKeyup = (event: KeyboardEvent) => {
-      if(!isEnter(event) || composing || event.isComposing)return;
-      event.preventDefault(); event.stopPropagation();
-      if(!enterHandled)submitTask();
-      enterHandled = false;
+      returnHandled = true;
+      submitBrowserTask();
     };
     const onTaskBeforeInput = (event: InputEvent) => {
-      if(composing || event.isComposing)return;
-      if(!['insertLineBreak', 'insertParagraph'].includes(event.inputType)) {enterHandled = false; return;}
-      event.preventDefault(); event.stopPropagation();
-      if(!enterHandled)submitTask();
-      enterHandled = true;
+      if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
+      event.preventDefault();
+      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
     };
+    const resetReturn = () => {returnHandled = false;};
     const onTaskSubmit = (event: SubmitEvent) => {
-      event.preventDefault(); event.stopPropagation();
-      if(!composing && !enterHandled) {enterHandled = true; submitTask();}
+      event.preventDefault();
+      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
     };
-    const resetEnter = () => {enterHandled = false;};
-    const startComposition = () => {composing = true; resetEnter();};
-    const endComposition = () => {composing = false; resetEnter();};
-    this.browser.input.addEventListener('keydown', onTaskKeydown, true);
-    this.browser.input.addEventListener('keyup', onTaskKeyup, true);
-    this.browser.input.addEventListener('beforeinput', onTaskBeforeInput, true);
-    this.browser.input.addEventListener('input', resetEnter);
-    this.browser.input.addEventListener('compositionstart', startComposition);
-    this.browser.input.addEventListener('compositionend', endComposition);
-    this.browser.input.addEventListener('blur', endComposition);
+    this.browser.input.addEventListener('keydown', onTaskKeydown);
+    this.browser.input.addEventListener('beforeinput', onTaskBeforeInput);
+    this.browser.input.addEventListener('input', resetReturn);
+    this.browser.input.addEventListener('blur', resetReturn);
     this.browser.form.addEventListener('submit', onTaskSubmit);
     this.cleanupFuncs.push(
       () => {
-        this.browser.input.removeEventListener('keydown', onTaskKeydown, true);
-        this.browser.input.removeEventListener('keyup', onTaskKeyup, true);
-        this.browser.input.removeEventListener('beforeinput', onTaskBeforeInput, true);
-        this.browser.input.removeEventListener('input', resetEnter);
-        this.browser.input.removeEventListener('compositionstart', startComposition);
-        this.browser.input.removeEventListener('compositionend', endComposition);
-        this.browser.input.removeEventListener('blur', endComposition);
+        this.browser.input.removeEventListener('keydown', onTaskKeydown);
+        this.browser.input.removeEventListener('beforeinput', onTaskBeforeInput);
+        this.browser.input.removeEventListener('input', resetReturn);
+        this.browser.input.removeEventListener('blur', resetReturn);
         this.browser.form.removeEventListener('submit', onTaskSubmit);
       },
       bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form')),
@@ -436,7 +404,7 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
-    if(this.session.phase !== 'ready' || this.reviewingNewList || (!this.entryOpen && !this.isBrowser()) || this.addingTask)return false;
+    if(this.session.phase !== 'ready' || this.reviewingNewList || !this.entryOpen || this.addingTask)return false;
     const wasBrowser = this.isBrowser();
     const keyboard = wasBrowser ? this.browser.input : input.input.element;
     // Read the native value at submission, including the final soft-keyboard edit.
@@ -448,30 +416,16 @@ export class TaskPanelSystem extends createSystem({}) {
       const pending = this.session.add(submitted);
       this.render(panel);
       const saved = await pending;
-      if(saved) {
-        this.session.message = 'Saved: task added.';
-        this.rowSignature = '';
-      } else if(!submitted.trim() && this.session.phase === 'ready') {
-        this.session.message = 'Type a task, then press Enter or Add Task.';
-      }
       if(saved && this.draft === submitted) {
         this.draft = '';
         input.input.uncontrolledSignal.value = '';
         this.browser.input.value = '';
       }
-      if(saved) {
-        // Publish the saved task count to the garden and rebuild both lists now.
-        this.render(panel);
-        if(wasBrowser) {
-          const list = required<HTMLElement>('#browser-task-list');
-          list.scrollTop = list.scrollHeight;
-        }
-      }
       return saved;
     } finally {
       this.addingTask = false;
       this.render(panel);
-      if(keepFocus && !this.finishingEntry && (this.entryOpen || wasBrowser) && wasBrowser === this.isBrowser() &&
+      if(keepFocus && !this.finishingEntry && this.entryOpen && wasBrowser === this.isBrowser() &&
         (document.activeElement === keyboard || document.activeElement === document.body))this.focusTaskEntry(input);
     }
   }
@@ -539,9 +493,11 @@ export class TaskPanelSystem extends createSystem({}) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
-      // Scroll task contents only; keep the frame and bottom controls stationary.
+      // Auto-scroll to top so 64px headroom, vine arch, butterflies, and chirps are center stage
       const list = document.querySelector('#browser-task-list') as HTMLElement | null;
       if (list) list.scrollTo({top: 0, behavior: 'smooth'});
+      const panelBody = document.querySelector('#browser-panel-body') as HTMLElement | null;
+      if (panelBody) panelBody.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
       }, 6500);
@@ -639,81 +595,23 @@ export class TaskPanelSystem extends createSystem({}) {
       row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
       list.add(row);
       this.rows.push({row, pollen, bee, id: task.id, elapsed: fresh ? 0 : -1});
-      const button = document.createElement('div');
-      button.className = 'browser-task-row';
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'browser-task-row';
+      button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
+      button.disabled = disabled || task.completed;
       button.dataset.completed = String(task.completed);
-      const checkbox = document.createElement('button'); checkbox.className = 'task-checkbox';
-      checkbox.type = 'button';
-      checkbox.disabled = disabled || task.completed;
-      checkbox.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
-      checkbox.textContent = task.completed ? '✓' : '';
+      const checkbox = document.createElement('span'); checkbox.className = 'task-checkbox';
+      checkbox.textContent = task.completed ? '✓' : ''; checkbox.setAttribute('aria-hidden', 'true');
       const browserLabel = document.createElement('span'); browserLabel.className = 'task-label';
       const labelText = document.createElement('span'); labelText.className = 'task-label-text'; labelText.textContent = task.text;
-      labelText.tabIndex = disabled ? -1 : 0;
-      labelText.setAttribute('role', 'button');
-      labelText.setAttribute('aria-label', `Edit task: ${task.text}`);
-      const edit = () => {
-        if(this.session.phase !== 'ready' || this.reviewingNewList || browserLabel.querySelector('input'))return;
-        const editor = document.createElement('input');
-        editor.type = 'text'; editor.value = task.text; editor.maxLength = 200;
-        editor.enterKeyHint = 'done'; editor.setAttribute('aria-label', 'Edit task text');
-        Object.assign(editor.style, {width: '100%', minWidth: '0', boxSizing: 'border-box', padding: '8px', font: 'inherit'});
-        labelText.replaceWith(editor);
-        let saving = false;
-        const save = async () => {
-          if(saving || this.session.phase !== 'ready')return;
-          const text = normalizeTaskText(editor.value);
-          if(!text) {editor.setCustomValidity('Task text is required.'); editor.reportValidity(); return;}
-          editor.setCustomValidity('');
-          if(text === task.text) {editor.replaceWith(labelText); return;}
-          const before = this.session.tasks;
-          if(!before.some(current => current.id === task.id && current.text === task.text)) {
-            this.rowSignature = ''; this.render(panel); return;
-          }
-          const next = before.map(current => current.id === task.id ? {...current, text} : current);
-          saving = true; editor.readOnly = true; this.session.phase = 'saving';
-          try {
-            await this.taskStore.save(next, before);
-            this.session.tasks = next;
-            this.session.message = 'Saved: task text updated.';
-            this.rowSignature = '';
-          } catch(error) {
-            this.session.message = error instanceof Error ? error.message : 'CueDone could not save the task text.';
-            if(error instanceof Error && error.name === 'TaskConflictError') {
-              await this.session.load();
-              this.session.message = 'The list changed in another window. Review it and try again.';
-              this.rowSignature = '';
-            }
-          } finally {
-            if(this.session.phase === 'saving')this.session.phase = 'ready';
-            saving = false; editor.readOnly = false;
-            this.render(panel);
-          }
-        };
-        editor.addEventListener('blur', () => {void save();});
-        editor.addEventListener('keydown', event => {
-          event.stopPropagation();
-          if(event.key === 'Enter' && !event.isComposing) {event.preventDefault(); void save();}
-          if(event.key === 'Escape') {event.preventDefault(); editor.replaceWith(labelText); labelText.focus();}
-        });
-        editor.addEventListener('click', event => event.stopPropagation());
-        editor.focus({preventScroll: true}); editor.select();
-      };
-      labelText.addEventListener('click', event => {event.stopPropagation(); edit();});
-      labelText.addEventListener('keydown', event => {
-        if(event.key === 'Enter' || event.key === ' ') {event.preventDefault(); event.stopPropagation(); edit();}
-      });
       browserLabel.append(labelText);
       const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
       const beeIcon = document.createElement('span'); beeIcon.className = 'task-bee'; beeIcon.textContent = '🐝'; beeIcon.setAttribute('aria-hidden', 'true');
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
-      checkbox.addEventListener('click', () => {void this.completeTask(panel, task.id);});
-      const item = document.createElement('div');
-      item.className = 'browser-task-item';
-      item.setAttribute('role', 'listitem');
-      item.append(button);
+      button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
+      const item = document.createElement('div'); item.setAttribute('role', 'listitem'); item.append(button);
       browserList.append(item);
     }
     if(!this.session.tasks.length) {
@@ -929,7 +827,7 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList;
+    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || !this.entryOpen;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
