@@ -17,6 +17,7 @@ export async function launchAR(
   overlay: HTMLElement,
   xr: Pick<XRSystem, 'requestSession'> | undefined = navigator.xr,
   onSession?: (session: XRSession) => void,
+  onRestored?: () => void,
 ): Promise<boolean> {
   if(world.session || world.sessionRequestPending)return false;
   if(!world.xrEnabled || !xr)throw new Error('Mixed reality is unavailable in this browser.');
@@ -31,13 +32,15 @@ export async function launchAR(
   const onEnd = () => {
     ended = true;
     overlay.hidden = true;
-    if(world.session === session)world.session = undefined;
+    if(!onRestored && world.session === session)world.session = undefined;
     // Let Three finish releasing its XR camera before restoring the browser view.
     requestAnimationFrame(() => {
+      if(onRestored && world.session === session)world.session = undefined;
       if(!world.session && options.restoreCameraOnExit !== false) {
         world.camera.copy(camera, false);
         world.camera.updateMatrixWorld(true);
       }
+      onRestored?.();
     });
   };
   try {
@@ -70,7 +73,7 @@ export async function launchAR(
     return true;
   } catch(error) {
     overlay.hidden = true;
-    if(session) {
+    if(session && !ended) {
       try {await session.end();} catch { /* original setup error takes precedence */ }
     }
     throw error;
@@ -80,7 +83,8 @@ export async function launchAR(
 }
 
 
-export const FINAL_AR_MS = 4500;
+export const FINAL_AR_MS = 2800;
+const FINAL_AR_WATCHDOG_MS = 4500;
 interface FinaleSession extends EventTarget { end(): Promise<void>; }
 interface FinaleRun {
   before: SpatialTask[];
@@ -120,7 +124,7 @@ export class FinalTaskAR {
     }, {once: true});
     if(run.cancelled || this.current !== run) {void this.close(run); return;}
     // This starts as soon as the native session exists, even if renderer setup stalls.
-    this.arm(run);
+    this.arm(run, FINAL_AR_WATCHDOG_MS);
   }
   saved(run: FinaleRun, after: readonly SpatialTask[]): void {
     if(!isFinalCompletion(run.before, after)) {this.cancel(run); return;}
@@ -128,12 +132,12 @@ export class FinalTaskAR {
   }
   start(session: FinaleSession, currentTasks: readonly SpatialTask[]): {before: SpatialTask[]; after: SpatialTask[]} | undefined {
     const run = this.current;
-    if(!run || run.session !== session || !run.after || run.started || run.cancelled || run.closed)return;
+    if(!run || run.session !== session || !run.after || run.started || run.cancelled || run.closed || run.ending)return;
     if(JSON.stringify(run.after) !== JSON.stringify(currentTasks.map(({id,completed}) => ({id,completed})))) {
       this.cancel(run); return;
     }
     run.started = true;
-    this.arm(run); // The visible 3D finale now has exactly 4.5 seconds.
+    this.arm(run); // Count only after the first visible, saved-list XR frame.
     return {before: run.before, after: run.after};
   }
   cancel(run: FinaleRun): void {
@@ -141,9 +145,12 @@ export class FinalTaskAR {
     if(run.session)void this.close(run);
     else if(this.current === run)this.current = undefined;
   }
-  private arm(run: FinaleRun): void {
+  end(): void {
+    if(this.current)void this.close(this.current);
+  }
+  private arm(run: FinaleRun, duration = FINAL_AR_MS): void {
     if(run.timer !== undefined)this.clear(run.timer);
-    run.timer = this.schedule(() => {void this.close(run);}, FINAL_AR_MS);
+    run.timer = this.schedule(() => {void this.close(run);}, duration);
   }
   private async close(run: FinaleRun): Promise<void> {
     if(run.closed || run.ending)return;
@@ -151,7 +158,6 @@ export class FinalTaskAR {
     if(run.timer !== undefined)this.clear(run.timer);
     try {
       await run.session?.end();
-      if(this.current === run)this.current = undefined;
     } catch {
       run.ending = false;
       this.error = 'Could not close AR. Select Exit AR; your task is saved.';

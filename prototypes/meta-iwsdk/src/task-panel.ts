@@ -285,7 +285,10 @@ export class TaskPanelSystem extends createSystem({}) {
         this.render(panel);
       });
     };
-    const onExitXR = () => void this.world.exitXR();
+    const onExitXR = () => {
+      if(finalTaskAR.busy)finalTaskAR.end();
+      else void this.world.exitXR();
+    };
     const onBrowserInput = () => {
       this.draft = this.browser.input.value;
       this.render(panel);
@@ -560,13 +563,33 @@ export class TaskPanelSystem extends createSystem({}) {
     const enhanced = this.finaleStyle === '3d';
     const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
     if(arRun) {
+      // Capture the working view before native XR can resize or blur the page.
+      const root = this.browser.root;
+      const style = root.getAttribute('style');
+      const rect = root.getBoundingClientRect();
+      this.browserXRScroll = [document.scrollingElement, root,
+        document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
+        .filter((element): element is Element => element !== null)
+        .map(element => ({element, top: element.scrollTop, left: element.scrollLeft}));
+      root.style.width = root.style.minWidth = root.style.maxWidth = `${rect.width}px`;
+      root.style.height = root.style.minHeight = root.style.maxHeight = `${rect.height}px`;
+      let restored = false;
+      const restoreLayout = () => {
+        if(restored)return;
+        restored = true;
+        if(style === null)root.removeAttribute('style');
+        else root.setAttribute('style', style);
+        // On request failure there is no visibility transition to restore scroll.
+        if(this.isBrowser())this.syncPresentation(panel, panel.requireElementById<TaskInput>('task-input'));
+      };
       // Start the native request in the final-task click, before awaiting storage.
-      // FinalTaskAR starts the saved-list finale and ends the session after 4.5s.
+      // FinalTaskAR counts 2.8 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
-        session => finalTaskAR.attach(arRun, session)).then(started => {
-        if(!started)finalTaskAR.cancel(arRun);
+        session => finalTaskAR.attach(arRun, session), restoreLayout).then(started => {
+        if(!started) {finalTaskAR.cancel(arRun);restoreLayout();}
       }).catch(() => {
         finalTaskAR.cancel(arRun);
+        restoreLayout();
         this.session.message = 'Immersive AR is unavailable. Your task remains saved.';
         this.render(panel);
       });

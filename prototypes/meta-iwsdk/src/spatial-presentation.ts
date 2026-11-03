@@ -292,6 +292,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.tween.set(1, motion);
       this.revision = progress.revision;
       this.fade = 0;
+      this.fadeMesh.visible = false;
       this.finaleAudioPending = this.ready && this.settings.zenSound;
       this.themes.trellis.celebrate();
     }

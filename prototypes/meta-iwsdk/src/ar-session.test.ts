@@ -69,6 +69,20 @@ test('double entry only makes one native request while permission is pending',as
   await f.session.end();
 });
 
+test('Enhanced keeps the session until cleanup and restores the existing view once',async t=>{
+  const f=fixture(t);const frames: FrameRequestCallback[]=[];let restored=0,requests=0;
+  Object.defineProperty(globalThis,'requestAnimationFrame',{configurable:true,
+    value:(callback:FrameRequestCallback)=>{frames.push(callback);return frames.length;}});
+  const pending=launchAR(f.world,f.overlay,{requestSession(){requests++;return Promise.resolve(f.session);}},
+    undefined,()=>{restored++;assert.equal(f.world.session,undefined);
+      assert.deepEqual(f.world.camera.position.toArray(),[0,1.45,0.8]);});
+  assert.equal(requests,1); // Native request happens before any async continuation.
+  await pending;await f.session.end();
+  assert.equal(f.world.session,f.session);assert.equal(restored,0);
+  frames.shift()!(0);
+  assert.equal(restored,1);assert.equal(f.world.session,undefined);
+});
+
 test('denied AR never retries VR and clears pending UI so entry can be retried',async t=>{
   const f=fixture(t);const modes:XRSessionMode[]=[];
   const xr={async requestSession(mode:XRSessionMode){modes.push(mode);throw new Error('Permission denied');}};
@@ -116,20 +130,30 @@ test('only the last unfinished task may prepare an AR finale',()=>{
 test('native session watchdog ends AR after 4500ms even if no animation frame ever arrives',async()=>{
   const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
   f.controller.attach(run,f.session);
-  assert.equal(f.delay,FINAL_AR_MS);assert.equal(f.delay,4500);
+  assert.equal(f.delay,4500);
   f.timer!();await settle();
   assert.equal(f.ends,1);assert.equal(f.controller.busy,false);
 });
 
-test('finale starts only after saving and resets its 4500ms exit deadline on the first rendered frame',async()=>{
+test('Enhanced gets 2800ms after its first visible saved-list frame, regardless of setup delay',async()=>{
   const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
   f.controller.attach(run,f.session);
   assert.equal(f.controller.start(f.session,finaleBefore),undefined);
   f.controller.saved(run,finaleAfter);
   assert.deepEqual(f.controller.start(f.session,finaleAfter),{before:finaleBefore,after:finaleAfter});
   assert.equal(f.controller.start(f.session,finaleAfter),undefined);
-  assert.equal(f.delay,4500);
+  assert.equal(f.delay,FINAL_AR_MS);assert.equal(f.delay,2800);
   f.timer!();await settle();assert.equal(f.ends,1);
+});
+
+test('Enhanced calls end once and stays busy until the native end event',async()=>{
+  const f=finalFixture();const run=f.controller.begin(finaleBefore)!;let ends=0;
+  const session=Object.assign(new EventTarget(),{async end(){ends++;}});
+  f.controller.attach(run,session);f.controller.saved(run,finaleAfter);
+  f.controller.start(session,finaleAfter);
+  const expire=f.timer!;f.controller.end();expire();expire();f.controller.cancel(run);await settle();
+  assert.equal(ends,1);assert.equal(f.controller.busy,true);
+  session.dispatchEvent(new Event('end'));assert.equal(f.controller.busy,false);
 });
 
 test('failed save, stale list, manual exit and late native adoption do not replay a finale',async()=>{
