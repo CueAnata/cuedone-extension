@@ -9,7 +9,7 @@ export class HandsOnlySystem extends createSystem({}) {
     const tracked=visible && (xr.getPrimaryInputSource('left')?.hand || xr.getPrimaryInputSource('right')?.hand);
     const text=visible && !tracked
       ? 'Hands only: show your hands to the headset. Controllers are disabled.'
-      : 'Hands only: aim and pinch, or touch. Trellis touches highlight without changing tasks.';
+      : 'Hands only: aim at a task checkbox and pinch index finger and thumb to complete it. Trellis touches only highlight.';
     if(text===this.previous)return;
     this.previous=text;
     this.world.requireSceneObject<import('@iwsdk/core').UIKitMLAsset>('task-panel')

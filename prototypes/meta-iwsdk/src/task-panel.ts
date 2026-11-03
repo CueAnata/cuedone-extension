@@ -245,7 +245,6 @@ export class TaskPanelSystem extends createSystem({}) {
       },
     });
 
-    const onComplete = () => void this.completeTask(panel);
     const onNewList = () => this.openNewListReview(panel, taskInput);
     const onCarry = () => void this.createNewList(panel, taskInput, true);
     const onEmpty = () => void this.createNewList(panel, taskInput, false);
@@ -272,7 +271,6 @@ export class TaskPanelSystem extends createSystem({}) {
       void this.createNewList(panel, taskInput, false);
     const onBrowserCancel = () => this.cancelNewListReview(panel);
 
-    completeButton.addEventListener('click', onComplete);
     newListButton.addEventListener('click', onNewList);
     carryButton.addEventListener('click', onCarry);
     emptyButton.addEventListener('click', onEmpty);
@@ -337,7 +335,6 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.xrButton.addEventListener('click', onEnterXR);
 
     this.cleanupFuncs.push(
-      () => completeButton.removeEventListener('click', onComplete),
       () => newListButton.removeEventListener('click', onNewList),
       () => carryButton.removeEventListener('click', onCarry),
       () => emptyButton.removeEventListener('click', onEmpty),
@@ -646,7 +643,11 @@ export class TaskPanelSystem extends createSystem({}) {
       const elapsed = task.completed ? (running.get(task.id) ?? (fresh ? 0 : -1)) : -1;
       const row = new UIKit.Container({width: '100%', minHeight: 10, flexShrink: 0, padding: 2, positionType: 'relative', backgroundColor: task.completed ? '#F3EBDD' : '#FFF0D5', borderRadius: 1, flexDirection: 'row', alignItems: 'center', gap: 2});
       row.name = `Task-${task.id}`;
-      const check = new UIKit.Container({width: 8, height: 8, flexShrink: 0, borderWidth: 0.5, borderColor: '#96550C', borderRadius: 1, justifyContent: 'center', alignItems: 'center', pointerEvents: 'none'});
+      const check = new UIKit.Container({width: 8, height: 8, flexShrink: 0, borderWidth: 0.5, borderColor: '#96550C', borderRadius: 1, justifyContent: 'center', alignItems: 'center'});
+      check.name = `CompleteTask-${task.id}`;
+      // Keep proximity pointers from taking priority over the pinch ray here.
+      check.pointerEventsType = pointerId => (['left', 'right'] as const).some(hand =>
+        this.world.input.xr.multiPointers[hand].getPointer('ray').id === pointerId);
       check.add(new UIKit.Text({text: task.completed ? 'X' : '', fontSize: 4, color: '#713F08'}));
       const label = new UIKit.Container({flexGrow: 1, flexShrink: 1, minWidth: 0, minHeight: 6, positionType: 'relative', justifyContent: 'center', pointerEvents: 'none'});
       const text = new UIKit.Text({text: task.text, fontSize: 2.8, color: '#332D25', width: '100%', verticalAlign: 'center'});
@@ -658,7 +659,16 @@ export class TaskPanelSystem extends createSystem({}) {
       for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
       for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
       label.add(pollen, bee);
-      row.setProperties({onClick: () => {if(!disabled && !task.completed)void this.completeTask(panel, task.id);}});
+      check.setProperties({onPointerDown: event => {
+        event.stopPropagation();
+        if(disabled || task.completed || this.world.visibilityState.value !== VisibilityState.Visible)return;
+        // Only native hand select (index/thumb pinch) may complete a task.
+        // Touch/poke pointers synthesize presses from proximity; ignore them.
+        const xr = this.world.input.xr;
+        const pinchingHand = (['left', 'right'] as const).some(hand =>
+          xr.getPrimaryInputSource(hand)?.hand && xr.multiPointers[hand].getPointer('ray').id === event.pointerId);
+        if(pinchingHand)void this.completeTask(panel, task.id);
+      }});
       list.add(row);
       this.rows.push({row, pollen, bee, id: task.id, elapsed});
       const button = document.createElement('button');
@@ -761,7 +771,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
-      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/2.4) : 1;
+      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/4) : 1;
       entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
       entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;

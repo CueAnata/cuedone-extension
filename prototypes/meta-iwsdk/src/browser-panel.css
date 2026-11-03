@@ -435,8 +435,8 @@ h2 {
 .pollen-line { position: absolute; pointer-events: none; left: 8%; right: 6%; top: 50%; height: 2px; background: #ecba28; box-shadow: 0 0 6px #ffd651; transform: scaleX(0); transform-origin: left; }
 [data-completed="true"] .pollen-line { transform: scaleX(1); }
 .task-bee { display: none; position: absolute; left: 7%; top: 25%; pointer-events: none; transform: scaleX(-1); }
-.pollinating .pollen-line { animation: pollen 2.4s linear both; }
-.pollinating .task-bee { display: block; animation: bee 2.4s linear both; }
+.pollinating .pollen-line { animation: pollen 4s linear both; }
+.pollinating .task-bee { display: block; animation: bee 4s linear both; }
 .browser-bottom-bar { flex-wrap: wrap; margin-top: 12px; }
 .browser-bottom-bar button { flex: 1; padding: 8px; }
 .browser-done { width: 100%; margin-top: 12px; font-size: 1.3rem; }
