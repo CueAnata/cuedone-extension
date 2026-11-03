@@ -205,11 +205,12 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('click',scroll);
       this.cleanupFuncs.push(() => button.removeEventListener('click',scroll));
     }
-    bind('show-add-button', () => {
-      if(this.isBrowser()) this.browser.form.requestSubmit();
-      else this.openTaskEntry(panel, taskInput);
-    });
-    bind('entry-done-button', () => {void this.finishTaskEntry(panel, taskInput);});
+    const openEntry = () => this.openTaskEntry(panel, taskInput);
+    panel.requireElementById('show-add-button').addEventListener('click', openEntry);
+    this.cleanupFuncs.push(() => panel.requireElementById('show-add-button').removeEventListener('click', openEntry));
+    const finishEntry = () => {void this.finishTaskEntry(panel, taskInput);};
+    panel.requireElementById('entry-done-button').addEventListener('click', finishEntry);
+    this.cleanupFuncs.push(() => panel.requireElementById('entry-done-button').removeEventListener('click', finishEntry));
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
       this.openNewListReview(panel, taskInput, true);
@@ -853,8 +854,6 @@ export class TaskPanelSystem extends createSystem({}) {
     panel.requireElementById('entry-done-button').setProperties({
       disabled: isLoading || isSaving || loadFailed || this.reviewingNewList || this.finishingEntry,
     });
-    required<HTMLButtonElement>('#browser-entry-done-button').disabled =
-      isLoading || isSaving || loadFailed || this.reviewingNewList || this.finishingEntry;
     panel.requireElementById('complete-button').setProperties({
       disabled:
         isLoading ||
@@ -901,7 +900,7 @@ export class TaskPanelSystem extends createSystem({}) {
     for(const id of ['reset-button', 'clear-button', 'show-add-button']) {
       const unavailable = disabled || (id === 'reset-button' ? !this.session.completedCount : id === 'clear-button' ? !this.session.tasks.length : false);
       panel.requireElementById(id).setProperties({disabled: unavailable});
-      required<HTMLButtonElement>(`#browser-${id}`).disabled = unavailable;
+      if(id !== 'show-add-button')required<HTMLButtonElement>(`#browser-${id}`).disabled = unavailable;
     }
     const reviewTitle = this.reviewingClear ? 'Clear all tasks?' : 'Start a new list?';
     panel.requireElementById('new-list-title').setProperties({text: reviewTitle});

@@ -112,6 +112,12 @@ export class SpatialPresentationSystem extends createSystem({}) {
       });
     }
     const unlock = () => {void this.unlockAudio();};
+    const browserPanel = document.getElementById('browser-panel')!;
+    const activateBrowserAudio = () => {
+      if(this.ready && this.settings.zenSound)unlock();
+    };
+    browserPanel.addEventListener('pointerdown', activateBrowserAudio, true);
+    this.cleanupFuncs.push(() => browserPanel.removeEventListener('pointerdown', activateBrowserAudio, true));
     const enterSpatial=this.panel.requireElementById('xr-button');
     const enterBrowser=document.getElementById('browser-xr-button')!;
     enterSpatial.addEventListener('click',unlock);enterBrowser.addEventListener('click',unlock);
@@ -342,9 +348,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
     const motion = this.settings.motion && !this.media.matches;
     if(this.revision !== progress.revision && !(visible && finalTaskAR.waiting)) {
-      const finalInAR = visible && !finalTaskAR.waiting && progress.finale;
-      this.finaleAudioPending = finalInAR && this.revision >= 0 && this.ready && this.settings.zenSound;
-      if(finalInAR && this.revision >= 0)this.themes.trellis.celebrate();
+      const finalInGarden = (visible || standard) && !finalTaskAR.waiting && progress.finale;
+      this.finaleAudioPending = visible && finalInGarden && this.revision >= 0 && this.ready && this.settings.zenSound;
+      if(finalInGarden && this.revision >= 0)this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
       this.tween.set(progress.ratio, motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
@@ -352,7 +358,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if(!motion && !(visible && finalTaskAR.waiting))this.tween.set(progress.ratio,false);
     // Advance the vines and butterfly particles once per render-loop update,
     // including immersive WebXR frames.
-    this.advanceGarden(delta,visible);
+    this.advanceGarden(delta,visible,standard && this.root.visible && !document.hidden);
     if(visible) {
       this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
       this.fadeMesh.visible = this.fade > 0;
@@ -361,9 +367,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
   }
 
-  private advanceGarden(delta:number,visible:boolean):void {
+  private advanceGarden(delta:number,visible:boolean,browserVisible=false):void {
     const motion = this.settings.motion && !this.media.matches;
-    if(visible) {
+    if(visible || browserVisible) {
       this.audio.setAmbient(this.ready && this.settings.zenSound); this.audio.tick(delta);
     } else {
       this.audio.setAmbient(false); this.audio.stop(); this.finaleAudioPending = false;
