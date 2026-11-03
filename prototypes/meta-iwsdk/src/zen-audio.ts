@@ -31,7 +31,8 @@ export class ZenAudio {
   async unlock(): Promise<boolean> {
     try {
       this.context ??= this.createContext();
-      if (this.context.state !== 'running') await this.context.resume();
+      // Explicitly resume on XR entry even if the browser reports running.
+      await this.context.resume();
       return this.context.state === 'running';
     } catch { return false; }
   }
@@ -82,14 +83,16 @@ export class ZenAudio {
   }
 
   update(head: DOMPointInit, forward: DOMPointInit, up: DOMPointInit, source: DOMPointInit): void {
-    if (!this.context || !this.panner) return;
+    if (!this.context) return;
     const listener = this.context.listener;
     const t = this.context.currentTime;
     const set = (parameter: AudioParam, value: number | undefined) => parameter.setValueAtTime(value ?? 0,t);
     set(listener.positionX,head.x); set(listener.positionY,head.y); set(listener.positionZ,head.z);
     set(listener.forwardX,forward.x);set(listener.forwardY,forward.y);set(listener.forwardZ,forward.z);
     set(listener.upX,up.x);set(listener.upY,up.y);set(listener.upZ,up.z);
-    set(this.panner.positionX,source.x);set(this.panner.positionY,source.y);set(this.panner.positionZ,source.z);
+    if(this.panner) {
+      set(this.panner.positionX,source.x);set(this.panner.positionY,source.y);set(this.panner.positionZ,source.z);
+    }
   }
   stop(): void {
     this.generation++;

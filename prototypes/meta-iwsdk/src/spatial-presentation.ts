@@ -303,14 +303,15 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const size=this.panel.document.computedSize;
     if(size) this.themes.trellis.fit(size.width*0.01*this.panel.document.scale.x,
       size.height*0.01*this.panel.document.scale.y, 'immersive');
-    const head=this.world.playerSpaceEntities.head.object3D!;
-    head.getWorldPosition(this.position);head.getWorldQuaternion(this.rotation);
+    const xrCamera=this.world.renderer.xr.getCamera();
+    xrCamera.getWorldPosition(this.position);xrCamera.getWorldQuaternion(this.rotation);
     this.forward.set(0,0,-1).applyQuaternion(this.rotation);this.up.set(0,1,0).applyQuaternion(this.rotation);
     this.soundPosition.set(0,0.79,0.04);this.themes.trellis.root.localToWorld(this.soundPosition);
-    this.audio.update(this.position,this.forward,this.up,this.soundPosition);
     // IWSDK invokes this from Three's session.requestAnimationFrame loop.
     // Advance immersive particles exactly once, before the XR frame renders.
     this.advanceGarden(delta,true);
+    // Sync the Web Audio listener to the XR camera, including newly started cues.
+    this.audio.update(this.position,this.forward,this.up,this.soundPosition);
   }
 
   update(delta: number): void {
