@@ -40,6 +40,11 @@ button {
   pointer-events: none;
 }
 
+.browser-panel[data-xr-suspended="true"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .browser-panel {
   position: relative;
   z-index: 2;

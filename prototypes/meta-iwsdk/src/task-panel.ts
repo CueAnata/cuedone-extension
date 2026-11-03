@@ -78,6 +78,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private entryOpen = false;
   private browserEntryFinished = false;
   private browserEntryCollapsed = false;
+  private browserXRScroll?: Array<{element: Element; top: number; left: number}>;
   private addingTask = false;
   private finishingEntry = false;
   private reviewingClear = false;
@@ -813,8 +814,17 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private syncPresentation(panel: UIKitMLAsset, input: TaskInput): void {
     const isBrowser = this.isBrowser();
+    if(!isBrowser && !this.browserXRScroll) {
+      this.browserXRScroll = [document.scrollingElement, this.browser.root,
+        document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
+        .filter((element): element is Element => element !== null)
+        .map(element => ({element, top: element.scrollTop, left: element.scrollLeft}));
+    }
     panel.visible = !isBrowser;
-    this.browser.root.hidden = !isBrowser;
+    // Retain the DOM footprint so XR entry never collapses the page's layout.
+    this.browser.root.hidden = false;
+    this.browser.root.dataset.xrSuspended = String(!isBrowser);
+    this.browser.root.inert = !isBrowser;
 
     if (isBrowser) {
       input.input.blur();
@@ -825,6 +835,14 @@ export class TaskPanelSystem extends createSystem({}) {
     }
 
     this.render(panel);
+    if(isBrowser && this.browserXRScroll) {
+      // Restore scroll before the browser can paint the returning panel.
+      for(const {element, top, left} of this.browserXRScroll) {
+        element.scrollTop = top;
+        element.scrollLeft = left;
+      }
+      this.browserXRScroll = undefined;
+    }
   }
 
   private render(panel: UIKitMLAsset): void {
