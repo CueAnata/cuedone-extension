@@ -79,6 +79,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private browserEntryFinished = false;
   private browserEntryCollapsed = false;
   private browserXRScroll?: Array<{element: Element; top: number; left: number}>;
+  private browserXRPosition?: {left: number; top: number};
   private addingTask = false;
   private finishingEntry = false;
   private reviewingClear = false;
@@ -573,6 +574,7 @@ export class TaskPanelSystem extends createSystem({}) {
       const root = this.browser.root;
       const style = root.getAttribute('style');
       const rect = root.getBoundingClientRect();
+      this.browserXRPosition = {left: rect.left, top: rect.top};
       this.browserXRScroll = [document.scrollingElement, root,
         document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
         .filter((element): element is Element => element !== null)
@@ -589,7 +591,7 @@ export class TaskPanelSystem extends createSystem({}) {
         if(this.isBrowser())this.syncPresentation(panel, panel.requireElementById<TaskInput>('task-input'));
       };
       // Start the native request in the final-task click, before awaiting storage.
-      // FinalTaskAR counts 2.8 seconds from its first visible saved-list XR frame.
+      // FinalTaskAR counts 4.5 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
         session => finalTaskAR.attach(arRun, session), restoreLayout).then(started => {
         traceEnhanced('launcher-finished', {started});
@@ -901,6 +903,16 @@ export class TaskPanelSystem extends createSystem({}) {
         element.scrollLeft = left;
       }
       this.browserXRScroll = undefined;
+    }
+    if(isBrowser && this.browserXRPosition) {
+      // Correct any viewport/reflow displacement after styles and scroll restore.
+      // Relative offsets preserve the panel's DOM footprint and existing scale.
+      const root = this.browser.root;
+      const rect = root.getBoundingClientRect();
+      const style = getComputedStyle(root);
+      root.style.left = `${(parseFloat(style.left) || 0) + this.browserXRPosition.left - rect.left}px`;
+      root.style.top = `${(parseFloat(style.top) || 0) + this.browserXRPosition.top - rect.top}px`;
+      this.browserXRPosition = undefined;
     }
   }
 
