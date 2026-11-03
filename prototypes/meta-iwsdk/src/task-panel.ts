@@ -17,6 +17,7 @@ import { PersonalTaskSession } from './task-session.js';
 import { normalizeTaskText } from '../../../src/shared/tasks.js';
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
+const PANEL_EXPERIENCE_KEY = 'cuedone.vr.panelExperience.v1';
 
 interface BrowserPanelElements {
   root: HTMLElement;
@@ -135,9 +136,32 @@ export class TaskPanelSystem extends createSystem({}) {
       settings.insertBefore(label, required('#browser-spatial-scale'));
       this.cleanupFuncs.push(() => {select.removeEventListener('change', onChange); label.remove();});
     };
-    addChoice('Finale', [['2d', '2D — stay in browser'], ['3d', '3D — immersive AR']], value => {
-      this.finaleStyle = value === '3d' ? '3d' : '2d';
-    });
+    const experience = required<HTMLSelectElement>('#browser-panel-experience');
+    const experienceStatus = required<HTMLElement>('#browser-panel-experience-status');
+    const restoreExperience = () => {
+      try {
+        this.finaleStyle = window.localStorage.getItem(PANEL_EXPERIENCE_KEY) === '3d' ? '3d' : '2d';
+        experienceStatus.textContent = '';
+      } catch {
+        experienceStatus.textContent = 'Could not restore the panel experience. Your current choice is unchanged.';
+      }
+      experience.value = this.finaleStyle;
+    };
+    const saveExperience = () => {
+      const next = experience.value === '3d' ? '3d' : '2d';
+      try {
+        window.localStorage.setItem(PANEL_EXPERIENCE_KEY, next);
+        this.finaleStyle = next;
+        experienceStatus.textContent = 'Panel experience saved locally.';
+      } catch {
+        experience.value = this.finaleStyle;
+        experienceStatus.textContent = 'Could not save the panel experience. Your previous choice is unchanged.';
+      }
+    };
+    restoreExperience();
+    experience.addEventListener('change', saveExperience);
+    this.cleanupFuncs.push(() => experience.removeEventListener('change', saveExperience));
+    this.cleanupFuncs.push(watchLocalStorage(window, [PANEL_EXPERIENCE_KEY], restoreExperience));
     addChoice('Animation progression', [['smooth', 'Smooth'], ['instant', 'Instant']], value => {
       this.progression = value === 'instant' ? 'instant' : 'smooth';
     });
@@ -145,7 +169,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.root.append(this.browser.xrButton);
     required('#browser-garden').removeAttribute('role');
     required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
-      'Garden progress follows each completed task. Choose a 2D or immersive 3D finale in Settings.';
+      'Garden progress follows each completed task. Choose 2D Alone or 2D Enhanced in Settings.';
     const gear = new Settings({width: 3, height: 3, color: '#332D25'});
     const settingsButton = panel.requireElementById<UIKit.Container>('settings-toggle');
     settingsButton.name = 'Settings';

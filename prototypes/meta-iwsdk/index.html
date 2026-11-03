@@ -90,6 +90,14 @@
       <section id="browser-settings-panel" class="browser-new-list-review" aria-label="VR appearance and comfort" hidden>
         <button id="browser-settings-done" class="browser-button browser-secondary" type="button">Done</button>
         <h2>VR appearance &amp; comfort</h2>
+        <label class="browser-setting-choice" for="browser-panel-experience">2D panel experience
+          <select id="browser-panel-experience" aria-describedby="browser-panel-experience-help">
+            <option value="2d">2D Alone</option>
+            <option value="3d">2D Enhanced</option>
+          </select>
+        </label>
+        <p id="browser-panel-experience-help">2D Alone stays in the browser. 2D Enhanced opens the existing 4.5-second immersive finale when the final task is completed.</p>
+        <p id="browser-panel-experience-status" role="status" aria-live="polite"></p>
         <button id="browser-spatial-scale" class="browser-button browser-outline" type="button">Panel size: Standard</button>
         <button id="browser-spatial-placement" class="browser-button browser-outline" type="button">Panel: Head relative</button>
         <button id="browser-spatial-motion" class="browser-button browser-outline" type="button">Ambient motion: On</button>
