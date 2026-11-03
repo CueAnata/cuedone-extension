@@ -597,6 +597,9 @@ h2 {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 .browser-panel > .browser-task-form input { width: 100%; min-width: 0; font-size: 1rem; }
+.browser-entry-toggle { justify-self: start; min-height: 36px; width: auto; }
+.browser-entry-toggle[aria-expanded="false"] { min-width: 0; padding: 4px 10px; font-size: 0.85rem; }
+#browser-entry-fields:not([hidden]) { display: grid; gap: 8px; }
 #browser-garden.trellis-frame {
   margin-top: 8px;
   padding-top: 104px;

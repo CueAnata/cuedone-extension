@@ -76,6 +76,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private collapseDown?: InstanceType<typeof ChevronDown>;
   private entryOpen = false;
   private browserEntryFinished = false;
+  private browserEntryCollapsed = false;
   private addingTask = false;
   private finishingEntry = false;
   private reviewingClear = false;
@@ -158,6 +159,15 @@ export class TaskPanelSystem extends createSystem({}) {
       for(const icon of [this.collapseUp, this.collapseDown]) {icon?.removeFromParent(); icon?.dispose();}
     });
     const taskInput = panel.requireElementById<TaskInput>('task-input');
+    const entryToggle = required<HTMLButtonElement>('#browser-entry-toggle');
+    const toggleEntry = () => {
+      this.browserEntryCollapsed = !this.browserEntryCollapsed;
+      if(this.browserEntryCollapsed)this.browser.input.blur();
+      this.render(panel);
+      if(!this.browserEntryCollapsed)this.focusTaskEntry(taskInput);
+    };
+    entryToggle.addEventListener('click', toggleEntry);
+    this.cleanupFuncs.push(() => entryToggle.removeEventListener('click', toggleEntry));
     const completeButton = panel.requireElementById('complete-button');
     const newListButton = panel.requireElementById('new-list-button');
     const carryButton = panel.requireElementById('carry-button');
@@ -405,6 +415,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.collapsed = false;
     this.entryOpen = true;
     this.browserEntryFinished = false;
+    this.browserEntryCollapsed = false;
     this.render(panel);
     this.focusTaskEntry(input);
   }
@@ -940,6 +951,11 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.root.dataset.entryFinished = String(entryFinished);
     required<HTMLElement>('#browser-reopen-entry').hidden = !entryFinished || this.collapsed || this.settingsOpen;
     this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || entryFinished;
+    required<HTMLElement>('#browser-entry-fields').hidden = this.browserEntryCollapsed;
+    const entryToggle = required<HTMLButtonElement>('#browser-entry-toggle');
+    entryToggle.textContent = this.browserEntryCollapsed ? 'Edit' : 'Done';
+    entryToggle.setAttribute('aria-label', this.browserEntryCollapsed ? 'Edit tasks' : 'Done with task entry');
+    entryToggle.setAttribute('aria-expanded', String(!this.browserEntryCollapsed));
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
     required<HTMLButtonElement>('#browser-add-task-button').disabled = busy || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =

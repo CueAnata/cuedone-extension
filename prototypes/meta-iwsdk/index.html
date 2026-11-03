@@ -102,6 +102,7 @@
       </section>
       </div>
       <form id="browser-task-form" class="browser-task-form" hidden>
+        <div id="browser-entry-fields">
         <label for="browser-task-input">Add a task</label>
         <div class="browser-entry-row">
         <input
@@ -116,6 +117,8 @@
           <button id="browser-add-task-button" class="browser-button browser-primary" type="submit">Add task</button>
         </div>
         <p id="browser-entry-help" class="browser-entry-help">Enter adds a task.</p>
+        </div>
+        <button id="browser-entry-toggle" class="browser-button browser-outline browser-entry-toggle" type="button" aria-expanded="true" aria-controls="browser-entry-fields">Done</button>
         <button hidden id="browser-complete-button" class="browser-button browser-primary" type="button">Complete</button>
       </form>
     </main>
