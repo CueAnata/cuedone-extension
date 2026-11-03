@@ -599,18 +599,30 @@ export class TaskPanelSystem extends createSystem({}) {
       const style = root.getAttribute('style');
       const rect = root.getBoundingClientRect();
       this.browserXRPosition = {left: rect.left, top: rect.top};
+      const spacer = document.createElement('div');
+      spacer.setAttribute('aria-hidden', 'true');
+      const computed = getComputedStyle(root);
+      Object.assign(spacer.style, {width: `${rect.width}px`, height: `${rect.height}px`,
+        flex: '0 0 auto', margin: computed.margin, visibility: 'hidden', pointerEvents: 'none'});
+      root.before(spacer);
       this.browserXRScroll = [document.scrollingElement, root,
         document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
         .filter((element): element is Element => element !== null)
         .map(element => ({element, top: element.scrollTop, left: element.scrollLeft}));
       root.style.width = root.style.minWidth = root.style.maxWidth = `${rect.width}px`;
       root.style.height = root.style.minHeight = root.style.maxHeight = `${rect.height}px`;
+      // Pin document coordinates while the browser changes its XR viewport.
+      root.style.position = 'absolute';
+      root.style.margin = '0';
+      root.style.left = `${rect.left + window.scrollX}px`;
+      root.style.top = `${rect.top + window.scrollY}px`;
       let restored = false;
       const restoreLayout = () => {
         if(restored)return;
         restored = true;
         if(style === null)root.removeAttribute('style');
         else root.setAttribute('style', style);
+        spacer.remove();
         // On request failure there is no visibility transition to restore scroll.
         if(this.isBrowser())this.syncPresentation(panel, panel.requireElementById<TaskInput>('task-input'));
       };
@@ -788,15 +800,17 @@ export class TaskPanelSystem extends createSystem({}) {
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
-      let tap: {id: number; x: number; y: number; scroll: number; page: number; dragged: boolean; released: boolean} | undefined;
+      let tap: {id: number; x: number; y: number; scroll: number; page: number; slop: number; dragged: boolean; released: boolean} | undefined;
       const trackTap = (event: PointerEvent) => {
-        if(tap?.id === event.pointerId && (Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 8 ||
-          browserList.scrollTop !== tap.scroll || (document.scrollingElement?.scrollTop ?? 0) !== tap.page))tap.dragged = true;
+        if(tap?.id === event.pointerId && (Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > tap.slop ||
+          Math.abs(browserList.scrollTop - tap.scroll) > 1 ||
+          Math.abs((document.scrollingElement?.scrollTop ?? 0) - tap.page) > 1))tap.dragged = true;
       };
       button.addEventListener('pointerdown', event => {
         if(event.button !== 0 || !event.isPrimary) {tap = undefined;return;}
         tap = {id: event.pointerId, x: event.clientX, y: event.clientY, scroll: browserList.scrollTop,
-          page: document.scrollingElement?.scrollTop ?? 0, dragged: false, released: false};
+          page: document.scrollingElement?.scrollTop ?? 0, slop: event.pointerType === 'touch' ? 12 : 8,
+          dragged: false, released: false};
       });
       button.addEventListener('pointermove', trackTap);
       button.addEventListener('pointerup', event => {
@@ -807,8 +821,8 @@ export class TaskPanelSystem extends createSystem({}) {
       button.addEventListener('pointerleave', () => {if(tap && !tap.released)tap.dragged = true;});
       button.addEventListener('click', event => {
         const pointerClick = event.detail > 0 || (event instanceof PointerEvent && !!event.pointerType);
-        const cleanTap = tap?.released && !tap.dragged && browserList.scrollTop === tap.scroll &&
-          (document.scrollingElement?.scrollTop ?? 0) === tap.page;
+        const cleanTap = tap?.released && !tap.dragged && Math.abs(browserList.scrollTop - tap.scroll) <= 1 &&
+          Math.abs((document.scrollingElement?.scrollTop ?? 0) - tap.page) <= 1;
         tap = undefined;
         if(pointerClick && !cleanTap) {event.preventDefault();return;}
         const xr = navigator.xr;

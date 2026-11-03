@@ -34,14 +34,19 @@ export async function launchAR(
     overlay.hidden = true;
     if(!onRestored && world.session === session)world.session = undefined;
     // Let Three finish releasing its XR camera before restoring the browser view.
-    requestAnimationFrame(() => {
+    const restore = () => {
+      if(onRestored && world.renderer.xr.isPresenting) {
+        requestAnimationFrame(restore);
+        return;
+      }
       if(onRestored && world.session === session)world.session = undefined;
       if(!world.session && options.restoreCameraOnExit !== false) {
         world.camera.copy(camera, false);
         world.camera.updateMatrixWorld(true);
       }
       onRestored?.();
-    });
+    };
+    requestAnimationFrame(restore);
   };
   try {
     // Request synchronously in the click gesture. Try immersive-ar first, fallback to immersive-vr.
