@@ -14,7 +14,7 @@ import { watchLocalStorage } from './local-sync.js';
 import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
 import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
-import { normalizeTaskText } from '../../../src/shared/tasks.js';
+import { normalizeTaskText, setTaskCompleted } from '../../../src/shared/tasks.js';
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
 const PANEL_EXPERIENCE_KEY = 'cuedone.vr.panelExperience.v1';
@@ -546,6 +546,30 @@ export class TaskPanelSystem extends createSystem({}) {
       sessionPresent: !!this.world.session, requestPending: this.world.sessionRequestPending,
     });
     if(finalTaskAR.busy || this.session.phase !== 'ready')return;
+    if(taskId && this.session.tasks.some(task => task.id === taskId && task.completed)) {
+      const before = this.session.tasks;
+      const next = setTaskCompleted(before, taskId, false);
+      this.session.phase = 'saving';
+      this.session.message = 'Saving...';
+      this.render(panel);
+      try {
+        await this.taskStore.save(next, before);
+        this.session.tasks = next;
+        this.session.message = 'Saved: task unchecked.';
+        // The next render clears this row's bee/strike and publishes lower garden progress.
+        required<HTMLElement>('#browser-garden').classList.remove('is-ar-finale');
+      } catch(error) {
+        this.session.message = error instanceof Error ? error.message : 'CueDone could not uncheck the task.';
+        if(error instanceof Error && error.name === 'TaskConflictError') {
+          await this.session.load();
+          this.session.message = 'The list changed in another window. Review it and try again.';
+        }
+      } finally {
+        if(this.session.phase === 'saving')this.session.phase = 'ready';
+        this.render(panel);
+      }
+      return;
+    }
     const final = this.isBrowser() && this.session.unfinishedTaskCount === 1 &&
       this.session.tasks.some(task => task.id === taskId && !task.completed);
     if(!final) {
@@ -726,22 +750,33 @@ export class TaskPanelSystem extends createSystem({}) {
       for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
       for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
       label.add(pollen, bee);
+      let pinch: {id: number; point: typeof check.position; scroll: number; dragged: boolean} | undefined;
       check.setProperties({onPointerDown: event => {
         event.stopPropagation();
-        if(disabled || task.completed || this.world.visibilityState.value !== VisibilityState.Visible)return;
+        if(disabled || this.world.visibilityState.value !== VisibilityState.Visible)return;
         // Only native hand select (index/thumb pinch) may complete a task.
         // Touch/poke pointers synthesize presses from proximity; ignore them.
         const xr = this.world.input.xr;
         const pinchingHand = (['left', 'right'] as const).some(hand =>
           xr.getPrimaryInputSource(hand)?.hand && xr.multiPointers[hand].getPointer('ray').id === event.pointerId);
-        if(pinchingHand)void this.completeTask(panel, task.id);
-      }});
+        if(pinchingHand)pinch = {id: event.pointerId, point: event.point.clone(),
+          scroll: list.scrollPosition.value[1] ?? 0, dragged: false};
+      }, onPointerMove: event => {
+        if(pinch && pinch.id === event.pointerId && event.point.distanceToSquared(pinch.point) > 0.012 ** 2)pinch.dragged = true;
+      }, onPointerUp: event => {
+        event.stopPropagation();
+        if(!pinch || pinch.id !== event.pointerId)return;
+        const tap = pinch;pinch = undefined;
+        if(!tap.dragged && event.point.distanceToSquared(tap.point) <= 0.012 ** 2 &&
+          (list.scrollPosition.value[1] ?? 0) === tap.scroll && !disabled &&
+          this.world.visibilityState.value === VisibilityState.Visible)void this.completeTask(panel, task.id);
+      }, onPointerLeave: () => {pinch = undefined;}, onPointerCancel: () => {pinch = undefined;}});
       list.add(row);
       this.rows.push({row, pollen, bee, id: task.id, elapsed});
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'browser-task-row';
-      button.setAttribute('aria-label', `${task.completed ? 'Completed' : 'Complete'}: ${task.text}`);
-      button.disabled = disabled || task.completed;
+      button.setAttribute('aria-label', `${task.completed ? 'Uncheck' : 'Complete'}: ${task.text}`);
+      button.disabled = disabled;
       button.dataset.completed = String(task.completed);
       const checkbox = document.createElement('span'); checkbox.className = 'task-checkbox';
       checkbox.textContent = task.completed ? '✓' : ''; checkbox.setAttribute('aria-hidden', 'true');
@@ -753,7 +788,29 @@ export class TaskPanelSystem extends createSystem({}) {
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
-      button.addEventListener('click', () => {
+      let tap: {id: number; x: number; y: number; scroll: number; page: number; dragged: boolean; released: boolean} | undefined;
+      const trackTap = (event: PointerEvent) => {
+        if(tap?.id === event.pointerId && (Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 8 ||
+          browserList.scrollTop !== tap.scroll || (document.scrollingElement?.scrollTop ?? 0) !== tap.page))tap.dragged = true;
+      };
+      button.addEventListener('pointerdown', event => {
+        if(event.button !== 0 || !event.isPrimary) {tap = undefined;return;}
+        tap = {id: event.pointerId, x: event.clientX, y: event.clientY, scroll: browserList.scrollTop,
+          page: document.scrollingElement?.scrollTop ?? 0, dragged: false, released: false};
+      });
+      button.addEventListener('pointermove', trackTap);
+      button.addEventListener('pointerup', event => {
+        trackTap(event);
+        if(tap?.id === event.pointerId)tap.released = true;
+      });
+      button.addEventListener('pointercancel', () => {tap = undefined;});
+      button.addEventListener('pointerleave', () => {if(tap && !tap.released)tap.dragged = true;});
+      button.addEventListener('click', event => {
+        const pointerClick = event.detail > 0 || (event instanceof PointerEvent && !!event.pointerType);
+        const cleanTap = tap?.released && !tap.dragged && browserList.scrollTop === tap.scroll &&
+          (document.scrollingElement?.scrollTop ?? 0) === tap.page;
+        tap = undefined;
+        if(pointerClick && !cleanTap) {event.preventDefault();return;}
         const xr = navigator.xr;
         const gestureXR: Pick<XRSystem, 'requestSession'> | undefined = xr ? {
           requestSession: (mode, init) => {
