@@ -215,9 +215,6 @@ export class TaskPanelSystem extends createSystem({}) {
       this.openNewListReview(panel, taskInput, true);
     });
     this.cleanupFuncs.push(() => this.disposeRows());
-    this.cleanupFuncs.push(this.world.onXRFrame((_frame,delta) => {
-      if(this.world.visibilityState.value === VisibilityState.Visible)this.animateRows(delta);
-    }));
 
     taskInput.name = 'TaskInput';
     panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
@@ -745,6 +742,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     this.browser.root.classList.toggle('motion-off', !motion);
+    if(this.world.visibilityState.value === VisibilityState.Visible)this.animateRows(delta);
   }
 
   private animateRows(delta:number):void {

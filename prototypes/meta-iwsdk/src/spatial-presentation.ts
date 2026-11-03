@@ -308,9 +308,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.forward.set(0,0,-1).applyQuaternion(this.rotation);this.up.set(0,1,0).applyQuaternion(this.rotation);
     this.soundPosition.set(0,0.79,0.04);this.themes.trellis.root.localToWorld(this.soundPosition);
     this.audio.update(this.position,this.forward,this.up,this.soundPosition);
-    // IWSDK invokes this from Three's session.requestAnimationFrame loop.
-    // Advance immersive particles exactly once, before the XR frame renders.
-    this.advanceGarden(delta,true);
   }
 
   update(delta: number): void {
@@ -353,7 +350,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.revision = progress.revision;
     }
     if(!motion && !(visible && finalTaskAR.waiting))this.tween.set(progress.ratio,false);
-    if(standard)this.advanceGarden(delta,false);
+    // Advance the vines and butterfly particles once per render-loop update,
+    // including immersive WebXR frames.
+    this.advanceGarden(delta,visible);
     if(visible) {
       this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
       this.fadeMesh.visible = this.fade > 0;
