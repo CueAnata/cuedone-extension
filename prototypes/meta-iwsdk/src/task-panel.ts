@@ -7,7 +7,7 @@ import {
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
-import { launchAR, finalTaskAR } from './ar-session.js';
+import { launchAR, finalTaskAR, traceEnhanced } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
@@ -539,6 +539,11 @@ export class TaskPanelSystem extends createSystem({}) {
   private async completeTask(panel: UIKitMLAsset, id?: string,
     gestureXR: Pick<XRSystem, 'requestSession'> | undefined = navigator.xr): Promise<void> {
     const taskId = id ?? this.session.activeTask?.id;
+    if(this.isBrowser() && this.finaleStyle === '3d')traceEnhanced('completion-action', {
+      phase: this.session.phase, unfinished: this.session.unfinishedTaskCount,
+      finaleBusy: finalTaskAR.busy, xrEnabled: this.world.xrEnabled,
+      sessionPresent: !!this.world.session, requestPending: this.world.sessionRequestPending,
+    });
     if(finalTaskAR.busy || this.session.phase !== 'ready')return;
     const final = this.isBrowser() && this.session.unfinishedTaskCount === 1 &&
       this.session.tasks.some(task => task.id === taskId && !task.completed);
@@ -562,6 +567,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
     const enhanced = this.finaleStyle === '3d';
     const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
+    let enhancedError = '';
     if(arRun) {
       // Capture the working view before native XR can resize or blur the page.
       const root = this.browser.root;
@@ -586,11 +592,15 @@ export class TaskPanelSystem extends createSystem({}) {
       // FinalTaskAR counts 2.8 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
         session => finalTaskAR.attach(arRun, session), restoreLayout).then(started => {
+        traceEnhanced('launcher-finished', {started});
         if(!started) {finalTaskAR.cancel(arRun);restoreLayout();}
-      }).catch(() => {
+      }).catch((error: unknown) => {
+        const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        traceEnhanced('launcher-rejected', {error: reason});
         finalTaskAR.cancel(arRun);
         restoreLayout();
-        this.session.message = 'Immersive AR is unavailable. Your task remains saved.';
+        enhancedError = `Enhanced AR failed: ${reason}`;
+        this.session.message = enhancedError;
         this.render(panel);
       });
     }
@@ -599,6 +609,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const saved = await pending;
     this.render(panel);
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
+    if(enhancedError)this.session.message = enhancedError;
     if(arRun) {
       if(isFinal)finalTaskAR.saved(arRun, this.session.tasks);
       else finalTaskAR.cancel(arRun);
@@ -748,7 +759,19 @@ export class TaskPanelSystem extends createSystem({}) {
             // A rejected AR request must not trigger a second immersive request
             // after the click's user activation may have been consumed.
             if(mode !== 'immersive-ar')return Promise.reject(new Error('AR session unavailable.'));
-            return xr.requestSession('immersive-ar', init);
+            traceEnhanced('requestSession-called', {mode, userActivation: navigator.userActivation?.isActive});
+            try {
+              return xr.requestSession('immersive-ar', init).then(session => {
+                traceEnhanced('requestSession-resolved', {visibility: session.visibilityState});
+                return session;
+              }, error => {
+                traceEnhanced('requestSession-rejected', {error: String(error)});
+                throw error;
+              });
+            } catch(error) {
+              traceEnhanced('requestSession-threw', {error: String(error)});
+              throw error;
+            }
           },
         } : undefined;
         void this.completeTask(panel, task.id, gestureXR);

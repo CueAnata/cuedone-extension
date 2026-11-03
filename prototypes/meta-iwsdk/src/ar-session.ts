@@ -85,6 +85,10 @@ export async function launchAR(
 
 export const FINAL_AR_MS = 2800;
 const FINAL_AR_WATCHDOG_MS = 4500;
+/** Local console diagnostics only; never includes task text or sends telemetry. */
+export function traceEnhanced(stage: string, detail: Record<string, unknown> = {}): void {
+  console.info('[CueDone Enhanced]', {atMs: Math.round(performance.now()), stage, ...detail});
+}
 interface FinaleSession extends EventTarget { end(): Promise<void>; }
 interface FinaleRun {
   before: SpatialTask[];
@@ -111,12 +115,15 @@ export class FinalTaskAR {
   begin(before: readonly SpatialTask[]): FinaleRun | undefined {
     if(this.current || !before.length || before.filter(task => !task.completed).length !== 1)return;
     this.error = '';
+    traceEnhanced('begin');
     return this.current = {before: before.map(({id,completed}) => ({id,completed})),
       cancelled: false, closed: false, started: false, ending: false};
   }
   attach(run: FinaleRun, session: FinaleSession): void {
     run.session = session;
+    traceEnhanced('native-session-attached');
     session.addEventListener('end', () => {
+      traceEnhanced('native-session-ended', {visibleFrameSeen: run.started, endRequested: run.ending});
       run.closed = true;
       if(run.timer !== undefined)this.clear(run.timer);
       if(this.current === run)this.current = undefined;
@@ -128,6 +135,7 @@ export class FinalTaskAR {
   }
   saved(run: FinaleRun, after: readonly SpatialTask[]): void {
     if(!isFinalCompletion(run.before, after)) {this.cancel(run); return;}
+    traceEnhanced('final-completion-saved');
     run.after = after.map(({id,completed}) => ({id,completed}));
   }
   start(session: FinaleSession, currentTasks: readonly SpatialTask[]): {before: SpatialTask[]; after: SpatialTask[]} | undefined {
@@ -137,28 +145,37 @@ export class FinalTaskAR {
       this.cancel(run); return;
     }
     run.started = true;
+    traceEnhanced('first-visible-finale-frame');
     this.arm(run); // Count only after the first visible, saved-list XR frame.
     return {before: run.before, after: run.after};
   }
   cancel(run: FinaleRun): void {
+    traceEnhanced('cancel', {sessionAttached: !!run.session, visibleFrameSeen: run.started});
     run.cancelled = true;
     if(run.session)void this.close(run);
     else if(this.current === run)this.current = undefined;
   }
   end(): void {
+    traceEnhanced('exit-button');
     if(this.current)void this.close(this.current);
   }
   private arm(run: FinaleRun, duration = FINAL_AR_MS): void {
     if(run.timer !== undefined)this.clear(run.timer);
-    run.timer = this.schedule(() => {void this.close(run);}, duration);
+    traceEnhanced('timer-armed', {durationMs: duration, kind: run.started ? 'visible-finale' : 'no-frame-watchdog'});
+    run.timer = this.schedule(() => {
+      traceEnhanced('timer-expired', {kind: run.started ? 'visible-finale' : 'no-frame-watchdog'});
+      void this.close(run);
+    }, duration);
   }
   private async close(run: FinaleRun): Promise<void> {
     if(run.closed || run.ending)return;
     run.ending = true;
+    traceEnhanced('session-end-requested', {visibleFrameSeen: run.started});
     if(run.timer !== undefined)this.clear(run.timer);
     try {
       await run.session?.end();
-    } catch {
+    } catch(error) {
+      traceEnhanced('session-end-rejected', {error: String(error)});
       run.ending = false;
       this.error = 'Could not close AR. Select Exit AR; your task is saved.';
     }
