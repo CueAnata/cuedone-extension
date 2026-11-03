@@ -107,7 +107,7 @@ export class FinalTaskAR {
   private readonly clear: typeof clearTimeout;
   error = '';
   constructor(schedule: typeof setTimeout = setTimeout, clear: typeof clearTimeout = clearTimeout) {
-    this.schedule = schedule; this.clear = clear;
+    this.schedule = schedule.bind(globalThis); this.clear = clear.bind(globalThis);
   }
   get busy(): boolean {return !!this.current;}
   get waiting(): boolean {return !!this.current && !this.current.started;}

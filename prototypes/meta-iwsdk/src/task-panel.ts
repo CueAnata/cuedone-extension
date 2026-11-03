@@ -596,7 +596,7 @@ export class TaskPanelSystem extends createSystem({}) {
         if(!started) {finalTaskAR.cancel(arRun);restoreLayout();}
       }).catch((error: unknown) => {
         const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-        traceEnhanced('launcher-rejected', {error: reason});
+        traceEnhanced('launcher-rejected', {error: reason, stack: error instanceof Error ? error.stack : undefined});
         finalTaskAR.cancel(arRun);
         restoreLayout();
         enhancedError = `Enhanced AR failed: ${reason}`;

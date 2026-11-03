@@ -118,6 +118,25 @@ function finalFixture() {
 }
 const settle=async()=>{await Promise.resolve();await Promise.resolve();};
 
+test('Enhanced timers retain the Window receiver required by browser host methods',()=>{
+  let scheduled=0,cleared=0;
+  const schedule=function(this:unknown, _callback:()=>void, _delay:number) {
+    if(this !== globalThis)throw new TypeError('Illegal invocation');
+    scheduled++;return 1;
+  } as unknown as typeof setTimeout;
+  const clear=function(this:unknown, _id:unknown) {
+    if(this !== globalThis)throw new TypeError('Illegal invocation');
+    cleared++;
+  } as typeof clearTimeout;
+  const controller=new FinalTaskAR(schedule,clear);
+  const session=Object.assign(new EventTarget(),{async end(){session.dispatchEvent(new Event('end'));}});
+  const run=controller.begin(finaleBefore)!;
+  controller.attach(run,session);controller.saved(run,finaleAfter);
+  controller.start(session,finaleAfter);
+  session.dispatchEvent(new Event('end'));
+  assert.equal(scheduled,2);assert.equal(cleared,2);
+});
+
 test('only the last unfinished task may prepare an AR finale',()=>{
   const f=finalFixture();
   assert.equal(f.controller.begin([]),undefined);
