@@ -538,7 +538,7 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async completeTask(panel: UIKitMLAsset, id?: string,
-    gestureXR: Pick<XRSystem, 'requestSession'> | undefined = navigator.xr): Promise<void> {
+    gestureXR?: Pick<XRSystem, 'requestSession'>): Promise<void> {
     const taskId = id ?? this.session.activeTask?.id;
     if(this.isBrowser() && this.finaleStyle === '3d')traceEnhanced('completion-action', {
       phase: this.session.phase, unfinished: this.session.unfinishedTaskCount,
@@ -788,6 +788,7 @@ export class TaskPanelSystem extends createSystem({}) {
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'browser-task-row';
       button.setAttribute('aria-label', `${task.completed ? 'Uncheck' : 'Complete'}: ${task.text}`);
+      button.setAttribute('aria-pressed', String(task.completed));
       button.disabled = disabled;
       button.dataset.completed = String(task.completed);
       const checkbox = document.createElement('span'); checkbox.className = 'task-checkbox';
@@ -825,6 +826,11 @@ export class TaskPanelSystem extends createSystem({}) {
           Math.abs((document.scrollingElement?.scrollTop ?? 0) - tap.page) <= 1;
         tap = undefined;
         if(pointerClick && !cleanTap) {event.preventDefault();return;}
+        // Both checking and unchecking work in ordinary 2D without WebXR.
+        if(this.finaleStyle === '2d') {
+          void this.completeTask(panel, task.id);
+          return;
+        }
         const xr = navigator.xr;
         const gestureXR: Pick<XRSystem, 'requestSession'> | undefined = xr ? {
           requestSession: (mode, init) => {
