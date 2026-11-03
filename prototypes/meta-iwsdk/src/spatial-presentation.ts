@@ -112,12 +112,6 @@ export class SpatialPresentationSystem extends createSystem({}) {
       });
     }
     const unlock = () => {void this.unlockAudio();};
-    const browserPanel = document.getElementById('browser-panel')!;
-    const activateBrowserAudio = () => {
-      if(this.ready && this.settings.zenSound)unlock();
-    };
-    browserPanel.addEventListener('pointerdown', activateBrowserAudio, true);
-    this.cleanupFuncs.push(() => browserPanel.removeEventListener('pointerdown', activateBrowserAudio, true));
     const enterSpatial=this.panel.requireElementById('xr-button');
     const enterBrowser=document.getElementById('browser-xr-button')!;
     enterSpatial.addEventListener('click',unlock);enterBrowser.addEventListener('click',unlock);
@@ -314,6 +308,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.forward.set(0,0,-1).applyQuaternion(this.rotation);this.up.set(0,1,0).applyQuaternion(this.rotation);
     this.soundPosition.set(0,0.79,0.04);this.themes.trellis.root.localToWorld(this.soundPosition);
     this.audio.update(this.position,this.forward,this.up,this.soundPosition);
+    // IWSDK invokes this from Three's session.requestAnimationFrame loop.
+    // Advance immersive particles exactly once, before the XR frame renders.
+    this.advanceGarden(delta,true);
   }
 
   update(delta: number): void {
@@ -348,17 +345,15 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
     const motion = this.settings.motion && !this.media.matches;
     if(this.revision !== progress.revision && !(visible && finalTaskAR.waiting)) {
-      const finalInGarden = (visible || standard) && !finalTaskAR.waiting && progress.finale;
-      this.finaleAudioPending = visible && finalInGarden && this.revision >= 0 && this.ready && this.settings.zenSound;
-      if(finalInGarden && this.revision >= 0)this.themes.trellis.celebrate();
+      const finalInAR = visible && !finalTaskAR.waiting && progress.finale;
+      this.finaleAudioPending = finalInAR && this.revision >= 0 && this.ready && this.settings.zenSound;
+      if(finalInAR && this.revision >= 0)this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
       this.tween.set(progress.ratio, motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
     }
     if(!motion && !(visible && finalTaskAR.waiting))this.tween.set(progress.ratio,false);
-    // Advance the vines and butterfly particles once per render-loop update,
-    // including immersive WebXR frames.
-    this.advanceGarden(delta,visible,standard && this.root.visible && !document.hidden);
+    if(standard)this.advanceGarden(delta,false);
     if(visible) {
       this.fade = Math.max(0,this.fade-Math.min(delta,1/30));
       this.fadeMesh.visible = this.fade > 0;
@@ -367,9 +362,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
   }
 
-  private advanceGarden(delta:number,visible:boolean,browserVisible=false):void {
+  private advanceGarden(delta:number,visible:boolean):void {
     const motion = this.settings.motion && !this.media.matches;
-    if(visible || browserVisible) {
+    if(visible) {
       this.audio.setAmbient(this.ready && this.settings.zenSound); this.audio.tick(delta);
     } else {
       this.audio.setAmbient(false); this.audio.stop(); this.finaleAudioPending = false;

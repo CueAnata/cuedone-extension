@@ -941,6 +941,7 @@ export class TaskPanelSystem extends createSystem({}) {
     required<HTMLElement>('#browser-reopen-entry').hidden = !entryFinished || this.collapsed || this.settingsOpen;
     this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || entryFinished;
     this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
+    required<HTMLButtonElement>('#browser-add-task-button').disabled = busy || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
     this.browser.newListButton.hidden = this.reviewingNewList;

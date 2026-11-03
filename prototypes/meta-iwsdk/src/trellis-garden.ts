@@ -219,12 +219,10 @@ export class TrellisGarden {
     if(t>=1){this.cancel();return joined;}
     this.wings.visible=this.bodies.visible=true;
     this.wings.material.opacity=this.bodies.material.opacity=1-Math.max(0,(t-0.65)/0.35);
-    // Launch from the visible joined vine tips, inside the fitted garden frame.
-    const originY=this.vinePoint(1,1).y;
     for(let i=0;i<BUTTERFLY_COUNT;i++) {
       const angle=i*Math.PI*2/BUTTERFLY_COUNT;
       const x=Math.cos(angle)*t*0.85;
-      const y=originY+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
+      const y=this.topY+t*(0.15+(i%4)*0.08)+Math.sin(t*5+i)*0.025;
       const z=0.03+Math.sin(angle)*t*0.55;
       const flap=Math.sin(this.elapsed*22+i)*0.9;
       this.scratch.position.set(x,y,z);this.scratch.rotation.set(0,angle,0);
