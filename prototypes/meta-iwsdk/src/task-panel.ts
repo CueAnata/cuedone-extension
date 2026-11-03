@@ -159,6 +159,8 @@ export class TaskPanelSystem extends createSystem({}) {
       }
     };
     restoreExperience();
+    required<HTMLElement>('#browser-panel-experience-help').textContent =
+      '2D Alone stays in the browser. 2D Enhanced opens a 4.5-second immersive AR trellis finale when the final task is completed, then returns to 2D.';
     experience.addEventListener('change', saveExperience);
     this.cleanupFuncs.push(() => experience.removeEventListener('change', saveExperience));
     this.cleanupFuncs.push(watchLocalStorage(window, [PANEL_EXPERIENCE_KEY], restoreExperience));
@@ -553,11 +555,14 @@ export class TaskPanelSystem extends createSystem({}) {
       return;
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
-    const arRun = this.finaleStyle === '3d' ? finalTaskAR.begin(before) : undefined;
+    const enhanced = this.finaleStyle === '3d';
+    const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
     if(arRun) {
+      // Start the native request in the final-task click, before awaiting storage.
+      // FinalTaskAR starts the saved-list finale and ends the session after 4.5s.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), navigator.xr,
         session => finalTaskAR.attach(arRun, session)).then(started => {
-        if(!started) finalTaskAR.cancel(arRun);
+        if(!started)finalTaskAR.cancel(arRun);
       }).catch(() => {
         finalTaskAR.cancel(arRun);
         this.session.message = 'Immersive AR is unavailable. Your task remains saved.';
@@ -570,7 +575,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
     if(arRun) {
-      if(isFinal) finalTaskAR.saved(arRun, this.session.tasks);
+      if(isFinal)finalTaskAR.saved(arRun, this.session.tasks);
       else finalTaskAR.cancel(arRun);
     }
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
@@ -583,7 +588,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if (list) list.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
-      }, 6500);
+      }, enhanced ? 4500 : 6500);
     }
     this.render(panel);
   }
