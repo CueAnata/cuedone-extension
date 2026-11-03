@@ -533,7 +533,8 @@ export class TaskPanelSystem extends createSystem({}) {
     } catch {}
   }
 
-  private async completeTask(panel: UIKitMLAsset, id?: string): Promise<void> {
+  private async completeTask(panel: UIKitMLAsset, id?: string,
+    gestureXR: Pick<XRSystem, 'requestSession'> | undefined = navigator.xr): Promise<void> {
     const taskId = id ?? this.session.activeTask?.id;
     if(finalTaskAR.busy || this.session.phase !== 'ready')return;
     const final = this.isBrowser() && this.session.unfinishedTaskCount === 1 &&
@@ -561,7 +562,7 @@ export class TaskPanelSystem extends createSystem({}) {
     if(arRun) {
       // Start the native request in the final-task click, before awaiting storage.
       // FinalTaskAR starts the saved-list finale and ends the session after 4.5s.
-      void launchAR(this.world, required<HTMLElement>('#xr-overlay'), navigator.xr,
+      void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
         session => finalTaskAR.attach(arRun, session)).then(started => {
         if(!started)finalTaskAR.cancel(arRun);
       }).catch(() => {
@@ -716,7 +717,19 @@ export class TaskPanelSystem extends createSystem({}) {
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
-      button.addEventListener('click', () => {void this.completeTask(panel, task.id);});
+      button.addEventListener('click', () => {
+        const xr = navigator.xr;
+        const gestureXR: Pick<XRSystem, 'requestSession'> | undefined = xr ? {
+          requestSession: (mode, init) => {
+            // launchAR invokes this synchronously, before completeTask's first await.
+            // A rejected AR request must not trigger a second immersive request
+            // after the click's user activation may have been consumed.
+            if(mode !== 'immersive-ar')return Promise.reject(new Error('AR session unavailable.'));
+            return xr.requestSession('immersive-ar', init);
+          },
+        } : undefined;
+        void this.completeTask(panel, task.id, gestureXR);
+      });
       const item = document.createElement('div');
       item.className = 'task-item';
       item.setAttribute('role', 'listitem');
