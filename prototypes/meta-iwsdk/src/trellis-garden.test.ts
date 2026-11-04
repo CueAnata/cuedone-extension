@@ -52,25 +52,17 @@ test('trellis contact is transient feedback and never grows vines or starts a fi
   assert.equal(garden.feedback.visible,false);assert.equal(garden.vines[0].geometry.drawRange.count,before);garden.dispose();
 });
 
-for(const theme of ['coral'] as const) {
-  test(`${theme} shares reversible progress, bounded geometry and one-shot finale`,()=>{
-    const scene=new TrellisGarden();scene.setTheme(theme);
-    const mesh=scene[theme], matrix=new Matrix4();
-    assert.equal(mesh.visible,true);assert.equal(scene.vines[0].visible,false);
-    const count=scene.root.children.length;
-    mesh.getMatrixAt(0,matrix);assert.equal(matrix.determinant(),0);
-    scene.setProgress(0.5);mesh.getMatrixAt(0,matrix);assert.ok(matrix.determinant()>0);
-    mesh.getMatrixAt(47,matrix);assert.equal(matrix.determinant(),0);
-    scene.celebrate();assert.equal(scene.update(1/90,true),false);
-    scene.setProgress(1);assert.equal(scene.update(1/90,true),true);
-    assert.equal(scene.update(1/90,true),false);
-    scene.setTheme('zen');assert.equal(scene.wings.visible,false);
-    scene.setTheme(theme);assert.equal(scene.update(1/90,true),false);
-    scene.setProgress(0);mesh.getMatrixAt(0,matrix);assert.equal(matrix.determinant(),0);
-    for(let i=0;i<100;i++)scene.setProgress((i%10)/10);
-    assert.equal(scene.root.children.length,count);scene.dispose();
-  });
-}
+test('kelp progress and finale share cancellation without ever exposing butterflies',()=>{
+  const scene=new TrellisGarden();scene.setTheme('coral');scene.setTaskCount(4);
+  scene.setProgress(0.5);scene.celebrate();assert.equal(scene.update(1/90,true),false);
+  assert.equal(scene.kelp.jellyfish.some(j=>j.visible),false);
+  scene.setProgress(1);assert.equal(scene.update(1/90,true),true);
+  assert.equal(scene.update(1/90,true),false);assert.equal(scene.wings.visible,false);
+  assert.equal(scene.kelp.jellyfish.every(j=>j.visible),true);
+  scene.setTheme('zen');assert.equal(scene.kelp.jellyfish.some(j=>j.visible),false);
+  scene.setTheme('coral');assert.equal(scene.update(1/90,true),false);
+  scene.setProgress(0);assert.equal(scene.kelp.jellyfish.some(j=>j.visible),false);scene.dispose();
+});
 
 test('Space Rocket never exposes garden geometry or butterflies, including its finale',()=>{
   const scene=new TrellisGarden();scene.setTheme('rocket');

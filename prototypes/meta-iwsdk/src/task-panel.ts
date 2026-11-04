@@ -654,7 +654,7 @@ export class TaskPanelSystem extends createSystem({}) {
       else finalTaskAR.cancel(arRun);
     }
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
-    if(isFinal && trellis && !arRun && !this.isRocketTheme()) {
+    if(isFinal && trellis && !arRun && !this.isRocketTheme() && !this.isCoralTheme()) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
@@ -732,6 +732,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private renderRows(panel: UIKitMLAsset, disabled: boolean): void {
     const rocket=this.isRocketTheme();
+    const coral=this.isCoralTheme();
     const theme=this.browser.root.dataset.taskTheme ?? 'zen';
     const signature = JSON.stringify([this.session.tasks, disabled,theme]);
     if(signature === this.rowSignature)return;
@@ -760,13 +761,20 @@ export class TaskPanelSystem extends createSystem({}) {
       label.add(text);
       row.add(check, label);
       const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: elapsed >= 0 ? `${elapsed*100}%` : task.completed ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
-      if(!rocket)pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
+      if(!rocket && !coral)pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
       const bee = new UIKit.Container({positionType: 'absolute', positionTop: '30%', positionLeft: 0, width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
       if(rocket) {
         bee.setProperties({backgroundColor:'#F4FBFF',width:1.5,height:1.5,borderRadius:1});
         bee.add(new UIKit.Container({positionType:'absolute',positionRight:1.2,positionTop:0.45,width:5,height:0.6,backgroundColor:'#8EDCFF',opacity:0.8}));
         bee.add(new UIKit.Container({positionType:'absolute',positionLeft:0.55,positionTop:-0.4,width:0.4,height:2.3,backgroundColor:'#FFF4B6'}));
         pollen.setProperties({backgroundColor:'#77CFFF'});
+      } else if(coral) {
+        bee.setProperties({backgroundColor:'#F58D39',width:4,height:2.1,borderRadius:1});
+        for(const x of [0.8,2.3])bee.add(new UIKit.Container({positionType:'absolute',positionLeft:x,width:0.45,height:2.1,backgroundColor:'#FFF8E7'}));
+        bee.add(new UIKit.Container({positionType:'absolute',positionRight:0.35,positionTop:0.4,width:0.35,height:0.35,borderRadius:0.2,backgroundColor:'#233943'}));
+        bee.add(new UIKit.Container({positionType:'absolute',positionLeft:-0.8,positionTop:0.25,width:1,height:1.6,borderRadius:0.3,backgroundColor:'#F58D39'}));
+        for(let i=0;i<3;i++)bee.add(new UIKit.Container({positionType:'absolute',positionLeft:-2-i*1.2,positionTop:0.3-i*0.6,width:0.55+i*0.1,height:0.55+i*0.1,borderRadius:1,borderWidth:0.12,borderColor:'#72C8D6',opacity:0.8-i*0.15}));
+        pollen.setProperties({backgroundColor:'#64BCCA'});
       } else {
         for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
         for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
@@ -789,7 +797,8 @@ export class TaskPanelSystem extends createSystem({}) {
       const labelText = document.createElement('span'); labelText.className = 'task-label-text'; labelText.textContent = task.text;
       browserLabel.append(labelText);
       const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
-      const beeIcon = document.createElement('span'); beeIcon.className = rocket?'task-shooting-star':'task-bee'; beeIcon.textContent = rocket?'':'🐝'; beeIcon.setAttribute('aria-hidden', 'true');
+      const beeIcon = document.createElement('span'); beeIcon.className = rocket?'task-shooting-star':coral?'task-clownfish':'task-bee'; beeIcon.textContent = rocket||coral?'':'🐝'; beeIcon.setAttribute('aria-hidden', 'true');
+      if(coral) {const bubbles=document.createElement('span');bubbles.className='fish-bubbles';beeIcon.append(bubbles);}
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
@@ -898,7 +907,7 @@ export class TaskPanelSystem extends createSystem({}) {
     if(wood) wood.visible = !this.isBrowser() && this.browser.root.dataset.taskTheme==='zen';
     // Theme changes rebuild presentation only, never task state or completion events.
     this.renderRows(panel,this.session.phase!=='ready');
-    if(this.isRocketTheme() && this.audioContext) {void this.audioContext.close().catch(()=>{});this.audioContext=null;}
+    if((this.isRocketTheme() || this.isCoralTheme()) && this.audioContext) {void this.audioContext.close().catch(()=>{});this.audioContext=null;}
     if(finalTaskAR.error && this.session.message !== finalTaskAR.error) {this.session.message = finalTaskAR.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
@@ -910,12 +919,14 @@ export class TaskPanelSystem extends createSystem({}) {
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
-      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/(this.isRocketTheme()?1.2:4)) : 1;
+      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/(this.isRocketTheme()?1.2:this.isCoralTheme()?1.5:4)) : 1;
       entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
-      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${this.isRocketTheme()?45:30+Math.sin(entry.elapsed*16)*4}%`});
+      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${this.isRocketTheme()?45:this.isCoralTheme()?45+Math.sin(entry.elapsed*10)*3:30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;
     }
   }
+
+  private isCoralTheme():boolean {return this.browser.root.dataset.taskTheme==='coral';}
 
   private isRocketTheme():boolean {return this.browser.root.dataset.taskTheme==='rocket';}
 
@@ -984,7 +995,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const collapsedBar = required<HTMLElement>('#browser-collapsed-bar');
     const collapsedText = required<HTMLElement>('#browser-collapsed-text');
     collapsedBar.hidden = !this.collapsed;
-    collapsedText.textContent = `${this.session.completedCount}/${this.session.tasks.length} Complete [ ${this.isRocketTheme()?'Space Rocket':'Garden 🌿'} ]`;
+    collapsedText.textContent = `${this.session.completedCount}/${this.session.tasks.length} Complete [ ${this.isRocketTheme()?'Space Rocket':this.isCoralTheme()?'Kelp Forest':'Garden 🌿'} ]`;
     required<HTMLElement>('#browser-panel').dataset.collapsed = String(this.collapsed);
     const collapse = required<HTMLButtonElement>('#browser-collapse-toggle');
     collapse.textContent = this.collapsed ? '⌄' : '⌃';

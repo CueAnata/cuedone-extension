@@ -87,3 +87,15 @@ test('sci-fi finale uses lower electronic tones, has no bird frequencies and sto
   assert.ok(sources.every(source=>source.frequency.value<1800));
   audio.stop();assert.ok(sources.every(source=>source.stops===2));audio.dispose();
 });
+
+for(const style of ['bubble','whale'] as const) {
+  test(`${style} ocean cue stays silent when locked, has distinct tones and cancels active/queued notes`,async()=>{
+    const {audio,sources,c}=context();assert.equal(audio.play(style),false);
+    await audio.unlock();assert.equal(sources.length,0);assert.equal(audio.play(style),true);
+    assert.equal(sources.length,3);
+    assert.ok(sources.every(source=>style==='whale'?source.frequency.value<220:source.frequency.value>=420));
+    audio.stop();assert.ok(sources.every(source=>source.stops===2));
+    c.state='suspended';assert.equal(audio.play(style),false);
+    const count=sources.length;await audio.unlock();assert.equal(sources.length,count);audio.dispose();
+  });
+}

@@ -255,7 +255,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.themes.trellis.setTheme(next.theme);
     if(this.settings.theme!==next.theme) {this.audio.setAmbient(false);this.audio.stop();}
     document.getElementById('browser-panel')!.dataset.taskTheme=next.theme;
-    document.getElementById('browser-garden')!.setAttribute('aria-label',next.theme==='rocket'?'Space Rocket task progress':'Task animation progress');
+    document.getElementById('browser-garden')!.setAttribute('aria-label',next.theme==='rocket'?'Space Rocket task progress':next.theme==='coral'?'Kelp Forest task progress':'Task animation progress');
     this.settings=next;
 
     if(!next.zenSound) {this.audio.stop(); this.finaleAudioPending=false;}
@@ -264,14 +264,21 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.message='Appearance synchronized locally.';
   }
 
+  private playCoralTaskCue():void {
+    if(this.ready && this.settings.theme==='coral' && this.settings.zenSound &&
+      [VisibilityState.Visible,VisibilityState.NonImmersive].includes(this.world.visibilityState.value)) {
+      this.audio.play('bubble');
+    }
+  }
+
   private playGardenCue(): void {
     if(!this.finaleAudioPending)return;
     this.finaleAudioPending=false;
     if(!this.ready || !this.settings.zenSound ||
       (this.world.visibilityState.value!==VisibilityState.Visible &&
-       !(this.settings.theme==='rocket' && this.world.visibilityState.value===VisibilityState.NonImmersive)))return;
-    if(!this.audio.play(this.settings.theme==='rocket'?'scifi':'garden')) {
-      this.message=this.settings.theme==='rocket'?'Sci-fi sound is blocked here. Enable sound in this window.':'Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
+       !(this.settings.theme!=='zen' && this.world.visibilityState.value===VisibilityState.NonImmersive)))return;
+    if(!this.audio.play(this.settings.theme==='rocket'?'scifi':this.settings.theme==='coral'?'whale':'garden')) {
+      this.message=this.settings.theme==='coral'?'Ocean sound is blocked here. Enable sound in this window.':this.settings.theme==='rocket'?'Sci-fi sound is blocked here. Enable sound in this window.':'Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
       this.renderControls();
     }
   }
@@ -306,7 +313,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if (session !== this.activeSession) {
       this.activeSession = session;
       this.audio.setAmbient(false);
-      this.audio.setAmbient(this.settings.zenSound && this.settings.theme!=='rocket');
+      this.audio.setAmbient(this.settings.zenSound && this.settings.theme==='zen');
       this.placeFixedPanel();
       this.fade = 0.3;
       this.revision = progress.revision;
@@ -322,6 +329,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.fadeMesh.visible = false;
       this.finaleAudioPending = this.ready && this.settings.zenSound;
       this.themes.trellis.celebrate();
+      this.playCoralTaskCue();
     }
     if(this.drag.owner !== null) {
       const source=this.dragHand && this.world.input.xr.getPrimaryInputSource(this.dragHand);
@@ -374,10 +382,12 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
     const motion = this.settings.motion && !this.media.matches;
     if(this.revision !== progress.revision && !(visible && finalTaskAR.waiting)) {
-      const finalInAR = (visible || (standard && this.settings.theme==='rocket')) && !finalTaskAR.waiting && progress.finale;
+      const finalInAR = (visible || (standard && this.settings.theme!=='zen')) && !finalTaskAR.waiting && progress.finale;
       this.finaleAudioPending = finalInAR && this.revision >= 0 && this.ready && this.settings.zenSound;
       if(finalInAR && this.revision >= 0)this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
+      if(progress.animate && this.revision>=0)this.playCoralTaskCue();
+      else if(this.settings.theme==='coral')this.audio.stop();
       this.tween.set(progress.ratio, motion && this.revision >= 0 && progress.animate);
       this.revision = progress.revision;
     }
@@ -394,13 +404,13 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private advanceGarden(delta:number,visible:boolean):void {
     const motion = this.settings.motion && !this.media.matches;
     if(visible) {
-      this.audio.setAmbient(this.ready && this.settings.zenSound && this.settings.theme!=='rocket'); this.audio.tick(delta);
-    } else if(this.settings.theme!=='rocket') {
+      this.audio.setAmbient(this.ready && this.settings.zenSound && this.settings.theme==='zen'); this.audio.tick(delta);
+    } else if(this.settings.theme==='zen') {
       this.audio.setAmbient(false); this.audio.stop(); this.finaleAudioPending = false;
     }
     const ratio=this.tween.tick(delta);
     this.themes.update(ratio,progress.total > 0,delta,motion);
-    if(this.themes.trellis.update(delta,motion) && (visible || this.settings.theme==='rocket'))this.playGardenCue();
+    if(this.themes.trellis.update(delta,motion) && (visible || this.settings.theme!=='zen'))this.playGardenCue();
   }
 
   private themeChoicesOpen=false;
@@ -421,7 +431,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       browser.disabled = true;
     }
     const labels: Record<string, string> = {
-      'spatial-sound': `${this.settings.theme==='rocket'?'Sci-fi':'Garden'} sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
+      'spatial-sound': `${this.settings.theme==='rocket'?'Sci-fi':this.settings.theme==='coral'?'Ocean':'Garden'} sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
       'spatial-motion': `Ambient motion: ${this.settings.motion ? 'On' : 'Off'}`,
     };
     for (const [id, text] of Object.entries(labels)) {

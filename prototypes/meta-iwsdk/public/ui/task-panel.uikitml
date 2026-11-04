@@ -369,7 +369,7 @@
   <div id="spatial-theme-choices" style="display: none; flex-direction: column; gap: 1">
     <button id="spatial-theme-zen" class="new-list-button">Garden Trellis</button>
     <button id="spatial-theme-rocket" class="new-list-button">Space Rocket</button>
-    <button id="spatial-theme-coral" class="new-list-button">Coral Reef</button>
+    <button id="spatial-theme-coral" class="new-list-button">Coral Reef / Kelp Forest</button>
   </div>
   <button id="spatial-scale" class="new-list-button">Panel size: Standard</button>
   <div class="action-row">

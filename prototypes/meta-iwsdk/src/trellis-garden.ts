@@ -2,6 +2,7 @@ import { bezierVine, VineGrowthController } from './vine-growth.ts';
 import { Group, Mesh, MeshBasicMaterial, InstancedMesh, CylinderGeometry, SphereGeometry,
   TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
 
+import { KelpForest } from './kelp-forest.ts';
 import { SpaceRocket } from './space-rocket.ts';
 import type { TaskTheme } from './spatial-state.ts';
 import { enableInstancedContact, enableVineContact } from './hand-contact.ts';
@@ -23,7 +24,8 @@ export class TrellisGarden {
   private readonly scratch = new Object3D();
   private theme: TaskTheme = 'zen';
   readonly space = new SpaceRocket();
-  readonly coral = new InstancedMesh(new CylinderGeometry(0.6,1,1,6), new MeshBasicMaterial({color:0xffffff}), 48);
+  readonly kelp = new KelpForest();
+  readonly coral = this.kelp.root;
   private elapsed = -1;
   private feedbackRemaining = 0;
   readonly feedback = new Mesh(new SphereGeometry(0.025,10,6),
@@ -100,6 +102,7 @@ export class TrellisGarden {
 
   /** Fixed trellis proportions — width and vine tracks locked for all N 1-10, only DOM container height expands */
   setTaskCount(count: number): void {
+    this.kelp.setTaskCount(count);
     // Keep trellis physical width and vine tracks 100% fixed and consistent for any task count
     // Only vertical DOM container expands via CSS height:auto, WebGL stays at fixed 1.02 to -0.79
     const newBottom = -0.79;
@@ -134,10 +137,7 @@ export class TrellisGarden {
     this.wings.frustumCulled=this.bodies.frustumCulled=false;
     this.root.add(this.wings,this.bodies);
     this.root.add(this.space.root);
-    this.coral.name='Coral Reef branches';
-    for(const mesh of [this.coral]) {
-      enableInstancedContact(mesh);mesh.frustumCulled=false;this.root.add(mesh);
-    }
+    this.root.add(this.coral);
     this.setTheme('zen');
     this.setProgress(0);
   }
@@ -148,31 +148,11 @@ export class TrellisGarden {
   setTheme(theme:TaskTheme):void {
     if(theme!==this.theme)this.cancel();
     this.theme=theme;
-    this.root.name=theme==='rocket'?'Space Rocket':theme==='coral'?'Coral Reef':'Living Trellis Garden';
+    this.root.name=theme==='rocket'?'Space Rocket':theme==='coral'?'Coral Reef / Kelp Forest':'Living Trellis Garden';
     for(const mesh of [this.wood,...this.vines,this.petals,this.centers,this.leaves]) {
       if(mesh)mesh.visible=theme==='zen';
     }
     this.space.root.visible=theme==='rocket';this.coral.visible=theme==='coral';
-  }
-
-  private updateStructures():void {
-    for(let i=0;i<48;i++) {
-      const side=i%2===0?-1:1;
-      const row=Math.floor(i/2);
-      const growth=Math.max(0,Math.min(1,this.ratio*24-row));
-      // Branches grow from each lower corner, with alternating outward forks.
-      const t=(row+1)/24;
-      const point=this.vinePoint(t,side);
-      this.scratch.position.copy(point);
-      this.scratch.rotation.set(0,0,side*(row%2?0.65:-0.3));
-      this.scratch.scale.set(0.018*growth,(0.09+(row%3)*0.015)*growth,0.018*growth);
-      this.scratch.updateMatrix();this.coral.setMatrixAt(i,this.scratch.matrix);
-      this.coral.setColorAt(i,new Color([0xf28183,0xd99bd9,0xffbd78][row%3]));
-    }
-    for(const mesh of [this.coral]) {
-      mesh.instanceMatrix.needsUpdate=true;
-      if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
-    }
   }
 
   vinePoint(t:number,side:number):Vector3 {
@@ -202,6 +182,7 @@ export class TrellisGarden {
       this.root.scale.y = visibleHeight*(bottom-top)/viewport.height/(this.topY-this.bottomY-0.18);
       this.root.position.set(0,visibleHeight*(0.5-top/viewport.height)-(this.topY-0.09)*this.root.scale.y,0);
       if(this.theme==='rocket')this.space.fit(this.root.scale.x,this.root.scale.y);
+      if(this.theme==='coral')this.kelp.fit(this.root.scale.x,this.root.scale.y);
       return;
     }
     // Fit the vine tracks just outside the opaque UIKit board, with 4 cm
@@ -211,6 +192,7 @@ export class TrellisGarden {
     this.root.position.x=0;
     this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
     if(this.theme==='rocket')this.space.fit(this.root.scale.x,this.root.scale.y);
+    if(this.theme==='coral')this.kelp.fit(this.root.scale.x,this.root.scale.y);
   }
 
   setProgress(ratio:number):void {
@@ -218,7 +200,7 @@ export class TrellisGarden {
     if(next===this.ratio)return;
     this.ratio=next;
     this.space.setProgress(next);
-    this.updateStructures();
+    this.kelp.setProgress(next);
     this.growthControllers.forEach(controller=>controller.setProgress(this.ratio));
     for(let i=0;i<24;i++) {
       const t=(Math.floor(i/2)+1)/12;
@@ -248,21 +230,23 @@ export class TrellisGarden {
   }
   celebrate():void {this.finalePending=true;}
   cancel():void {
-    this.space.cancel();
+    this.space.cancel();this.kelp.cancel();
     this.finalePending=false;this.elapsed=-1;this.wings.visible=this.bodies.visible=false;
     this.feedbackRemaining=0;this.feedback.visible=false;
   }
   /** Returns true exactly once, once the growing vine tips have joined. */
   update(delta:number,motion:boolean):boolean {
-    if(this.theme==='rocket') {
+    if(this.theme==='rocket' || this.theme==='coral') {
       this.wings.visible=this.bodies.visible=false;
       this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
       this.feedback.visible=this.feedbackRemaining>0;
       let launched=false;
       if(this.finalePending && this.ratio>=1) {
-        this.finalePending=false;this.space.celebrate(motion);launched=true;
+        this.finalePending=false;
+        if(this.theme==='coral')this.kelp.celebrate(motion);else this.space.celebrate(motion);
+        launched=true;
       }
-      this.space.update(delta,motion);
+      if(this.theme==='coral')this.kelp.update(delta,motion);else this.space.update(delta,motion);
       return launched;
     }
     this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
