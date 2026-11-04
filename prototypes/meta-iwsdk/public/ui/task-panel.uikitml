@@ -322,7 +322,6 @@
   <div id="body-content" style="flex-shrink: 0; flex-direction: column; width: 100%; gap: 1.6">
   <div id="task-view" style="flex-direction: column; width: 100%; gap: 1.6">
   <span class="eyebrow">TO-DO LIST</span>
-  <span id="home-stage-caption" style="display: none">Primitive Cave</span>
     <div id="task-list" style="flex-direction: column; width: 100%; flex-shrink: 0; max-height: 64; overflow: scroll; gap: 1"></div>
   <div class="task-card" style="display: none">
     <span id="task-text" class="task-text">Loading...</span>
@@ -369,7 +368,7 @@
   <button id="spatial-theme" class="new-list-button">Theme: Garden Trellis (choose)</button>
   <div id="spatial-theme-choices" style="display: none; flex-direction: column; gap: 1">
     <button id="spatial-theme-zen" class="new-list-button">Garden Trellis</button>
-    <button id="spatial-theme-house" class="new-list-button">Home Evolution</button>
+    <button id="spatial-theme-rocket" class="new-list-button">Space Rocket</button>
     <button id="spatial-theme-coral" class="new-list-button">Coral Reef</button>
   </div>
   <button id="spatial-scale" class="new-list-button">Panel size: Standard</button>

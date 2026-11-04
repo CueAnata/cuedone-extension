@@ -15,7 +15,7 @@ test('empty garden keeps its margin frame without growing or playing a finale', 
 test('permanent garden has no constellation and keeps a bounded scene during progress updates', () => {
   const scene = new SpatialThemes();
   const names:string[]=[];
-  scene.root.traverse(object=>names.push(object.name));
+  scene.root.traverseVisible(object=>names.push(object.name));
   assert.equal(names.some(name=>/constellation|star/i.test(name)),false);
   const count = scene.zen.children.length;
   for(let i=0;i<500;i++)scene.update(0.5,true,1/90,false);
@@ -28,12 +28,12 @@ test('permanent garden has no constellation and keeps a bounded scene during pro
   scene.dispose();
 });
 
-test('Home Evolution suppresses the entire Zen garden environment at every stage',()=>{
-  const scene=new SpatialThemes();scene.trellis.setTheme('house');
+test('Space Rocket suppresses the entire Zen garden environment at every progress step',()=>{
+  const scene=new SpatialThemes();scene.trellis.setTheme('rocket');
   for(let step=0;step<=6;step++) {
     scene.update(step/6,true,1/90,true);
     assert.equal(scene.zen.visible,false);
-    assert.equal(scene.trellis.house.visible,true);
+    assert.equal(scene.trellis.space.root.visible,true);
   }
   scene.trellis.setTheme('zen');scene.update(0.5,true,1/90,true);
   assert.equal(scene.zen.visible,true);scene.dispose();

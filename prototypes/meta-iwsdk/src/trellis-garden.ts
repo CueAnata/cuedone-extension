@@ -2,7 +2,7 @@ import { bezierVine, VineGrowthController } from './vine-growth.ts';
 import { Group, Mesh, MeshBasicMaterial, InstancedMesh, CylinderGeometry, SphereGeometry,
   TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
 
-import { HomeEvolution } from './home-evolution.ts';
+import { SpaceRocket } from './space-rocket.ts';
 import type { TaskTheme } from './spatial-state.ts';
 import { enableInstancedContact, enableVineContact } from './hand-contact.ts';
 
@@ -22,8 +22,7 @@ export class TrellisGarden {
   private readonly leaves: InstancedMesh;
   private readonly scratch = new Object3D();
   private theme: TaskTheme = 'zen';
-  readonly home = new HomeEvolution();
-  readonly house = this.home.root;
+  readonly space = new SpaceRocket();
   readonly coral = new InstancedMesh(new CylinderGeometry(0.6,1,1,6), new MeshBasicMaterial({color:0xffffff}), 48);
   private elapsed = -1;
   private feedbackRemaining = 0;
@@ -134,7 +133,7 @@ export class TrellisGarden {
     // Flight spans outside the original geometry bounds. Avoid stale instance bounds.
     this.wings.frustumCulled=this.bodies.frustumCulled=false;
     this.root.add(this.wings,this.bodies);
-    this.root.add(this.house);
+    this.root.add(this.space.root);
     this.coral.name='Coral Reef branches';
     for(const mesh of [this.coral]) {
       enableInstancedContact(mesh);mesh.frustumCulled=false;this.root.add(mesh);
@@ -149,11 +148,11 @@ export class TrellisGarden {
   setTheme(theme:TaskTheme):void {
     if(theme!==this.theme)this.cancel();
     this.theme=theme;
-    this.root.name=theme==='house'?'House Evolution':theme==='coral'?'Coral Reef':'Living Trellis Garden';
+    this.root.name=theme==='rocket'?'Space Rocket':theme==='coral'?'Coral Reef':'Living Trellis Garden';
     for(const mesh of [this.wood,...this.vines,this.petals,this.centers,this.leaves]) {
       if(mesh)mesh.visible=theme==='zen';
     }
-    this.house.visible=theme==='house';this.coral.visible=theme==='coral';
+    this.space.root.visible=theme==='rocket';this.coral.visible=theme==='coral';
   }
 
   private updateStructures():void {
@@ -193,11 +192,6 @@ export class TrellisGarden {
     const frame = panel && !panel.hidden ? document.getElementById('browser-garden') : null;
     const rect = frame?.getBoundingClientRect();
     const viewport = frame?.querySelector('#scene-container')?.getBoundingClientRect();
-    if(this.theme==='house') {
-      this.root.scale.setScalar(presentation==='browser'?1.15:0.52);
-      this.root.position.set(0,presentation==='browser'?0:height/2+0.38,0);
-      return;
-    }
     if(rect && viewport && viewport.width > 0 && viewport.height > 0) {
       // Match the companion camera, keeping pixel alignment independent of task count.
       const visibleHeight = 2*1.6*Math.tan(25*Math.PI/180);
@@ -207,6 +201,7 @@ export class TrellisGarden {
       const top = 52, bottom = Math.max(top+1, viewport.height-22);
       this.root.scale.y = visibleHeight*(bottom-top)/viewport.height/(this.topY-this.bottomY-0.18);
       this.root.position.set(0,visibleHeight*(0.5-top/viewport.height)-(this.topY-0.09)*this.root.scale.y,0);
+      if(this.theme==='rocket')this.space.fit(this.root.scale.x,this.root.scale.y);
       return;
     }
     // Fit the vine tracks just outside the opaque UIKit board, with 4 cm
@@ -215,13 +210,14 @@ export class TrellisGarden {
       (height+0.08)/(this.topY-this.bottomY-0.18),1);
     this.root.position.x=0;
     this.root.position.y=-(this.topY+this.bottomY)/2*this.root.scale.y;
+    if(this.theme==='rocket')this.space.fit(this.root.scale.x,this.root.scale.y);
   }
 
   setProgress(ratio:number):void {
     const next=Math.max(0,Math.min(1,ratio));
     if(next===this.ratio)return;
     this.ratio=next;
-    this.home.setProgress(next);
+    this.space.setProgress(next);
     this.updateStructures();
     this.growthControllers.forEach(controller=>controller.setProgress(this.ratio));
     for(let i=0;i<24;i++) {
@@ -252,18 +248,22 @@ export class TrellisGarden {
   }
   celebrate():void {this.finalePending=true;}
   cancel():void {
+    this.space.cancel();
     this.finalePending=false;this.elapsed=-1;this.wings.visible=this.bodies.visible=false;
     this.feedbackRemaining=0;this.feedback.visible=false;
   }
   /** Returns true exactly once, once the growing vine tips have joined. */
   update(delta:number,motion:boolean):boolean {
-    if(this.theme==='house') {
-      this.home.update(delta,motion);
+    if(this.theme==='rocket') {
       this.wings.visible=this.bodies.visible=false;
       this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
       this.feedback.visible=this.feedbackRemaining>0;
-      if(this.finalePending && this.ratio>=0.99999) {this.finalePending=false;return true;}
-      return false;
+      let launched=false;
+      if(this.finalePending && this.ratio>=1) {
+        this.finalePending=false;this.space.celebrate(motion);launched=true;
+      }
+      this.space.update(delta,motion);
+      return launched;
     }
     this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
     this.feedback.visible=this.feedbackRemaining>0;

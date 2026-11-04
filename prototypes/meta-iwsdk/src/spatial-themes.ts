@@ -51,7 +51,7 @@ export class SpatialThemes {
   update(ratio: number, hasTasks: boolean, delta: number, motion: boolean): void {
     this.trellis.root.visible = true;
     this.trellis.setProgress(hasTasks ? ratio : 0);
-    this.zen.visible = hasTasks && this.trellis.taskTheme !== 'house';
+    this.zen.visible = hasTasks && this.trellis.taskTheme !== 'rocket';
     this.stones.forEach((stone,i) => {
       const fill = Math.max(0, Math.min(1, ratio * 5 - i));
       stone.visible = fill > 0;

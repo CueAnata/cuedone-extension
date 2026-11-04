@@ -72,14 +72,14 @@ for(const theme of ['coral'] as const) {
   });
 }
 
-test('Home Evolution never exposes garden geometry or butterflies, including its finale',()=>{
-  const scene=new TrellisGarden();scene.setTheme('house');
+test('Space Rocket never exposes garden geometry or butterflies, including its finale',()=>{
+  const scene=new TrellisGarden();scene.setTheme('rocket');
   for(const ratio of [0,0.2,0.4,0.6,0.8,1]) {
     scene.setProgress(ratio);scene.celebrate();scene.update(1/90,true);
     assert.equal(scene.wings.visible,false);assert.equal(scene.bodies.visible,false);
     assert.equal(scene.vines.some(v=>v.visible),false);
     assert.equal(scene.root.getObjectByName('Rectangular wooden lattice')!.visible,false);
-    assert.equal(scene.home.stages.filter(s=>s.visible).length,1);
+    assert.equal(scene.space.root.visible,true);
   }
   scene.cancel();assert.equal(scene.update(1/90,true),false);
   scene.setProgress(0.5);scene.celebrate();assert.equal(scene.update(1/90,true),false);
