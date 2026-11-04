@@ -7,7 +7,7 @@ import {
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
-import { launchAR, finalTaskAR, traceEnhanced } from './ar-session.js';
+import { launchAR, finalTaskAR, traceEnhanced, FINAL_AR_MS } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
@@ -163,7 +163,7 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     restoreExperience();
     required<HTMLElement>('#browser-panel-experience-help').textContent =
-      '2D Alone stays in the browser. 2D Enhanced opens a 4.5-second immersive AR theme finale when the final task is completed, then returns to 2D.';
+      '2D Alone stays in the browser. 2D Enhanced opens a 5.75-second immersive AR theme finale when the final task is completed, then returns to 2D.';
     experience.addEventListener('change', saveExperience);
     this.cleanupFuncs.push(() => experience.removeEventListener('change', saveExperience));
     this.cleanupFuncs.push(watchLocalStorage(window, [PANEL_EXPERIENCE_KEY], restoreExperience));
@@ -628,7 +628,7 @@ export class TaskPanelSystem extends createSystem({}) {
         if(this.isBrowser())this.syncPresentation(panel, panel.requireElementById<TaskInput>('task-input'));
       };
       // Start the native request in the final-task click, before awaiting storage.
-      // FinalTaskAR counts 4.5 seconds from its first visible saved-list XR frame.
+      // FinalTaskAR counts 5.75 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
         session => finalTaskAR.attach(arRun, session), restoreLayout).then(started => {
         traceEnhanced('launcher-finished', {started});
@@ -663,7 +663,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if (list) list.scrollTo({top: 0, behavior: 'smooth'});
       setTimeout(() => {
         trellis.classList.remove('is-ar-finale');
-      }, enhanced ? 4500 : 6500);
+      }, enhanced ? FINAL_AR_MS : 7750);
     }
     this.render(panel);
   }

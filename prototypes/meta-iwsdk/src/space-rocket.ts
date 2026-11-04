@@ -4,7 +4,7 @@ import { Group, Mesh, InstancedMesh, MeshBasicMaterial, BoxGeometry, SphereGeome
 export const ROCKET_LEFT = -0.43;
 export const ROCKET_BOTTOM = -0.64;
 export const ROCKET_TOP = 0.91;
-export const ROCKET_FINALE_SECONDS = 3.2;
+export const ROCKET_FINALE_SECONDS = 4.45;
 export const rocketAltitude = (ratio:number):number =>
   ROCKET_BOTTOM + Math.max(0,Math.min(1,ratio))*(ROCKET_TOP-ROCKET_BOTTOM);
 

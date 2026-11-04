@@ -65,3 +65,13 @@ test('browser/XR fit uses the same scene, keeps sea creatures proportional and h
   }
   scene.dispose();
 });
+
+test('jellyfish keep pulsing past the old 3.2-second cutoff and settle after the extended finale',()=>{
+  const kelp=new KelpForest();kelp.setTaskCount(1);kelp.setProgress(1);kelp.celebrate(true);
+  for(let i=0;i<360;i++)kelp.update(1/90,true);
+  const pulse=kelp.bells[0].scale.y;kelp.update(1/90,true);
+  assert.notEqual(kelp.bells[0].scale.y,pulse);
+  for(let i=0;i<50;i++)kelp.update(1/90,true);
+  const settled=kelp.bells[0].scale.clone();kelp.update(1/90,true);
+  assert.deepEqual(kelp.bells[0].scale,settled);
+});

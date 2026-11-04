@@ -259,7 +259,7 @@ export class TrellisGarden {
     if(!motion){this.elapsed=-1;this.wings.visible=this.bodies.visible=false;return joined;}
     if(this.elapsed<0)return joined;
     this.elapsed+=Math.min(Math.max(delta,0),1/30);
-    const t=this.elapsed/2;
+    const t=this.elapsed/3.25;
     if(t>=1){this.cancel();return joined;}
     this.wings.visible=this.bodies.visible=true;
     this.wings.material.opacity=this.bodies.material.opacity=1-Math.max(0,(t-0.65)/0.35);

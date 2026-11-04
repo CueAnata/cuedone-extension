@@ -216,7 +216,7 @@ h2 {
   z-index: 10;
   font-size: 1.8rem;
   pointer-events: none;
-  animation: finale-butterflies 4.5s ease-out forwards;
+  animation: finale-butterflies 5.75s ease-out forwards;
 }
 .trellis-frame.is-ar-finale::before {
   content: '🐦';
@@ -226,7 +226,7 @@ h2 {
   z-index: 10;
   font-size: 1.2rem;
   pointer-events: none;
-  animation: finale-birds 4.5s ease-out forwards;
+  animation: finale-birds 5.75s ease-out forwards;
 }
 @keyframes finale-butterflies {
   0% { opacity: 0; transform: translateX(-50%) translateY(0) scale(0.5); }

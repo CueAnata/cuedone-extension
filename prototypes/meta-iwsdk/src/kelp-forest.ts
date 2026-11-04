@@ -3,7 +3,7 @@ import { Group, Mesh, InstancedMesh, MeshBasicMaterial, CylinderGeometry, Sphere
 
 export const KELP_BOTTOM=-0.72;
 export const KELP_TOP=0.87;
-export const KELP_FINALE_SECONDS=3.2;
+export const KELP_FINALE_SECONDS=4.45;
 const up=new Vector3(0,1,0);
 
 /** Task-count sections and fixed reusable sea creatures; no storage or browser/XR dependencies. */

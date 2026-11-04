@@ -88,7 +88,7 @@ export async function launchAR(
 }
 
 
-export const FINAL_AR_MS = 4500;
+export const FINAL_AR_MS = 5750;
 const FINAL_AR_WATCHDOG_MS = 4500;
 /** Local console diagnostics only; never includes task text or sends telemetry. */
 export function traceEnhanced(stage: string, detail: Record<string, unknown> = {}): void {

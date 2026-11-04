@@ -524,7 +524,7 @@ The Garden Trellis animation starts on the first visible, tracked XR frame after
 both saving and session adoption. It animates from the prior exact task ratio to
 the new ratio, using the existing climbing vines, blooming flowers and final-task
 butterflies. The task label gets a winding green vine strike-through; the existing
-bee shares that task's spatial reveal. Exactly 4500ms after this animation start,
+bee shares that task's spatial reveal. Exactly 5750ms after this animation start,
 a timeout ends that specific XR session and returns to the standard DOM panel.
 Manual exit cancels its timer; late session adoption after cancellation closes
 itself. Duplicate completion/entry is guarded; stale task snapshots do not replay.

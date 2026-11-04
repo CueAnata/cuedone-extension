@@ -9,6 +9,8 @@ test('successive XR-sized frame steps advance butterfly flight until it clears',
   assert.equal(garden.update(1/90,true),false);garden.wings.getMatrixAt(0,next);
   assert.notDeepEqual(first.elements,next.elements);
   for(let i=0;i<190;i++)garden.update(1/90,true);
+  assert.equal(garden.wings.visible,true);
+  for(let i=0;i<110;i++)garden.update(1/90,true);
   assert.equal(garden.wings.visible,false);garden.dispose();
 });
 test('vines share the exact top-center meeting point and grow from zero to full geometry',()=>{
@@ -26,7 +28,7 @@ test('butterflies and bird cue wait for joined tips, fire once, then release the
   garden.setProgress(1);assert.equal(garden.update(1/90,true),true);
   assert.equal(garden.wings.visible,true);assert.equal(garden.wings.count,BUTTERFLY_COUNT*2);
   assert.equal(garden.update(1/90,true),false);
-  for(let i=0;i<200;i++)garden.update(1/90,true);
+  for(let i=0;i<300;i++)garden.update(1/90,true);
   assert.equal(garden.wings.visible,false);garden.dispose();
 });
 test('reduced motion preserves the completed garden and suppresses butterfly flight',()=>{

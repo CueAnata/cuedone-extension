@@ -154,14 +154,14 @@ test('native session watchdog ends AR after 4500ms even if no animation frame ev
   assert.equal(f.ends,1);assert.equal(f.controller.busy,false);
 });
 
-test('Enhanced gets 4500ms after its first visible saved-list frame, regardless of setup delay',async()=>{
+test('Enhanced gets 5750ms after its first visible saved-list frame, regardless of setup delay',async()=>{
   const f=finalFixture();const run=f.controller.begin(finaleBefore)!;
   f.controller.attach(run,f.session);
   assert.equal(f.controller.start(f.session,finaleBefore),undefined);
   f.controller.saved(run,finaleAfter);
   assert.deepEqual(f.controller.start(f.session,finaleAfter),{before:finaleBefore,after:finaleAfter});
   assert.equal(f.controller.start(f.session,finaleAfter),undefined);
-  assert.equal(f.delay,FINAL_AR_MS);assert.equal(f.delay,4500);
+  assert.equal(f.delay,FINAL_AR_MS);assert.equal(f.delay,5750);
   f.timer!();await settle();assert.equal(f.ends,1);
 });
 

@@ -25,6 +25,9 @@ test('saved completion restores upright without replay; live finale turns 90 deg
   assert.ok(space.saucer.position.x<space.rocket.position.x);
   assert.equal(space.rocket.position.y,ROCKET_TOP);
   for(let i=0;i<300;i++)space.update(1/90,true);
+  const lingering=space.rocket.position.clone();space.update(1/90,true);
+  assert.notDeepEqual(space.rocket.position,lingering);
+  for(let i=0;i<60;i++)space.update(1/90,true);
   const end=space.rocket.position.clone();space.update(20,true);
   assert.deepEqual(space.rocket.position,end);assert.ok(end.x<0.5);
   space.setProgress(0.5);assert.equal(space.saucer.visible,false);assert.equal(space.heading.rotation.z,0);
