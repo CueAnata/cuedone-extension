@@ -920,7 +920,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
-      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/(this.isRocketTheme()?1.2:this.isCoralTheme()?1.5:4)) : 1;
+      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/(this.isRocketTheme()?1.2:this.isCoralTheme()?1.5:1.25)) : 1;
       entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
       entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${this.isRocketTheme()?45:this.isCoralTheme()?45+Math.sin(entry.elapsed*10)*3:30+Math.sin(entry.elapsed*16)*4}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;
