@@ -1,7 +1,8 @@
 import { bezierVine, VineGrowthController } from './vine-growth.ts';
 import { Group, Mesh, MeshBasicMaterial, InstancedMesh, CylinderGeometry, SphereGeometry,
-  BoxGeometry, TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
+  TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
 
+import { HomeEvolution } from './home-evolution.ts';
 import type { TaskTheme } from './spatial-state.ts';
 import { enableInstancedContact, enableVineContact } from './hand-contact.ts';
 
@@ -21,7 +22,8 @@ export class TrellisGarden {
   private readonly leaves: InstancedMesh;
   private readonly scratch = new Object3D();
   private theme: TaskTheme = 'zen';
-  readonly house = new InstancedMesh(new BoxGeometry(1,1,1), new MeshBasicMaterial({color:0xffffff}), 48);
+  readonly home = new HomeEvolution();
+  readonly house = this.home.root;
   readonly coral = new InstancedMesh(new CylinderGeometry(0.6,1,1,6), new MeshBasicMaterial({color:0xffffff}), 48);
   private elapsed = -1;
   private feedbackRemaining = 0;
@@ -132,14 +134,16 @@ export class TrellisGarden {
     // Flight spans outside the original geometry bounds. Avoid stale instance bounds.
     this.wings.frustumCulled=this.bodies.frustumCulled=false;
     this.root.add(this.wings,this.bodies);
-    this.house.name='House Evolution masonry and roof';
+    this.root.add(this.house);
     this.coral.name='Coral Reef branches';
-    for(const mesh of [this.house,this.coral]) {
+    for(const mesh of [this.coral]) {
       enableInstancedContact(mesh);mesh.frustumCulled=false;this.root.add(mesh);
     }
     this.setTheme('zen');
     this.setProgress(0);
   }
+
+  get taskTheme():TaskTheme {return this.theme;}
 
   /** All themes share progress, fitting, contact, cancellation and finale timing. */
   setTheme(theme:TaskTheme):void {
@@ -157,15 +161,6 @@ export class TrellisGarden {
       const side=i%2===0?-1:1;
       const row=Math.floor(i/2);
       const growth=Math.max(0,Math.min(1,this.ratio*24-row));
-      // Two rising walls evolve into a pitched roof above the task board.
-      const roof=row>=19;
-      const roofStep=(row-19)/4;
-      this.scratch.position.set(roof?side*0.41*(1-roofStep):side*0.41,
-        roof?0.83+roofStep*0.1:-0.69+row*0.08,0.025);
-      this.scratch.rotation.set(0,0,roof?-side*0.24:0);
-      this.scratch.scale.set((roof?0.13:0.065)*growth,0.075*growth,0.045*growth);
-      this.scratch.updateMatrix();this.house.setMatrixAt(i,this.scratch.matrix);
-      this.house.setColorAt(i,new Color(roof?0xa94332:row%4===2?0x74b7d0:0xe1b37b));
       // Branches grow from each lower corner, with alternating outward forks.
       const t=(row+1)/24;
       const point=this.vinePoint(t,side);
@@ -175,7 +170,7 @@ export class TrellisGarden {
       this.scratch.updateMatrix();this.coral.setMatrixAt(i,this.scratch.matrix);
       this.coral.setColorAt(i,new Color([0xf28183,0xd99bd9,0xffbd78][row%3]));
     }
-    for(const mesh of [this.house,this.coral]) {
+    for(const mesh of [this.coral]) {
       mesh.instanceMatrix.needsUpdate=true;
       if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
     }
@@ -198,6 +193,11 @@ export class TrellisGarden {
     const frame = panel && !panel.hidden ? document.getElementById('browser-garden') : null;
     const rect = frame?.getBoundingClientRect();
     const viewport = frame?.querySelector('#scene-container')?.getBoundingClientRect();
+    if(this.theme==='house') {
+      this.root.scale.setScalar(presentation==='browser'?1.15:0.52);
+      this.root.position.set(0,presentation==='browser'?0:height/2+0.38,0);
+      return;
+    }
     if(rect && viewport && viewport.width > 0 && viewport.height > 0) {
       // Match the companion camera, keeping pixel alignment independent of task count.
       const visibleHeight = 2*1.6*Math.tan(25*Math.PI/180);
@@ -221,6 +221,7 @@ export class TrellisGarden {
     const next=Math.max(0,Math.min(1,ratio));
     if(next===this.ratio)return;
     this.ratio=next;
+    this.home.setProgress(next);
     this.updateStructures();
     this.growthControllers.forEach(controller=>controller.setProgress(this.ratio));
     for(let i=0;i<24;i++) {
@@ -256,6 +257,14 @@ export class TrellisGarden {
   }
   /** Returns true exactly once, once the growing vine tips have joined. */
   update(delta:number,motion:boolean):boolean {
+    if(this.theme==='house') {
+      this.home.update(delta,motion);
+      this.wings.visible=this.bodies.visible=false;
+      this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
+      this.feedback.visible=this.feedbackRemaining>0;
+      if(this.finalePending && this.ratio>=0.99999) {this.finalePending=false;return true;}
+      return false;
+    }
     this.feedbackRemaining=Math.max(0,this.feedbackRemaining-Math.min(Math.max(delta,0),1/30));
     this.feedback.visible=this.feedbackRemaining>0;
     let joined=false;

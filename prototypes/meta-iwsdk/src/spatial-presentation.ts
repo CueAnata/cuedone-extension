@@ -2,6 +2,7 @@ import { createSystem, UIKit, UIKitMLAsset, VisibilityState, RayInteractable, Po
 import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion, Vector2 } from 'three';
 import { DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
   SPATIAL_KEY, TASK_THEMES, type TaskTheme, type SpatialSettings } from './spatial-state.js';
+import { HOME_STAGES, homeStage } from './home-evolution.js';
 import { SpatialThemes } from './spatial-themes.js';
 import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
@@ -253,6 +254,9 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.themes.trellis.cancel();this.finaleAudioPending=false;
     }
     this.themes.trellis.setTheme(next.theme);
+    if(this.settings.theme!==next.theme) {this.audio.setAmbient(false);this.audio.stop();}
+    document.getElementById('browser-panel')!.dataset.taskTheme=next.theme;
+    document.getElementById('browser-garden')!.setAttribute('aria-label',next.theme==='house'?'Home Evolution task progress':'Task animation progress');
     this.settings=next;
 
     if(!next.zenSound) {this.audio.stop(); this.finaleAudioPending=false;}
@@ -265,9 +269,10 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if(!this.finaleAudioPending)return;
     this.finaleAudioPending=false;
     if(!this.ready || !this.settings.zenSound ||
-      this.world.visibilityState.value!==VisibilityState.Visible)return;
-    if(!this.audio.play()) {
-      this.message='Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
+      (this.world.visibilityState.value!==VisibilityState.Visible &&
+       !(this.settings.theme==='house' && this.world.visibilityState.value===VisibilityState.NonImmersive)))return;
+    if(!this.audio.play(this.settings.theme==='house'?'scifi':'garden')) {
+      this.message=this.settings.theme==='house'?'Sci-fi sound is blocked here. Enable sound in this window.':'Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
       this.renderControls();
     }
   }
@@ -302,7 +307,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if (session !== this.activeSession) {
       this.activeSession = session;
       this.audio.setAmbient(false);
-      this.audio.setAmbient(this.settings.zenSound);
+      this.audio.setAmbient(this.settings.zenSound && this.settings.theme!=='house');
       this.placeFixedPanel();
       this.fade = 0.3;
       this.revision = progress.revision;
@@ -351,7 +356,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       this.audio.stop(); this.finaleAudioPending = false; return;
     }
     if(standard) {
-      const rect = document.getElementById('browser-garden')!.getBoundingClientRect();
+      const rect = document.getElementById(this.settings.theme==='house'?'scene-container':'browser-garden')!.getBoundingClientRect();
       this.root.visible = rect.width > 0 && rect.height > 0;
       this.root.position.set(0,0,0); this.root.quaternion.identity();
       this.themes.trellis.fit(0.8,1, 'browser');
@@ -370,7 +375,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     }
     const motion = this.settings.motion && !this.media.matches;
     if(this.revision !== progress.revision && !(visible && finalTaskAR.waiting)) {
-      const finalInAR = visible && !finalTaskAR.waiting && progress.finale;
+      const finalInAR = (visible || (standard && this.settings.theme==='house')) && !finalTaskAR.waiting && progress.finale;
       this.finaleAudioPending = finalInAR && this.revision >= 0 && this.ready && this.settings.zenSound;
       if(finalInAR && this.revision >= 0)this.themes.trellis.celebrate();
       else this.themes.trellis.cancel();
@@ -390,12 +395,19 @@ export class SpatialPresentationSystem extends createSystem({}) {
   private advanceGarden(delta:number,visible:boolean):void {
     const motion = this.settings.motion && !this.media.matches;
     if(visible) {
-      this.audio.setAmbient(this.ready && this.settings.zenSound); this.audio.tick(delta);
-    } else {
+      this.audio.setAmbient(this.ready && this.settings.zenSound && this.settings.theme!=='house'); this.audio.tick(delta);
+    } else if(this.settings.theme!=='house') {
       this.audio.setAmbient(false); this.audio.stop(); this.finaleAudioPending = false;
     }
-    this.themes.update(this.tween.tick(delta),progress.total > 0,delta,motion);
-    if(this.themes.trellis.update(delta,motion) && visible)this.playGardenCue();
+    const ratio=this.tween.tick(delta);
+    this.themes.update(ratio,progress.total > 0,delta,motion);
+    const caption=HOME_STAGES[homeStage(progress.total?ratio:0)];
+    const label=document.getElementById('home-stage-caption')!;
+    label.hidden=this.settings.theme!=='house';label.textContent=caption;
+    this.panel.requireElementById('home-stage-caption').setProperties({
+      display:this.settings.theme==='house'?'flex':'none',text:caption,
+    });
+    if(this.themes.trellis.update(delta,motion) && (visible || this.settings.theme==='house'))this.playGardenCue();
   }
 
   private themeChoicesOpen=false;
@@ -416,7 +428,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
       browser.disabled = true;
     }
     const labels: Record<string, string> = {
-      'spatial-sound': `Garden sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
+      'spatial-sound': `${this.settings.theme==='house'?'Sci-fi':'Garden'} sound: ${this.settings.zenSound ? 'On' : 'Off'}`,
       'spatial-motion': `Ambient motion: ${this.settings.motion ? 'On' : 'Off'}`,
     };
     for (const [id, text] of Object.entries(labels)) {

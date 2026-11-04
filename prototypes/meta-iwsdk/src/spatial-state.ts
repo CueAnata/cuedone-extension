@@ -2,7 +2,7 @@ import type { TaskStorage } from './task-store.js';
 
 export const SPATIAL_KEY = 'cuedone.vr.personal.spatial.v1';
 export const ANCHOR_KEY = 'cuedone.vr.personal.anchor.v1';
-export const TASK_THEMES = [['zen', 'Garden Trellis'], ['house', 'House Evolution'], ['coral', 'Coral Reef']] as const;
+export const TASK_THEMES = [['zen', 'Garden Trellis'], ['house', 'Home Evolution'], ['coral', 'Coral Reef']] as const;
 export type TaskTheme = typeof TASK_THEMES[number][0];
 export type Placement = 'head' | 'hand' | 'room';
 export interface SpatialSettings {

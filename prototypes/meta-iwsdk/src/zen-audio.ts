@@ -38,7 +38,7 @@ export class ZenAudio {
   }
 
   /** Never queues playback for later activation. A locked document stays silent. */
-  play(): boolean {
+  play(style: 'garden' | 'scifi' = 'garden'): boolean {
     this.stop();
     const context = this.context;
     if (!context || context.state !== 'running') return false;
@@ -56,9 +56,9 @@ export class ZenAudio {
       this.envelope.gain.exponentialRampToValueAtTime(0.0001,now+1.8);
       this.envelope.connect(this.panner);
       this.panner.connect(context.destination);
-      for (const [index,frequency] of [1800,2400,2100,2700].entries()) {
+      for (const [index,frequency] of (style==='scifi'?[220,330,440,880]:[1800,2400,2100,2700]).entries()) {
         const oscillator = context.createOscillator();
-        oscillator.type = 'sine'; oscillator.frequency.value = frequency;
+        oscillator.type = style==='scifi'?'triangle':'sine'; oscillator.frequency.value = frequency;
         const start=now+index*0.3;
         const voice=context.createGain();
         voice.gain.setValueAtTime(0,start);
@@ -66,8 +66,8 @@ export class ZenAudio {
         voice.gain.exponentialRampToValueAtTime(0.0001,start+0.24);
         {
           oscillator.frequency.setValueAtTime(frequency,start);
-          oscillator.frequency.exponentialRampToValueAtTime(frequency*1.5,start+0.08);
-          oscillator.frequency.exponentialRampToValueAtTime(frequency*0.85,start+0.22);
+          oscillator.frequency.exponentialRampToValueAtTime(frequency*(style==='scifi'?2:1.5),start+0.08);
+          oscillator.frequency.exponentialRampToValueAtTime(frequency*(style==='scifi'?1.5:0.85),start+0.22);
         }
         oscillator.connect(voice);voice.connect(this.envelope);this.voices.push(voice);
         this.sources.push(oscillator);

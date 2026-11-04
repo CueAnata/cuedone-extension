@@ -162,7 +162,7 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     restoreExperience();
     required<HTMLElement>('#browser-panel-experience-help').textContent =
-      '2D Alone stays in the browser. 2D Enhanced opens a 4.5-second immersive AR trellis finale when the final task is completed, then returns to 2D.';
+      '2D Alone stays in the browser. 2D Enhanced opens a 4.5-second immersive AR theme finale when the final task is completed, then returns to 2D.';
     experience.addEventListener('change', saveExperience);
     this.cleanupFuncs.push(() => experience.removeEventListener('change', saveExperience));
     this.cleanupFuncs.push(watchLocalStorage(window, [PANEL_EXPERIENCE_KEY], restoreExperience));
@@ -173,7 +173,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.root.append(this.browser.xrButton);
     required('#browser-garden').removeAttribute('role');
     required<HTMLElement>('#browser-task-view > .browser-entry-help').textContent =
-      'Garden progress follows each completed task. Choose 2D Alone or 2D Enhanced in Settings.';
+      'Theme progress follows each completed task. Choose 2D Alone or 2D Enhanced in Settings.';
     const gear = new Settings({width: 3, height: 3, color: '#332D25'});
     const settingsButton = panel.requireElementById<UIKit.Container>('settings-toggle');
     settingsButton.name = 'Settings';
@@ -653,7 +653,7 @@ export class TaskPanelSystem extends createSystem({}) {
       else finalTaskAR.cancel(arRun);
     }
     const trellis = document.querySelector('.trellis-frame') as HTMLElement | null;
-    if(isFinal && trellis && !arRun) {
+    if(isFinal && trellis && !arRun && !this.isHomeTheme()) {
       trellis.classList.add('is-ar-finale');
       // Bird chirp in 2D finale — resume AudioContext on checkbox click gesture for Quest Browser
       this.playBirdChirp();
@@ -730,7 +730,8 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private renderRows(panel: UIKitMLAsset, disabled: boolean): void {
-    const signature = JSON.stringify([this.session.tasks, disabled]);
+    const home=this.isHomeTheme();
+    const signature = JSON.stringify([this.session.tasks, disabled,home]);
     if(signature === this.rowSignature)return;
     this.rowSignature = signature;
     const animate = this.session.message === 'Task complete.' || this.remoteFeedback;
@@ -755,10 +756,17 @@ export class TaskPanelSystem extends createSystem({}) {
       label.add(text);
       row.add(check, label);
       const pollen = new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: '50%', height: 0.35, width: elapsed >= 0 ? `${elapsed*100}%` : task.completed ? '100%' : '0%', backgroundColor: '#ECAF18', opacity: 0.9, pointerEvents: 'none'});
-      pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
+      if(!home)pollen.add(new UIKit.Container({positionType: 'absolute', positionLeft: 0, positionTop: -0.4, width: '100%', height: 1.1, backgroundColor: '#FFD651', opacity: 0.25, pointerEvents: 'none'}));
       const bee = new UIKit.Container({positionType: 'absolute', positionTop: '30%', positionLeft: 0, width: 4, height: 2.5, borderRadius: 2, backgroundColor: '#FFC83D', display: 'none', pointerEvents: 'none'});
-      for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
-      for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
+      if(home) {
+        bee.setProperties({backgroundColor:'#8B6344',width:0.6,height:3.5,borderRadius:0});
+        bee.add(new UIKit.Container({positionType:'absolute',positionLeft:-1.1,positionTop:-0.6,width:2.8,height:1.1,backgroundColor:'#7D8791'}));
+        pollen.setProperties({backgroundColor:'#708294'});
+        if(!home)pollen.add(new UIKit.Container({positionType:'absolute',positionRight:0,positionTop:-0.7,width:0.25,height:1.5,backgroundColor:'#526575'}));
+      } else {
+        for(const x of [1,2.3])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, width: 0.5, height: 2.5, backgroundColor: '#332D25'}));
+        for(const x of [0.3,2])bee.add(new UIKit.Container({positionType: 'absolute', positionLeft: x, positionTop: -1, width: 1.7, height: 1.3, borderRadius: 1, backgroundColor: '#FFFFFF', opacity: 0.85}));
+      }
       label.add(pollen, bee);
       row.setProperties({onClick: () => {
         if(!disabled && this.world.visibilityState.value === VisibilityState.Visible)void this.completeTask(panel, task.id);
@@ -777,7 +785,11 @@ export class TaskPanelSystem extends createSystem({}) {
       const labelText = document.createElement('span'); labelText.className = 'task-label-text'; labelText.textContent = task.text;
       browserLabel.append(labelText);
       const line = document.createElement('span'); line.className = 'pollen-line'; line.setAttribute('aria-hidden', 'true');
-      const beeIcon = document.createElement('span'); beeIcon.className = 'task-bee'; beeIcon.textContent = '🐝'; beeIcon.setAttribute('aria-hidden', 'true');
+      const beeIcon = document.createElement('span'); beeIcon.className = 'task-bee'; beeIcon.textContent = home?'🔨':'🐝'; beeIcon.setAttribute('aria-hidden', 'true');
+      if(home) {
+        const nail=document.createElement('span');nail.className='task-nail';nail.setAttribute('aria-hidden','true');
+        browserLabel.append(nail);
+      }
       browserLabel.append(line, beeIcon);
       button.append(checkbox, browserLabel);
       if(fresh && this.motionEnabled && !this.reducedMotion.matches)button.classList.add('pollinating');
@@ -883,7 +895,10 @@ export class TaskPanelSystem extends createSystem({}) {
     // CSS owns the browser lattice; retain the surrounding 3D vines and flowers.
     // Restore the wooden mesh in immersive mode, where the CSS frame is absent.
     const wood = this.world.scene.getObjectByName('Rectangular wooden lattice');
-    if(wood) wood.visible = !this.isBrowser();
+    if(wood) wood.visible = !this.isBrowser() && this.browser.root.dataset.taskTheme==='zen';
+    // Theme changes rebuild presentation only, never task state or completion events.
+    this.renderRows(panel,this.session.phase!=='ready');
+    if(this.isHomeTheme() && this.audioContext) {void this.audioContext.close().catch(()=>{});this.audioContext=null;}
     if(finalTaskAR.error && this.session.message !== finalTaskAR.error) {this.session.message = finalTaskAR.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
@@ -895,12 +910,14 @@ export class TaskPanelSystem extends createSystem({}) {
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
     for(const entry of this.rows) {
       if(entry.elapsed < 0)continue;
-      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/4) : 1;
+      entry.elapsed = motion ? Math.min(1, entry.elapsed + Math.max(0, Math.min(delta, 1/30))/(this.isHomeTheme()?0.9:4)) : 1;
       entry.pollen.setProperties({width: `${entry.elapsed*100}%`});
-      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*16)*4}%`});
+      entry.bee.setProperties({display: entry.elapsed < 1 ? 'flex' : 'none', positionLeft: `${entry.elapsed*100}%`, positionTop: `${30+Math.sin(entry.elapsed*(this.isHomeTheme()?Math.PI*8:16))*(this.isHomeTheme()?16:4)}%`});
       if(entry.elapsed === 1)entry.elapsed = -1;
     }
   }
+
+  private isHomeTheme():boolean {return this.browser.root.dataset.taskTheme==='house';}
 
   private isBrowser(): boolean {
     return this.world.visibilityState.value === VisibilityState.NonImmersive;
@@ -967,7 +984,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const collapsedBar = required<HTMLElement>('#browser-collapsed-bar');
     const collapsedText = required<HTMLElement>('#browser-collapsed-text');
     collapsedBar.hidden = !this.collapsed;
-    collapsedText.textContent = `${this.session.completedCount}/${this.session.tasks.length} Complete [ Garden 🌿 ]`;
+    collapsedText.textContent = `${this.session.completedCount}/${this.session.tasks.length} Complete [ ${this.isHomeTheme()?'Home':'Garden 🌿'} ]`;
     required<HTMLElement>('#browser-panel').dataset.collapsed = String(this.collapsed);
     const collapse = required<HTMLButtonElement>('#browser-collapse-toggle');
     collapse.textContent = this.collapsed ? '⌄' : '⌃';

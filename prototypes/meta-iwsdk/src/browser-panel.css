@@ -763,3 +763,43 @@ h2 {
   color: #333;
   outline: none;
 }
+
+/* Home Evolution owns a scene above the list, with no garden scenery or frame. */
+.browser-panel[data-task-theme="house"] #browser-garden {
+  display: flex; flex-direction: column; padding: 0; border: 0; border-radius: 12px;
+  background: #eaf0f6; box-shadow: none; height: auto; min-height: 460px; max-height: none;
+}
+.browser-panel[data-task-theme="house"] .trellis-pillar,
+.browser-panel[data-task-theme="house"] #browser-garden::before,
+.browser-panel[data-task-theme="house"] #browser-garden::after { display: none !important; }
+.browser-panel[data-task-theme="house"] #scene-container {
+  position: relative; inset: auto; width: 100%; height: 220px; flex: 0 0 220px;
+  overflow: hidden; border-radius: 12px 12px 0 0;
+}
+.browser-panel[data-task-theme="house"] .trellis-content {
+  margin: 0; border: 0; border-radius: 0; width: 100%; box-sizing: border-box; background: #fffaf0;
+}
+.browser-panel[data-task-theme="house"] .task-bee { font-size: 24px; transform-origin: bottom right; }
+.browser-panel[data-task-theme="house"] .pollen-line { background: #708294; box-shadow: none; }
+.task-nail { position: absolute; top: 50%; right: 0; width: 12px; height: 2px; background: #536576; opacity: 0; }
+.task-nail::after { content: ''; position: absolute; right: 0; top: -4px; height: 10px; width: 2px; background: #536576; }
+.browser-panel[data-task-theme="house"] .pollinating .task-bee { animation: home-hammer 0.9s ease-in-out forwards; }
+.browser-panel[data-task-theme="house"] .pollinating .pollen-line { animation: home-strike 0.9s ease-out forwards; }
+.browser-panel[data-task-theme="house"] .pollinating .task-nail { animation: home-nail 0.9s ease-out forwards; }
+@keyframes home-hammer {
+  0% { opacity: 1; left: 0; transform: rotate(-40deg); }
+  25%,55%,85% { transform: rotate(-45deg) translateY(-8px); }
+  35%,65%,95% { transform: rotate(12deg) translateY(3px); }
+  95% { opacity: 1; left: 100%; }
+  100% { opacity: 0; left: 100%; }
+}
+@keyframes home-strike { from { width: 0; } to { width: 100%; } }
+@keyframes home-nail { 0% { opacity: 1; right: 100%; } 95% { opacity: 1; right: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .browser-panel[data-task-theme="house"] .pollinating .task-bee,
+  .browser-panel[data-task-theme="house"] .pollinating .task-nail { display: none; }
+  .browser-panel[data-task-theme="house"] .pollinating .pollen-line { animation: none; width: 100%; }
+}
+.browser-panel[data-task-theme="house"].motion-off .task-bee,
+.browser-panel[data-task-theme="house"].motion-off .task-nail { display:none; }
+#home-stage-caption { margin: 0; padding: 6px 8px; text-align: center; color: #243b54; font-size: 0.85rem; font-weight: 700; }

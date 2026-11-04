@@ -52,7 +52,7 @@ test('trellis contact is transient feedback and never grows vines or starts a fi
   assert.equal(garden.feedback.visible,false);assert.equal(garden.vines[0].geometry.drawRange.count,before);garden.dispose();
 });
 
-for(const theme of ['house','coral'] as const) {
+for(const theme of ['coral'] as const) {
   test(`${theme} shares reversible progress, bounded geometry and one-shot finale`,()=>{
     const scene=new TrellisGarden();scene.setTheme(theme);
     const mesh=scene[theme], matrix=new Matrix4();
@@ -71,3 +71,18 @@ for(const theme of ['house','coral'] as const) {
     assert.equal(scene.root.children.length,count);scene.dispose();
   });
 }
+
+test('Home Evolution never exposes garden geometry or butterflies, including its finale',()=>{
+  const scene=new TrellisGarden();scene.setTheme('house');
+  for(const ratio of [0,0.2,0.4,0.6,0.8,1]) {
+    scene.setProgress(ratio);scene.celebrate();scene.update(1/90,true);
+    assert.equal(scene.wings.visible,false);assert.equal(scene.bodies.visible,false);
+    assert.equal(scene.vines.some(v=>v.visible),false);
+    assert.equal(scene.root.getObjectByName('Rectangular wooden lattice')!.visible,false);
+    assert.equal(scene.home.stages.filter(s=>s.visible).length,1);
+  }
+  scene.cancel();assert.equal(scene.update(1/90,true),false);
+  scene.setProgress(0.5);scene.celebrate();assert.equal(scene.update(1/90,true),false);
+  scene.setProgress(1);assert.equal(scene.update(1/90,false),true);
+  assert.equal(scene.update(1/90,true),false);scene.dispose();
+});
