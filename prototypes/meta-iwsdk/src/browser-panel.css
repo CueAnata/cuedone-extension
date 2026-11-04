@@ -792,8 +792,8 @@ h2 {
   content:''; position:absolute; left:3px; top:-4px; width:2px; height:17px;
   background:#fffde7; box-shadow:0 0 4px #bcefff;
 }
-.browser-panel[data-task-theme="rocket"] .pollinating .task-shooting-star { display:block; animation:rocket-shooting-star 0.9s ease-out both; }
-.browser-panel[data-task-theme="rocket"] .pollinating .pollen-line { animation:rocket-strike 0.9s ease-out both; }
+.browser-panel[data-task-theme="rocket"] .pollinating .task-shooting-star { display:block; animation:rocket-shooting-star 1.2s ease-out both; }
+.browser-panel[data-task-theme="rocket"] .pollinating .pollen-line { animation:rocket-strike 1.2s ease-out both; }
 @keyframes rocket-shooting-star { 0% {left:0;opacity:0;} 8% {opacity:1;} 92% {opacity:1;} 100% {left:100%;opacity:0;} }
 @keyframes rocket-strike { from {transform:scaleX(0);} to {transform:scaleX(1);} }
 .browser-panel[data-task-theme="rocket"].motion-off .task-shooting-star {display:none;}
