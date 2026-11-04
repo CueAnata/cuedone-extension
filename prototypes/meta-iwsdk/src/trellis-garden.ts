@@ -1,7 +1,8 @@
 import { bezierVine, VineGrowthController } from './vine-growth.ts';
 import { Group, Mesh, MeshBasicMaterial, InstancedMesh, CylinderGeometry, SphereGeometry,
-  TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
+  BoxGeometry, TubeGeometry, Vector3, Object3D, DoubleSide, Color } from 'three';
 
+import type { TaskTheme } from './spatial-state.ts';
 import { enableInstancedContact, enableVineContact } from './hand-contact.ts';
 
 export const VINE_SEGMENTS = 120;
@@ -19,6 +20,9 @@ export class TrellisGarden {
   private readonly centers: InstancedMesh;
   private readonly leaves: InstancedMesh;
   private readonly scratch = new Object3D();
+  private theme: TaskTheme = 'zen';
+  readonly house = new InstancedMesh(new BoxGeometry(1,1,1), new MeshBasicMaterial({color:0xffffff}), 48);
+  readonly coral = new InstancedMesh(new CylinderGeometry(0.6,1,1,6), new MeshBasicMaterial({color:0xffffff}), 48);
   private elapsed = -1;
   private feedbackRemaining = 0;
   readonly feedback = new Mesh(new SphereGeometry(0.025,10,6),
@@ -128,7 +132,53 @@ export class TrellisGarden {
     // Flight spans outside the original geometry bounds. Avoid stale instance bounds.
     this.wings.frustumCulled=this.bodies.frustumCulled=false;
     this.root.add(this.wings,this.bodies);
+    this.house.name='House Evolution masonry and roof';
+    this.coral.name='Coral Reef branches';
+    for(const mesh of [this.house,this.coral]) {
+      enableInstancedContact(mesh);mesh.frustumCulled=false;this.root.add(mesh);
+    }
+    this.setTheme('zen');
     this.setProgress(0);
+  }
+
+  /** All themes share progress, fitting, contact, cancellation and finale timing. */
+  setTheme(theme:TaskTheme):void {
+    if(theme!==this.theme)this.cancel();
+    this.theme=theme;
+    this.root.name=theme==='house'?'House Evolution':theme==='coral'?'Coral Reef':'Living Trellis Garden';
+    for(const mesh of [this.wood,...this.vines,this.petals,this.centers,this.leaves]) {
+      if(mesh)mesh.visible=theme==='zen';
+    }
+    this.house.visible=theme==='house';this.coral.visible=theme==='coral';
+  }
+
+  private updateStructures():void {
+    for(let i=0;i<48;i++) {
+      const side=i%2===0?-1:1;
+      const row=Math.floor(i/2);
+      const growth=Math.max(0,Math.min(1,this.ratio*24-row));
+      // Two rising walls evolve into a pitched roof above the task board.
+      const roof=row>=19;
+      const roofStep=(row-19)/4;
+      this.scratch.position.set(roof?side*0.41*(1-roofStep):side*0.41,
+        roof?0.83+roofStep*0.1:-0.69+row*0.08,0.025);
+      this.scratch.rotation.set(0,0,roof?-side*0.24:0);
+      this.scratch.scale.set((roof?0.13:0.065)*growth,0.075*growth,0.045*growth);
+      this.scratch.updateMatrix();this.house.setMatrixAt(i,this.scratch.matrix);
+      this.house.setColorAt(i,new Color(roof?0xa94332:row%4===2?0x74b7d0:0xe1b37b));
+      // Branches grow from each lower corner, with alternating outward forks.
+      const t=(row+1)/24;
+      const point=this.vinePoint(t,side);
+      this.scratch.position.copy(point);
+      this.scratch.rotation.set(0,0,side*(row%2?0.65:-0.3));
+      this.scratch.scale.set(0.018*growth,(0.09+(row%3)*0.015)*growth,0.018*growth);
+      this.scratch.updateMatrix();this.coral.setMatrixAt(i,this.scratch.matrix);
+      this.coral.setColorAt(i,new Color([0xf28183,0xd99bd9,0xffbd78][row%3]));
+    }
+    for(const mesh of [this.house,this.coral]) {
+      mesh.instanceMatrix.needsUpdate=true;
+      if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+    }
   }
 
   vinePoint(t:number,side:number):Vector3 {
@@ -171,6 +221,7 @@ export class TrellisGarden {
     const next=Math.max(0,Math.min(1,ratio));
     if(next===this.ratio)return;
     this.ratio=next;
+    this.updateStructures();
     this.growthControllers.forEach(controller=>controller.setProgress(this.ratio));
     for(let i=0;i<24;i++) {
       const t=(Math.floor(i/2)+1)/12;

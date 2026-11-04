@@ -2,10 +2,12 @@ import type { TaskStorage } from './task-store.js';
 
 export const SPATIAL_KEY = 'cuedone.vr.personal.spatial.v1';
 export const ANCHOR_KEY = 'cuedone.vr.personal.anchor.v1';
+export const TASK_THEMES = [['zen', 'Garden Trellis'], ['house', 'House Evolution'], ['coral', 'Coral Reef']] as const;
+export type TaskTheme = typeof TASK_THEMES[number][0];
 export type Placement = 'head' | 'hand' | 'room';
 export interface SpatialSettings {
   version: 1;
-  theme: 'zen';
+  theme: TaskTheme;
   scale: 1 | 1.25 | 1.5;
   placement: Placement;
   motion: boolean;
@@ -20,14 +22,14 @@ export function readSpatial(storage: TaskStorage): SpatialSettings {
   if (raw === null) return { ...DEFAULT_SPATIAL };
   const value = JSON.parse(raw);
   if (!value || value.version !== 1 ||
-      !['constellation', 'zen'].includes(value.theme) ||
+      !['constellation', 'zen', 'house', 'coral'].includes(value.theme) ||
       ![1, 1.25, 1.5].includes(value.scale) ||
       !['head', 'hand', 'controller', 'room'].includes(value.placement) ||
       typeof value.motion !== 'boolean' ||
       (value.zenSound !== undefined && typeof value.zenSound !== 'boolean')) {
     throw new Error('Unsupported spatial preferences.');
   }
-  return { version: 1, theme: 'zen', scale: value.scale,
+  return { version: 1, theme: value.theme === 'constellation' ? 'zen' : value.theme, scale: value.scale,
     placement: value.placement === 'controller' ? 'hand' : value.placement, motion: value.motion, zenSound: value.zenSound ?? false };
 }
 

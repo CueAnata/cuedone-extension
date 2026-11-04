@@ -160,3 +160,14 @@ test('a new drag invalidates an old in-flight anchor creation before it can repl
   assert.equal(recovery.anchor,placed);
   assert.equal(store.data.get(ANCHOR_KEY),'saved-room');
 });
+
+test('task themes persist independently of task state and legacy themes restore Garden Trellis',()=>{
+  const store=storage();
+  for(const theme of ['zen','house','coral'] as const) {
+    saveSpatial(store,{...DEFAULT_SPATIAL,theme});
+    assert.equal(readSpatial(store).theme,theme);
+  }
+  store.data.set(SPATIAL_KEY,JSON.stringify({...DEFAULT_SPATIAL,theme:'constellation'}));
+  assert.equal(readSpatial(store).theme,'zen');
+  assert.deepEqual([...store.data.keys()],[SPATIAL_KEY]);
+});

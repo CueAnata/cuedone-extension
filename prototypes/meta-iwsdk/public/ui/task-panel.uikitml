@@ -365,6 +365,12 @@
   </div>
   <div id="settings-panel" style="display: none; flex-direction: column; width: 100%; gap: 1.4">
   <button id="settings-done" class="new-list-button">Done</button>
+  <button id="spatial-theme" class="new-list-button">Theme: Garden Trellis (choose)</button>
+  <div id="spatial-theme-choices" style="display: none; flex-direction: column; gap: 1">
+    <button id="spatial-theme-zen" class="new-list-button">Garden Trellis</button>
+    <button id="spatial-theme-house" class="new-list-button">House Evolution</button>
+    <button id="spatial-theme-coral" class="new-list-button">Coral Reef</button>
+  </div>
   <button id="spatial-scale" class="new-list-button">Panel size: Standard</button>
   <div class="action-row">
     <button id="spatial-placement" class="action">Panel: Head relative</button>

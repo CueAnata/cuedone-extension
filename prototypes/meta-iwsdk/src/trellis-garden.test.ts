@@ -51,3 +51,23 @@ test('trellis contact is transient feedback and never grows vines or starts a fi
   for(let i=0;i<30;i++)garden.update(1/90,false);
   assert.equal(garden.feedback.visible,false);assert.equal(garden.vines[0].geometry.drawRange.count,before);garden.dispose();
 });
+
+for(const theme of ['house','coral'] as const) {
+  test(`${theme} shares reversible progress, bounded geometry and one-shot finale`,()=>{
+    const scene=new TrellisGarden();scene.setTheme(theme);
+    const mesh=scene[theme], matrix=new Matrix4();
+    assert.equal(mesh.visible,true);assert.equal(scene.vines[0].visible,false);
+    const count=scene.root.children.length;
+    mesh.getMatrixAt(0,matrix);assert.equal(matrix.determinant(),0);
+    scene.setProgress(0.5);mesh.getMatrixAt(0,matrix);assert.ok(matrix.determinant()>0);
+    mesh.getMatrixAt(47,matrix);assert.equal(matrix.determinant(),0);
+    scene.celebrate();assert.equal(scene.update(1/90,true),false);
+    scene.setProgress(1);assert.equal(scene.update(1/90,true),true);
+    assert.equal(scene.update(1/90,true),false);
+    scene.setTheme('zen');assert.equal(scene.wings.visible,false);
+    scene.setTheme(theme);assert.equal(scene.update(1/90,true),false);
+    scene.setProgress(0);mesh.getMatrixAt(0,matrix);assert.equal(matrix.determinant(),0);
+    for(let i=0;i<100;i++)scene.setProgress((i%10)/10);
+    assert.equal(scene.root.children.length,count);scene.dispose();
+  });
+}

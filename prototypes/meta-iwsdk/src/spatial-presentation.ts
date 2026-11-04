@@ -1,7 +1,7 @@
 import { createSystem, UIKit, UIKitMLAsset, VisibilityState, RayInteractable, PokeInteractable } from '@iwsdk/core';
 import { Group, Mesh, MeshBasicMaterial, SphereGeometry, BackSide, Vector3, Quaternion, Vector2 } from 'three';
 import { DEFAULT_SPATIAL, ProgressTween, readSpatial, saveSpatial,
-  SPATIAL_KEY, type SpatialSettings } from './spatial-state.js';
+  SPATIAL_KEY, TASK_THEMES, type TaskTheme, type SpatialSettings } from './spatial-state.js';
 import { SpatialThemes } from './spatial-themes.js';
 import { watchLocalStorage, withLocalLock } from './local-sync.js';
 import { GardenProgress, type SpatialTask } from './garden-progress.js';
@@ -95,7 +95,26 @@ export class SpatialPresentationSystem extends createSystem({}) {
     this.fadeMesh.renderOrder = 10000;
     this.world.scene.add(this.fadeMesh);
 
+    const themeLabel=document.createElement('label');
+    themeLabel.className='browser-setting-choice';themeLabel.textContent='Task animation theme';
+    const themeSelect=document.createElement('select');themeSelect.id='browser-task-theme';
+    for(const [value,label] of TASK_THEMES)themeSelect.add(new Option(label,value));
+    themeLabel.append(themeSelect);
+    document.getElementById('browser-settings-panel')!.prepend(themeLabel);
+    const changeTheme=()=>{void this.change({theme:themeSelect.value as TaskTheme});};
+    themeSelect.addEventListener('change',changeTheme);
+    this.cleanupFuncs.push(()=>{themeSelect.removeEventListener('change',changeTheme);themeLabel.remove();});
     const controls: Array<[string, () => void]> = [
+      ['spatial-theme', () => {
+        const choices=this.panel.requireElementById('spatial-theme-choices');
+        this.themeChoicesOpen=!this.themeChoicesOpen;
+        choices.setProperties({display:this.themeChoicesOpen?'flex':'none'});
+      }],
+      ...TASK_THEMES.map(([theme]) => [`spatial-theme-${theme}`, () => {
+        this.themeChoicesOpen=false;
+        this.panel.requireElementById('spatial-theme-choices').setProperties({display:'none'});
+        void this.change({theme});
+      }] as [string, () => void]),
       ['spatial-motion', () => this.change({motion: !this.settings.motion})],
       ['spatial-sound', () => {void this.change({zenSound: !this.settings.zenSound}, this.unlockAudio());}],
       ['spatial-recenter', () => {this.cancelMove(); this.faceLocked = true; this.placeFixedPanel(); this.renderControls();}],
@@ -105,10 +124,10 @@ export class SpatialPresentationSystem extends createSystem({}) {
       const spatial = this.panel.requireElementById(id);
       const browser = document.getElementById(`browser-${id}`)!;
       spatial.addEventListener('click', action);
-      browser.addEventListener('click', action);
+      browser?.addEventListener('click', action);
       this.cleanupFuncs.push(() => {
         spatial.removeEventListener('click', action);
-        browser.removeEventListener('click', action);
+        browser?.removeEventListener('click', action);
       });
     }
     const unlock = () => {void this.unlockAudio();};
@@ -230,6 +249,10 @@ export class SpatialPresentationSystem extends createSystem({}) {
   }
 
   private applySettings(next: SpatialSettings): void {
+    if(this.settings.theme!==next.theme) {
+      this.themes.trellis.cancel();this.finaleAudioPending=false;
+    }
+    this.themes.trellis.setTheme(next.theme);
     this.settings=next;
 
     if(!next.zenSound) {this.audio.stop(); this.finaleAudioPending=false;}
@@ -375,7 +398,14 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if(this.themes.trellis.update(delta,motion) && visible)this.playGardenCue();
   }
 
+  private themeChoicesOpen=false;
+
   private renderControls(): void {
+    const select=document.getElementById('browser-task-theme') as HTMLSelectElement;
+    select.value=this.settings.theme;select.disabled=!this.ready;
+    this.panel.requireElementById('spatial-theme').setProperties({
+      text:`Theme: ${TASK_THEMES.find(([id])=>id===this.settings.theme)![1]} (choose)`,disabled:!this.ready,
+    });
     for(const [id, text] of [
       ['spatial-scale', 'Panel size: 0.8 x 1.0 m (fixed)'],
       ['spatial-placement', this.faceLocked ? 'Panel: Face centered' : 'Panel: Placed by hand'],
