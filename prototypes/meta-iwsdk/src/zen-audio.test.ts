@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ZenAudio } from './zen-audio.ts';
 function context(state='running') {
-  const sources: Array<{stopped:boolean;stops:number;onended:null|(()=>void);frequency:ReturnType<typeof param>;start:(t:number)=>void;stop:()=>void;connect:()=>void;disconnect:()=>void}> = [];
+  const sources: Array<{stopped:boolean;stops:number;onended:null|(()=>void);frequency:ReturnType<typeof param>;start:(t:number)=>void;stop:()=>void;connect:(target:unknown)=>void;disconnect:()=>void}> = [];
   function param(){return{value:0,setValueAtTime(value:number){this.value=value;},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}};}
-  const node=()=>({connect(){},disconnect(){},gain:param()});
+  const node=()=>({connections:[] as unknown[],disconnects:0,connect(target:unknown){this.connections.push(target);},disconnect(){this.connections=[];this.disconnects++;},gain:param()});
+  const gains:ReturnType<typeof node>[]=[];
+  const panners:ReturnType<typeof node>[]=[];
   const c={state,currentTime:0,destination:{},listener:Object.fromEntries(['positionX','positionY','positionZ','forwardX','forwardY','forwardZ','upX','upY','upZ'].map(k=>[k,param()])),
     async resume(){this.state='running';},async close(){this.state='closed';},
-    createGain:node,
-    createPanner:()=>({...node(),positionX:param(),positionY:param(),positionZ:param()}),
+    createGain:()=>{const gain=node();gains.push(gain);return gain;},
+    createPanner:()=>{const panner={...node(),positionX:param(),positionY:param(),positionZ:param()};panners.push(panner);return panner;},
     createOscillator:()=>{const o={...node(),stopped:false,stops:0,onended:null,frequency:param(),start(){},stop(){this.stopped=true;this.stops++;}};sources.push(o);return o;},
   };
-  return{c,sources,audio:new ZenAudio(()=>c as unknown as AudioContext)};
+  return{c,sources,gains,panners,audio:new ZenAudio(()=>c as unknown as AudioContext)};
 }
 test('locked or inactive audio never queues a future bird cue',async()=>{
   const {audio,sources}=context();assert.equal(audio.play(),false);
@@ -99,3 +101,21 @@ for(const style of ['bubble','whale'] as const) {
     const count=sources.length;await audio.unlock();assert.equal(sources.length,count);audio.dispose();
   });
 }
+
+test('all theme cues route through one 2.5x master after spatial panning, without stacking gain',async()=>{
+  const {audio,c,gains,panners,sources}=context();await audio.unlock();
+  for(const style of ['scifi','bubble','whale','garden'] as const) {
+    assert.equal(audio.play(style),true);
+    const masters=gains.filter(gain=>gain.gain.value===2.5);
+    assert.equal(masters.length,1);
+    assert.deepEqual(masters[0].connections,[c.destination]);
+    assert.deepEqual(panners[panners.length-1].connections,[masters[0]]);
+    assert.equal(gains.filter(gain=>gain.connections.includes(c.destination)).length,1);
+    assert.equal(panners.some(panner=>panner.connections.includes(c.destination)),false);
+    await audio.unlock();
+  }
+  const master=gains.find(gain=>gain.gain.value===2.5)!;
+  audio.stop();assert.ok(sources.every(source=>source.stopped));
+  assert.equal(master.disconnects,0);
+  audio.dispose();assert.equal(master.disconnects,1);assert.equal(c.state,'closed');
+});

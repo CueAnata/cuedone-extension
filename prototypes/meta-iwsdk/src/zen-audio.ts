@@ -1,3 +1,5 @@
+import { themeAudioOutput, releaseThemeAudioOutput } from './theme-audio-output.ts';
+
 /** Local synthesized theme cues; only the garden has an ambient bird loop. */
 export class ZenAudio {
   private context: AudioContext | null = null;
@@ -59,7 +61,7 @@ export class ZenAudio {
       this.envelope.gain.linearRampToValueAtTime(0.045,now+(bubble?0.015:0.08));
       this.envelope.gain.exponentialRampToValueAtTime(0.0001,now+(bubble?0.26:whale?2:1.8));
       this.envelope.connect(this.panner);
-      this.panner.connect(context.destination);
+      this.panner.connect(themeAudioOutput(context));
       for (const [index,frequency] of frequencies.entries()) {
         const oscillator = context.createOscillator();
         oscillator.type = style==='scifi'?'triangle':'sine'; oscillator.frequency.value = frequency;
@@ -110,5 +112,9 @@ export class ZenAudio {
     this.envelope?.disconnect(); this.panner?.disconnect();
     this.envelope = null; this.panner = null;
   }
-  dispose(): void { this.stop(); void this.context?.close().catch(() => {}); this.context = null; }
+  dispose(): void {
+    this.stop();
+    if(this.context) {releaseThemeAudioOutput(this.context);void this.context.close().catch(() => {});}
+    this.context = null;
+  }
 }

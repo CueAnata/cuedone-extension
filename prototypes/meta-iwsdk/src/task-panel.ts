@@ -6,6 +6,7 @@ import {
 } from '@iwsdk/core';
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
+import { themeAudioOutput, releaseThemeAudioOutput } from './theme-audio-output.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
 import { launchAR, finalTaskAR, traceEnhanced, FINAL_AR_MS } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
@@ -530,7 +531,7 @@ export class TaskPanelSystem extends createSystem({}) {
         osc.frequency.exponentialRampToValueAtTime(frequency * 1.22, start + 0.09);
         osc.frequency.exponentialRampToValueAtTime(frequency * 0.92, start + 0.24);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(themeAudioOutput(ctx));
         osc.start(start);
         osc.stop(start + 0.28);
         osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch {} };
@@ -907,7 +908,7 @@ export class TaskPanelSystem extends createSystem({}) {
     if(wood) wood.visible = !this.isBrowser() && this.browser.root.dataset.taskTheme==='zen';
     // Theme changes rebuild presentation only, never task state or completion events.
     this.renderRows(panel,this.session.phase!=='ready');
-    if((this.isRocketTheme() || this.isCoralTheme()) && this.audioContext) {void this.audioContext.close().catch(()=>{});this.audioContext=null;}
+    if((this.isRocketTheme() || this.isCoralTheme()) && this.audioContext) {releaseThemeAudioOutput(this.audioContext);void this.audioContext.close().catch(()=>{});this.audioContext=null;}
     if(finalTaskAR.error && this.session.message !== finalTaskAR.error) {this.session.message = finalTaskAR.error; this.render(panel);}
     this.motionEnabled = panel.requireElementById('spatial-motion').properties.value.text === 'Ambient motion: On';
     const motion = this.motionEnabled && !this.reducedMotion.matches && this.progression === 'smooth';
