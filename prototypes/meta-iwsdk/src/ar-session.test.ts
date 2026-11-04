@@ -202,3 +202,22 @@ test('watchdog is attached before asynchronous reference-space setup can stall',
   assert.equal(await pending,false);
   assert.equal(f.world.sessionRequestPending,false);
 });
+
+test('layout restoration waits for renderer teardown even if browser visibility returns first',async t=>{
+  const f=fixture(t),frames:FrameRequestCallback[]=[];let restored=0;
+  Object.defineProperty(globalThis,'requestAnimationFrame',{configurable:true,
+    value:(callback:FrameRequestCallback)=>{frames.push(callback);return frames.length;}});
+  await launchAR(f.world,f.overlay,{async requestSession(){return f.session;}},undefined,()=>{restored++;});
+  f.world.renderer.xr.isPresenting=true;
+  await f.session.end();frames.shift()!(0);assert.equal(restored,0);
+  f.world.renderer.xr.isPresenting=false;
+  frames.shift()!(0);assert.equal(restored,1);
+});
+
+test('VR fallback uses the same post-teardown layout restoration as AR',async t=>{
+  const f=fixture(t);let restored=0;
+  await launchAR(f.world,f.overlay,{async requestSession(mode){
+    if(mode==='immersive-ar')throw new Error('AR unavailable');return f.session;
+  }},undefined,()=>{restored++;});
+  await f.session.end();assert.equal(restored,1);
+});

@@ -7,6 +7,7 @@ import {
 import { ChevronDown } from '@pmndrs/uikit-lucide/dist/ChevronDown.js';
 import { ChevronUp } from '@pmndrs/uikit-lucide/dist/ChevronUp.js';
 import { themeAudioOutput, releaseThemeAudioOutput } from './theme-audio-output.js';
+import { BrowserPanelLayout } from './browser-panel-layout.js';
 import { Settings } from '@pmndrs/uikit-lucide/dist/Settings.js';
 import { launchAR, finalTaskAR, traceEnhanced, FINAL_AR_MS } from './ar-session.js';
 import { publishSpatialProgress } from './spatial-presentation.js';
@@ -79,8 +80,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private entryOpen = false;
   private browserEntryFinished = false;
   private browserEntryCollapsed = false;
-  private browserXRScroll?: Array<{element: Element; top: number; left: number}>;
-  private browserXRPosition?: {left: number; top: number};
+  private browserXRLayout?: BrowserPanelLayout;
   private addingTask = false;
   private finishingEntry = false;
   private reviewingClear = false;
@@ -101,6 +101,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
+    this.cleanupFuncs.push(()=>{this.browserXRLayout?.release();this.browserXRLayout?.restore();this.browserXRLayout=undefined;});
     document.getElementById('browser-done-button')?.remove();
     panel.requireElementById('done-button').setProperties({display: 'none'});
     required<HTMLElement>('#browser-reset-button').textContent = 'Reset List';
@@ -283,9 +284,14 @@ export class TaskPanelSystem extends createSystem({}) {
     const overlay = required<HTMLElement>('#xr-overlay');
     const overlayExit = required<HTMLButtonElement>('#overlay-exit-button');
     const onEnterXR = () => {
-      void launchAR(this.world, overlay).catch(error => {
+      if(this.world.session || this.world.sessionRequestPending)return;
+      const restoreLayout=this.preserveBrowserLayout(panel,taskInput);
+      void launchAR(this.world, overlay,undefined,undefined,restoreLayout).then(started=>{
+        if(!started)restoreLayout();
+      }).catch(error => {
         this.session.message = `Could not start mixed reality: ${error instanceof Error ? error.message : 'Try again in Quest Browser.'}`;
         this.render(panel);
+        restoreLayout();
       });
     };
     const onExitXR = () => {
@@ -596,38 +602,8 @@ export class TaskPanelSystem extends createSystem({}) {
     const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
     let enhancedError = '';
     if(arRun) {
-      // Capture the working view before native XR can resize or blur the page.
-      const root = this.browser.root;
-      const style = root.getAttribute('style');
-      const rect = root.getBoundingClientRect();
-      this.browserXRPosition = {left: rect.left, top: rect.top};
-      const spacer = document.createElement('div');
-      spacer.setAttribute('aria-hidden', 'true');
-      const computed = getComputedStyle(root);
-      Object.assign(spacer.style, {width: `${rect.width}px`, height: `${rect.height}px`,
-        flex: '0 0 auto', margin: computed.margin, visibility: 'hidden', pointerEvents: 'none'});
-      root.before(spacer);
-      this.browserXRScroll = [document.scrollingElement, root,
-        document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
-        .filter((element): element is Element => element !== null)
-        .map(element => ({element, top: element.scrollTop, left: element.scrollLeft}));
-      root.style.width = root.style.minWidth = root.style.maxWidth = `${rect.width}px`;
-      root.style.height = root.style.minHeight = root.style.maxHeight = `${rect.height}px`;
-      // Pin document coordinates while the browser changes its XR viewport.
-      root.style.position = 'absolute';
-      root.style.margin = '0';
-      root.style.left = `${rect.left + window.scrollX}px`;
-      root.style.top = `${rect.top + window.scrollY}px`;
-      let restored = false;
-      const restoreLayout = () => {
-        if(restored)return;
-        restored = true;
-        if(style === null)root.removeAttribute('style');
-        else root.setAttribute('style', style);
-        spacer.remove();
-        // On request failure there is no visibility transition to restore scroll.
-        if(this.isBrowser())this.syncPresentation(panel, panel.requireElementById<TaskInput>('task-input'));
-      };
+      // Snapshot before requestSession can resize or blur the browser viewport.
+      const restoreLayout=this.preserveBrowserLayout(panel,panel.requireElementById<TaskInput>('task-input'));
       // Start the native request in the final-task click, before awaiting storage.
       // FinalTaskAR counts 5.75 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
@@ -638,10 +614,10 @@ export class TaskPanelSystem extends createSystem({}) {
         const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
         traceEnhanced('launcher-rejected', {error: reason, stack: error instanceof Error ? error.stack : undefined});
         finalTaskAR.cancel(arRun);
-        restoreLayout();
         enhancedError = `Enhanced AR failed: ${reason}`;
         this.session.message = enhancedError;
         this.render(panel);
+        restoreLayout();
       });
     }
     const pending = this.session.completeTask(taskId);
@@ -935,19 +911,29 @@ export class TaskPanelSystem extends createSystem({}) {
     return this.world.visibilityState.value === VisibilityState.NonImmersive;
   }
 
+  private preserveBrowserLayout(panel:UIKitMLAsset,input:TaskInput):()=>void {
+    if(!this.isBrowser() || this.browserXRLayout)return ()=>{};
+    const elements=[document.scrollingElement,this.browser.root,
+      document.querySelector('#browser-panel-body'),document.querySelector('#browser-task-list')]
+      .filter((element):element is Element=>element!==null);
+    const layout=new BrowserPanelLayout(this.browser.root,elements);
+    this.browserXRLayout=layout;
+    let released=false;
+    return ()=>{
+      if(released)return;
+      released=true;layout.release();
+      if(this.isBrowser())this.syncPresentation(panel,input);
+    };
+  }
+
   private syncPresentation(panel: UIKitMLAsset, input: TaskInput): void {
     const isBrowser = this.isBrowser();
-    if(!isBrowser && !this.browserXRScroll) {
-      this.browserXRScroll = [document.scrollingElement, this.browser.root,
-        document.querySelector('#browser-panel-body'), document.querySelector('#browser-task-list')]
-        .filter((element): element is Element => element !== null)
-        .map(element => ({element, top: element.scrollTop, left: element.scrollLeft}));
-    }
+    const pinned=this.browserXRLayout?.pinned ?? false;
     panel.visible = !isBrowser;
     // Retain the DOM footprint so XR entry never collapses the page's layout.
     this.browser.root.hidden = false;
-    this.browser.root.dataset.xrSuspended = String(!isBrowser);
-    this.browser.root.inert = !isBrowser;
+    this.browser.root.dataset.xrSuspended = String(!isBrowser || pinned);
+    this.browser.root.inert = !isBrowser || pinned;
 
     if (isBrowser) {
       input.input.blur();
@@ -958,24 +944,9 @@ export class TaskPanelSystem extends createSystem({}) {
     }
 
     this.render(panel);
-    if(isBrowser && this.browserXRScroll) {
-      // Restore scroll before the browser can paint the returning panel.
-      for(const {element, top, left} of this.browserXRScroll) {
-        element.scrollTop = top;
-        element.scrollLeft = left;
-      }
-      this.browserXRScroll = undefined;
-    }
-    if(isBrowser && this.browserXRPosition) {
-      // Correct any viewport/reflow displacement after styles and scroll restore.
-      // Relative offsets preserve the panel's DOM footprint and existing scale.
-      const root = this.browser.root;
-      const rect = root.getBoundingClientRect();
-      const style = getComputedStyle(root);
-      root.style.left = `${(parseFloat(style.left) || 0) + this.browserXRPosition.left - rect.left}px`;
-      root.style.top = `${(parseFloat(style.top) || 0) + this.browserXRPosition.top - rect.top}px`;
-      this.browserXRPosition = undefined;
-    }
+    // Visibility can become NonImmersive before Three finishes session teardown.
+    // The saved coordinates must survive until the temporary styles/spacer are gone.
+    if(isBrowser && this.browserXRLayout?.restore())this.browserXRLayout=undefined;
   }
 
   private render(panel: UIKitMLAsset): void {
