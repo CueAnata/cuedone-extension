@@ -110,11 +110,11 @@ test('immersive reactivation resumes suspended birds and restarts the entry cue'
   assert.equal(sources.length,8);audio.dispose();
 });
 
-test('sci-fi finale uses lower electronic tones, has no bird frequencies and stops immediately',async()=>{
+test('rocket finale uses one shooting-star sweep and stops immediately',async()=>{
   const {audio,sources}=context();assert.equal(audio.play('scifi'),false);
   await audio.unlock();assert.equal(audio.play('scifi'),true);
-  assert.equal(sources.length,4);
-  assert.ok(sources.every(source=>source.frequency.value<1800));
+  assert.equal(sources.length,1);
+  assert.equal(sources[0].frequency.value,400);
   audio.stop();assert.ok(sources.every(source=>source.stops===2));audio.dispose();
 });
 

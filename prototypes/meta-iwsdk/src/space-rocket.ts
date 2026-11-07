@@ -5,6 +5,8 @@ export const ROCKET_LEFT = -0.43;
 export const ROCKET_BOTTOM = -0.64;
 export const ROCKET_TOP = 0.91;
 export const ROCKET_FINALE_SECONDS = 4.45;
+// Travel 115% of the 1.1-unit scene width so the trailing saucer also clears it.
+export const ROCKET_CHASE_DISTANCE = 1.1 * 1.15;
 export const rocketAltitude = (ratio:number):number =>
   ROCKET_BOTTOM + Math.max(0,Math.min(1,ratio))*(ROCKET_TOP-ROCKET_BOTTOM);
 
@@ -91,11 +93,11 @@ export class SpaceRocket {
   celebrate(motion:boolean):void {
     if(this.ratio<1)return;
     this.elapsed=motion?0:ROCKET_FINALE_SECONDS;
-    this.finished=false;this.saucer.visible=true;this.trail.visible=false;
+    this.finished=false;this.rocket.visible=true;this.saucer.visible=true;this.trail.visible=false;
     this.update(0,motion);
   }
   cancel():void {
-    this.elapsed=-1;this.finished=false;this.saucer.visible=false;
+    this.elapsed=-1;this.finished=false;this.rocket.visible=true;this.saucer.visible=false;
     this.heading.rotation.z=0;this.rocket.position.set(ROCKET_LEFT,rocketAltitude(this.ratio),0.03);
     this.setProgress(this.ratio);
   }
@@ -108,8 +110,9 @@ export class SpaceRocket {
     const turn=Math.min(1,this.elapsed/0.4);
     const flight=Math.max(0,(this.elapsed-0.4)/(ROCKET_FINALE_SECONDS-0.4));
     this.heading.rotation.z=-Math.PI/2*turn*turn*(3-2*turn);
-    this.rocket.position.set(ROCKET_LEFT+flight*0.82,ROCKET_TOP,0.03);
+    this.rocket.position.set(ROCKET_LEFT+flight*(motion?ROCKET_CHASE_DISTANCE:0.82),ROCKET_TOP,0.03);
     this.saucer.position.set(Math.max(-0.48,this.rocket.position.x-0.18),ROCKET_TOP-0.025,0.03);
-    if(this.elapsed>=ROCKET_FINALE_SECONDS) {this.elapsed=-1;this.finished=true;}
+    if(this.elapsed>=ROCKET_FINALE_SECONDS) {this.elapsed=-1;this.finished=true;
+      if(motion)this.rocket.visible=this.saucer.visible=false;}
   }
 }

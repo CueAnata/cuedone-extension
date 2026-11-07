@@ -29,8 +29,10 @@ test('saved completion restores upright without replay; live finale turns 90 deg
   assert.notDeepEqual(space.rocket.position,lingering);
   for(let i=0;i<60;i++)space.update(1/90,true);
   const end=space.rocket.position.clone();space.update(20,true);
-  assert.deepEqual(space.rocket.position,end);assert.ok(end.x<0.5);
-  space.setProgress(0.5);assert.equal(space.saucer.visible,false);assert.equal(space.heading.rotation.z,0);
+  assert.deepEqual(space.rocket.position,end);assert.ok(end.x>0.55);
+  assert.ok(space.saucer.position.x-0.075*space.saucer.scale.x>0.55);
+  assert.equal(space.rocket.visible,false);assert.equal(space.saucer.visible,false);
+  space.setProgress(0.5);assert.equal(space.rocket.visible,true);assert.equal(space.saucer.visible,false);assert.equal(space.heading.rotation.z,0);
 });
 test('reduced motion shows a static finale and suspension never jumps a live flight',()=>{
   const space=new SpaceRocket();space.setProgress(1);space.celebrate(false);
