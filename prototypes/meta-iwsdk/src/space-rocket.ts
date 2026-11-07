@@ -21,6 +21,7 @@ export class SpaceRocket {
   readonly backdrop=new Mesh(new BoxGeometry(1.1,1.98,0.01),new MeshBasicMaterial({color:0x080f2d}));
   private ratio=0;
   private elapsed=-1;
+  get finaleActive():boolean {return this.elapsed>=0;}
   private finished=false;
   private phase=0;
   private readonly planets:Group[]=[];

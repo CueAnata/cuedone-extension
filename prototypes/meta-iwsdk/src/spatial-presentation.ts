@@ -277,7 +277,8 @@ export class SpatialPresentationSystem extends createSystem({}) {
     if(!this.ready || !this.settings.zenSound ||
       (this.world.visibilityState.value!==VisibilityState.Visible &&
        !(this.settings.theme!=='zen' && this.world.visibilityState.value===VisibilityState.NonImmersive)))return;
-    if(!this.audio.play(this.settings.theme==='rocket'?'scifi':this.settings.theme==='coral'?'whale':'garden')) {
+    if(!this.audio.play(this.settings.theme==='rocket'?'scifi':this.settings.theme==='coral'?'whale':'garden',
+      this.settings.theme!=='zen' && this.themes.trellis.finaleActive)) {
       this.message=this.settings.theme==='coral'?'Ocean sound is blocked here. Enable sound in this window.':this.settings.theme==='rocket'?'Sci-fi sound is blocked here. Enable sound in this window.':'Garden sound is blocked here. Use Garden sound in this VR window to enable it.';
       this.renderControls();
     }
@@ -411,6 +412,7 @@ export class SpatialPresentationSystem extends createSystem({}) {
     const ratio=this.tween.tick(delta);
     this.themes.update(ratio,progress.total > 0,delta,motion);
     if(this.themes.trellis.update(delta,motion) && (visible || this.settings.theme!=='zen'))this.playGardenCue();
+    if(!this.themes.trellis.finaleActive)this.audio.stopLoop();
   }
 
   private themeChoicesOpen=false;

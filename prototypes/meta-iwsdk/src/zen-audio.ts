@@ -11,6 +11,9 @@ export class ZenAudio {
   private generation = 0;
   private ambient = false;
   private ambientWait = 0;
+  private looping = false;
+
+  stopLoop(): void { if(this.looping)this.stop(); }
 
   setAmbient(enabled: boolean): void {
     if(enabled === this.ambient)return;
@@ -41,12 +44,13 @@ export class ZenAudio {
   }
 
   /** Never queues playback for later activation. A locked document stays silent. */
-  play(style: 'garden' | 'scifi' | 'bubble' | 'whale' = 'garden'): boolean {
+  play(style: 'garden' | 'scifi' | 'bubble' | 'whale' = 'garden', loop = false): boolean {
     this.stop();
     const context = this.context;
     if (!context || context.state !== 'running') return false;
     try {
       const generation = this.generation;
+      this.looping = loop;
       this.panner = context.createPanner();
       this.panner.panningModel = 'HRTF';
       this.panner.distanceModel = 'inverse';
@@ -89,7 +93,10 @@ export class ZenAudio {
       let remaining = this.sources.length;
       this.sources.forEach(source => { source.onended = () => {
         source.disconnect();
-        if (--remaining === 0 && generation === this.generation) this.stop();
+        if (--remaining === 0 && generation === this.generation) {
+          if(this.looping)this.play(style, true);
+          else this.stop();
+        }
       }; });
       return true;
     } catch { this.stop(); return false; }
@@ -108,6 +115,7 @@ export class ZenAudio {
     }
   }
   stop(): void {
+    this.looping = false;
     this.generation++;
     for (const source of this.sources) {
       source.onended = null;

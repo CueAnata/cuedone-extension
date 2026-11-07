@@ -25,6 +25,7 @@ export class KelpForest {
   private ratio=0;
   private phase=0;
   private elapsed=-1;
+  get finaleActive():boolean {return this.elapsed>=0;}
   private opened=false;
   private bend=0;
   private aspect=1;

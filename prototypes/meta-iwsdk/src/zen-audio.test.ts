@@ -28,6 +28,21 @@ test('only garden birds use the 2.5 kHz low-pass filter and stopping disconnects
   assert.deepEqual(filter.connections,[panners[panners.length-1]]);
   audio.stop();assert.equal(filter.disconnects,1);audio.dispose();
 });
+for(const style of ['scifi','whale'] as const) {
+  test(`${style} finale repeats until stopped and stale ended callbacks cannot restart it`,async()=>{
+    const {audio,sources}=context();await audio.unlock();
+    assert.equal(audio.play(style,true),true);
+    const first=sources.slice();const callbacks=first.map(source=>source.onended!);
+    callbacks.forEach(callback=>callback());
+    assert.equal(sources.length,first.length*2);
+    const stale=sources.slice(first.length).map(source=>source.onended!);
+    audio.stopLoop();const count=sources.length;
+    stale.forEach(callback=>callback());
+    assert.equal(sources.length,count);assert.ok(sources.every(source=>source.stopped));
+    audio.play(style,true);audio.stop();
+    assert.ok(sources.every(source=>source.onended===null));audio.dispose();
+  });
+}
 test('locked or inactive audio never queues a future bird cue',async()=>{
   const {audio,sources}=context();assert.equal(audio.play(),false);
   await audio.unlock();assert.equal(sources.length,0);audio.dispose();

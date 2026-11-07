@@ -228,6 +228,9 @@ export class TrellisGarden {
     this.feedback.position.copy(point);this.root.worldToLocal(this.feedback.position);
     this.feedbackRemaining=0.2;this.feedback.visible=true;
   }
+  get finaleActive():boolean {
+    return this.theme==='rocket' ? this.space.finaleActive : this.theme==='coral' && this.kelp.finaleActive;
+  }
   celebrate():void {this.finalePending=true;}
   cancel():void {
     this.space.cancel();this.kelp.cancel();
