@@ -854,3 +854,12 @@ h2 {
   .browser-panel[data-task-theme="coral"] .pollinating .pollen-line {animation:none;transform:scaleX(1);}
 }
 @media(max-width:380px) {.browser-panel[data-task-theme="coral"] #browser-garden {padding-inline:44px;}}
+.edit-modal {
+  width: min(90vw, 420px); box-sizing: border-box;
+  padding: 20px; border: 2px solid #96550c; border-radius: 12px;
+  background: #fffaf0; color: #332d25;
+}
+.edit-modal::backdrop { background: rgb(0 0 0 / 55%); }
+.edit-modal input { width: 100%; box-sizing: border-box; min-height: 48px; margin-bottom: 16px; font-size: 1rem; }
+.edit-modal button { min-height: 44px; margin: 4px; padding: 8px 12px; font-size: 1rem; }
+.edit-modal .danger-btn { color: #a12416; }

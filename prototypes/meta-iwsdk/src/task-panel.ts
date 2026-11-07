@@ -819,30 +819,51 @@ export class TaskPanelSystem extends createSystem({}) {
       editBtn.disabled = disabled;
       editBtn.addEventListener('click', event => {
         event.stopPropagation();
-        if(this.session.phase !== 'ready' || item.querySelector('input'))return;
+        if(this.session.phase !== 'ready' || document.getElementById('task-edit-modal'))return;
+        const dialog = document.createElement('dialog');
+        dialog.id = 'task-edit-modal'; dialog.className = 'edit-modal';
+        dialog.setAttribute('aria-label', 'Edit task');
         const editor = document.createElement('input');
-        editor.type = 'text'; editor.maxLength = 200;
+        editor.type = 'text'; editor.maxLength = 200; editor.id = 'task-edit-input';
+        editor.placeholder = 'Edit task name...';
         editor.className = 'inline-task-edit-input'; editor.enterKeyHint = 'done';
         editor.setAttribute('aria-label', 'Edit task text');
-        button.replaceWith(editor);
+        const save = document.createElement('button');
+        save.id = 'save-task-btn'; save.type = 'button'; save.textContent = 'Save';
+        const remove = document.createElement('button');
+        remove.id = 'delete-task-btn'; remove.type = 'button';
+        remove.className = 'danger-btn'; remove.textContent = 'Delete Task';
+        const dismiss = document.createElement('button');
+        dismiss.type = 'button'; dismiss.textContent = 'Cancel';
+        const feedback = document.createElement('p'); feedback.setAttribute('role', 'status');
+        dialog.append(editor, save, remove, dismiss, feedback);
+        this.browser.root.append(dialog);
         let finished = false;
-        const cancel = () => {finished = true; editor.replaceWith(button); editBtn.focus({preventScroll: true});};
-        const commitEdit = async () => {
+        const cancel = () => {
+          finished = true; dialog.close(); dialog.remove();
+          if(editBtn.isConnected)editBtn.focus({preventScroll: true});
+          else this.browser.input.focus({preventScroll: true});
+        };
+        const commitEdit = async (deleting = false) => {
           if(finished || this.session.phase !== 'ready')return;
           const text = normalizeTaskText(editor.value);
-          if(!text || text === task.text) {cancel(); return;}
+          if(!deleting && !text) {feedback.textContent = 'Enter a task name.'; editor.focus(); return;}
+          if(!deleting && text === task.text) {cancel(); return;}
           const before = this.session.tasks;
           if(!before.some(current => current.id === task.id && current.text === task.text)) {cancel(); return;}
-          const next = before.map(current => current.id === task.id ? {...current, text} : current);
+          const next = deleting ? before.filter(current => current.id !== task.id) :
+            before.map(current => current.id === task.id ? {...current, text} : current);
           finished = true; editor.readOnly = true; this.session.phase = 'saving';
+          save.disabled = remove.disabled = dismiss.disabled = true;
           try {
             await this.taskStore.save(next, before);
             this.session.tasks = next;
-            this.session.message = 'Saved: task text updated.';
+            this.session.message = deleting ? 'Saved: task deleted.' : 'Saved: task text updated.';
+            dialog.close(); dialog.remove();
             this.rowSignature = '';
           } catch(error) {
             this.session.message = error instanceof Error ? error.message : 'CueDone could not save the task text.';
-            finished = false;
+            finished = false; feedback.textContent = this.session.message;
             if(error instanceof Error && error.name === 'TaskConflictError') {
               await this.session.load();
               this.session.message = 'The list changed in another window. Review it and try again.';
@@ -851,19 +872,28 @@ export class TaskPanelSystem extends createSystem({}) {
           } finally {
             if(this.session.phase === 'saving')this.session.phase = 'ready';
             editor.readOnly = false;
+            save.disabled = remove.disabled = dismiss.disabled = false;
             this.render(panel);
+            if(!dialog.isConnected)this.browser.input.focus({preventScroll: true});
           }
         };
         editor.addEventListener('keydown', key => {
           key.stopPropagation();
           if(key.isComposing)return;
           if(key.key === 'Enter') {key.preventDefault(); void commitEdit();}
-          else if(key.key === 'Escape') {key.preventDefault(); cancel();}
+          else if(key.key === 'Escape') {key.preventDefault(); if(!finished)cancel();}
         });
-        editor.addEventListener('blur', () => {void commitEdit();});
-        // Focus the mounted, cleared field in the pencil's user gesture so the
-        // Quest system keyboard attaches to this editor ready for replacement text.
-        editor.value = '';
+        save.addEventListener('click', () => {void commitEdit();});
+        remove.addEventListener('click', () => {void commitEdit(true);});
+        dismiss.addEventListener('click', cancel);
+        dialog.addEventListener('cancel', event => {
+          event.preventDefault();
+          if(!finished)cancel();
+        });
+        dialog.showModal();
+        // Focus the mounted field in the pencil's user gesture so the
+        // Quest system keyboard attaches to this editor ready for editing.
+        editor.value = task.text;
         editor.focus({preventScroll: true});
         // Retry after the WebXR keyboard handoff without stealing later focus.
         window.setTimeout(() => {
