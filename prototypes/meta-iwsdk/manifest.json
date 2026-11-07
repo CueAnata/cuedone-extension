@@ -1,7 +1,8 @@
 {
   "name": "CueDone",
   "short_name": "CueDone",
-  "start_url": "./?v=pwa",
+  "start_url": "/cuedone-extension/?v=pwa",
+  "scope": "/cuedone-extension/",
   "display": "standalone",
   "background_color": "#fffdf8",
   "theme_color": "#96550c",
