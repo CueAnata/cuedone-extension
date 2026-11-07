@@ -7,6 +7,7 @@ export class ZenAudio {
   private voices: GainNode[] = [];
   private panner: PannerNode | null = null;
   private envelope: GainNode | null = null;
+  private birdFilter: BiquadFilterNode | null = null;
   private generation = 0;
   private ambient = false;
   private ambientWait = 0;
@@ -60,7 +61,13 @@ export class ZenAudio {
       this.envelope.gain.setValueAtTime(0,now);
       this.envelope.gain.linearRampToValueAtTime(0.045,now+(bubble?0.015:0.08));
       this.envelope.gain.exponentialRampToValueAtTime(0.0001,now+(bubble?0.26:whale?2:1.8));
-      this.envelope.connect(this.panner);
+      if(style === 'garden') {
+        this.birdFilter = context.createBiquadFilter();
+        this.birdFilter.type = 'lowpass';
+        this.birdFilter.frequency.setValueAtTime(2500, now);
+        this.envelope.connect(this.birdFilter);
+        this.birdFilter.connect(this.panner);
+      } else this.envelope.connect(this.panner);
       this.panner.connect(themeAudioOutput(context));
       for (const [index,frequency] of frequencies.entries()) {
         const oscillator = context.createOscillator();
@@ -110,6 +117,7 @@ export class ZenAudio {
     this.sources = [];
     this.voices.forEach(voice=>voice.disconnect());this.voices=[];
     this.envelope?.disconnect(); this.panner?.disconnect();
+    this.birdFilter?.disconnect(); this.birdFilter = null;
     this.envelope = null; this.panner = null;
   }
   dispose(): void {

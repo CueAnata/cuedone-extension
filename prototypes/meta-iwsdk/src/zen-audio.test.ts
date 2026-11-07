@@ -7,14 +7,27 @@ function context(state='running') {
   const node=()=>({connections:[] as unknown[],disconnects:0,connect(target:unknown){this.connections.push(target);},disconnect(){this.connections=[];this.disconnects++;},gain:param()});
   const gains:ReturnType<typeof node>[]=[];
   const panners:ReturnType<typeof node>[]=[];
+  const filters:Array<ReturnType<typeof node> & {type:string;frequency:ReturnType<typeof param>}> = [];
   const c={state,currentTime:0,destination:{},listener:Object.fromEntries(['positionX','positionY','positionZ','forwardX','forwardY','forwardZ','upX','upY','upZ'].map(k=>[k,param()])),
     async resume(){this.state='running';},async close(){this.state='closed';},
     createGain:()=>{const gain=node();gains.push(gain);return gain;},
+    createBiquadFilter:()=>{const filter={...node(),type:'',frequency:param()};filters.push(filter);return filter;},
     createPanner:()=>{const panner={...node(),positionX:param(),positionY:param(),positionZ:param()};panners.push(panner);return panner;},
     createOscillator:()=>{const o={...node(),stopped:false,stops:0,onended:null,frequency:param(),start(){},stop(){this.stopped=true;this.stops++;}};sources.push(o);return o;},
   };
-  return{c,sources,gains,panners,audio:new ZenAudio(()=>c as unknown as AudioContext)};
+  return{c,sources,gains,panners,filters,audio:new ZenAudio(()=>c as unknown as AudioContext)};
 }
+test('only garden birds use the 2.5 kHz low-pass filter and stopping disconnects it',async()=>{
+  const {audio,filters,gains,panners}=context();await audio.unlock();
+  for(const style of ['scifi','bubble','whale'] as const)assert.equal(audio.play(style),true);
+  assert.equal(filters.length,0);
+  assert.equal(audio.play('garden'),true);
+  const filter=filters[0];
+  assert.equal(filter.type,'lowpass');assert.equal(filter.frequency.value,2500);
+  assert.ok(gains.some(gain=>gain.connections.includes(filter)));
+  assert.deepEqual(filter.connections,[panners[panners.length-1]]);
+  audio.stop();assert.equal(filter.disconnects,1);audio.dispose();
+});
 test('locked or inactive audio never queues a future bird cue',async()=>{
   const {audio,sources}=context();assert.equal(audio.play(),false);
   await audio.unlock();assert.equal(sources.length,0);audio.dispose();
