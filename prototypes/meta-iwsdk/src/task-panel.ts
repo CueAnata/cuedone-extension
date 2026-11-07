@@ -821,7 +821,7 @@ export class TaskPanelSystem extends createSystem({}) {
         event.stopPropagation();
         if(this.session.phase !== 'ready' || item.querySelector('input'))return;
         const editor = document.createElement('input');
-        editor.type = 'text'; editor.value = task.text; editor.maxLength = 200;
+        editor.type = 'text'; editor.maxLength = 200;
         editor.className = 'inline-task-edit-input'; editor.enterKeyHint = 'done';
         editor.setAttribute('aria-label', 'Edit task text');
         button.replaceWith(editor);
@@ -861,7 +861,17 @@ export class TaskPanelSystem extends createSystem({}) {
           else if(key.key === 'Escape') {key.preventDefault(); cancel();}
         });
         editor.addEventListener('blur', () => {void commitEdit();});
-        editor.focus({preventScroll: true}); editor.select();
+        // Focus the mounted, cleared field in the pencil's user gesture so the
+        // Quest system keyboard attaches to this editor ready for replacement text.
+        editor.value = '';
+        editor.focus({preventScroll: true});
+        // Retry after the WebXR keyboard handoff without stealing later focus.
+        window.setTimeout(() => {
+          if(!finished && editor.isConnected && this.session.phase === 'ready' &&
+            (document.activeElement === editor || document.activeElement === document.body)) {
+            editor.focus({preventScroll: true});
+          }
+        }, 50);
       });
       item.append(button, editBtn);
       browserList.append(item);
