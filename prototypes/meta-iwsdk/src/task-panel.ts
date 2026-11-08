@@ -14,7 +14,7 @@ import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
 import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
-import { bindTaskEntry } from './task-entry.js';
+import { bindTaskEntry, observeTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
 import { normalizeTaskText, setTaskCompleted } from '../../../src/shared/tasks.js';
 
@@ -98,6 +98,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private allowRemoteFeedback = false;
   private syncQueued = false;
   private audioContext: AudioContext | null = null;
+  // TEMPORARY Quest diagnostics. Local console/screen only; remove before submission.
+  private inputLog: (event: string, detail?: Record<string, unknown>) => void = () => {};
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
@@ -331,6 +333,71 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
     let returnHandled = false;
+    const debug = document.createElement('pre');
+    debug.id = 'cue-input-debug';
+    debug.setAttribute('aria-label', 'Temporary Quest input diagnostics');
+    debug.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:9999;width:min(46vw,600px);max-height:36vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.3 monospace;background:#fff;color:#111;border:2px solid #111;padding:6px;margin:0;';
+    this.browser.root.append(debug);
+    const spatialDebug = new UIKit.Text({text: 'CUE-LOG: waiting for input', fontSize: 1.1,
+      width: '100%', color: '#111111', backgroundColor: '#FFFFFF'});
+    const spatialDebugPanel = new UIKit.Container({height: 30, flexShrink: 0, overflow: 'scroll'});
+    spatialDebugPanel.add(spatialDebug);
+    panel.requireElementById<UIKit.Container>('panel-body').add(spatialDebugPanel);
+    const lines: string[] = [];
+    let sequence = 0;
+    const describe = (element: Element | null) => element == null ? null :
+      `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element === spatialKeyboard ? '[spatial]' : element === this.browser.input ? '[browser]' : ''}`;
+    const snapshot = () => ({
+      activeElement: describe(document.activeElement),
+      browser: {type: this.browser.input.type, disabled: this.browser.input.disabled, value: this.browser.input.value},
+      spatial: {type: spatialKeyboard.type, disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
+        hasFocus: taskInput.input.hasFocus.peek()},
+      phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
+      addingTask: this.addingTask, draft: this.draft, returnHandled,
+    });
+    this.inputLog = (event, detail = {}) => {
+      try {
+        const record = {n: ++sequence, time: Math.round(performance.now()), event, ...detail, ...snapshot()};
+        console.log('CUE-LOG', JSON.stringify(record));
+        lines.push(JSON.stringify(record));
+        if (lines.length > 20) lines.shift();
+        debug.textContent = `CUE-LOG — TEMPORARY INPUT DIAGNOSTICS (last 20)\n${lines.join('\n')}`;
+        debug.scrollTop = debug.scrollHeight;
+        spatialDebug.setProperties({text: debug.textContent});
+      } catch { /* Diagnostics must never interrupt task entry or saving. */ }
+    };
+    // Native events cannot reveal silent programmatic value replacements. Observe
+    // both inputs each frame, without writing to either input or changing focus.
+    let lastSnapshot = JSON.stringify(snapshot());
+    let debugFrame = 0;
+    const observeValues = () => {
+      const next = JSON.stringify(snapshot());
+      if (next !== lastSnapshot) {
+        this.inputLog('input-state-change', {previous: JSON.parse(lastSnapshot)});
+        lastSnapshot = next;
+      }
+      debugFrame = requestAnimationFrame(observeValues);
+    };
+    debugFrame = requestAnimationFrame(observeValues);
+    const observeSubmit = (event: Event) => {
+      this.inputLog(`submit:${event.type}`, {target: describe(event.target as Element),
+        text: this.isBrowser() ? this.browser.input.value : spatialKeyboard.value});
+    };
+    const submitSources: Array<[EventTarget, string]> = [
+      [this.browser.form, 'submit'], [required('#spatial-task-form'), 'submit'],
+      [required('#browser-add-task-button'), 'click'],
+    ];
+    for (const [target, type] of submitSources) target.addEventListener(type, observeSubmit, {capture: true});
+    this.cleanupFuncs.push(
+      observeTaskEntry(spatialKeyboard, 'spatial', this.inputLog),
+      observeTaskEntry(this.browser.input, 'browser', this.inputLog),
+      () => {
+        for (const [target, type] of submitSources) target.removeEventListener(type, observeSubmit, {capture: true});
+        cancelAnimationFrame(debugFrame); this.inputLog = () => {}; debug.remove();
+        spatialDebugPanel.removeFromParent(); spatialDebug.removeFromParent(); spatialDebug.dispose(); spatialDebugPanel.dispose();
+      },
+    );
+    this.inputLog('diagnostics-ready');
     const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
     const onTaskKeydown = (event: KeyboardEvent) => {
       if(event.isComposing || event.keyCode === 229)return;
@@ -481,6 +548,8 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
+    this.inputLog('addTask-received', {source: this.isBrowser() ? 'browser' : 'spatial',
+      text: this.isBrowser() ? this.browser.input.value : input.input.element.value});
     if(this.session.phase !== 'ready' || this.reviewingNewList || (!this.entryOpen && !this.isBrowser()) || this.addingTask)return false;
     const wasBrowser = this.isBrowser();
     const keyboard = wasBrowser ? this.browser.input : input.input.element;
@@ -499,6 +568,7 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     this.addingTask = true;
     try {
+      this.inputLog('session.add-received', {text: submitted});
       const pending = this.session.add(submitted);
       this.render(panel);
       restoreScroll();
@@ -646,6 +716,7 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private openNewListReview(panel: UIKitMLAsset, input: TaskInput, clear = false): void {
+    this.inputLog('review-opening', {clear});
     if (this.session.phase !== 'ready') return;
     this.reviewingNewList = true;
     this.reviewingClear = clear;
@@ -684,6 +755,7 @@ export class TaskPanelSystem extends createSystem({}) {
     }
     this.render(panel);
     if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
+    this.inputLog('new-list-review-finished', {carryUnfinished});
   }
 
   private async resetList(panel: UIKitMLAsset): Promise<void> {

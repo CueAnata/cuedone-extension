@@ -1,3 +1,35 @@
+/** TEMPORARY Quest diagnostics: observes native events without consuming them. */
+export function observeTaskEntry(
+  input: HTMLInputElement | HTMLTextAreaElement,
+  label: string,
+  log: (event: string, detail: Record<string, unknown>) => void,
+): () => void {
+  let active = true;
+  const observe = (event: Event) => {
+    const edit = event as InputEvent;
+    const key = event as KeyboardEvent;
+    const before = input.value;
+    // A task runs after native dispatch/default action; a microtask can run
+    // between native listeners and miss later cancellation or value writes.
+    setTimeout(() => {
+      if (!active) return;
+      log(`${label}:${event.type}`, {
+        key: key.key ?? null, code: key.code ?? null, keyCode: key.keyCode ?? null,
+        data: edit.data ?? null, inputType: edit.inputType ?? null,
+        isComposing: edit.isComposing ?? null, cancelable: event.cancelable,
+        defaultPrevented: event.defaultPrevented, before, after: input.value,
+      });
+    }, 0);
+  };
+  const events = ['keydown', 'keyup', 'beforeinput', 'input', 'compositionstart',
+    'compositionupdate', 'compositionend', 'focus', 'blur'];
+  for (const type of events) input.addEventListener(type, observe, {capture: true});
+  return () => {
+    active = false;
+    for (const type of events) input.removeEventListener(type, observe, {capture: true});
+  };
+}
+
 /** Native/Quest keyboard actions save explicitly; ordinary editing never saves. */
 export function bindTaskEntry(input: EventTarget, submit: () => void, form?: EventTarget): () => void {
   let enterHandled = false;
