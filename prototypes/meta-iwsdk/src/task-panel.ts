@@ -337,8 +337,10 @@ export class TaskPanelSystem extends createSystem({}) {
       `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element === spatialKeyboard ? '[spatial]' : element === this.browser.input ? '[browser]' : ''}`;
     const snapshot = () => ({
       activeElement: describe(document.activeElement),
-      browser: {type: this.browser.input.type, disabled: this.browser.input.disabled, value: this.browser.input.value},
-      spatial: {type: spatialKeyboard.type, disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
+      browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
+        inputmodeAttribute: this.browser.input.getAttribute('inputmode'), disabled: this.browser.input.disabled, value: this.browser.input.value},
+      spatial: {type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
+        inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
         hasFocus: taskInput.input.hasFocus.peek()},
       phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
       addingTask: this.addingTask, draft: this.draft, returnHandled,
