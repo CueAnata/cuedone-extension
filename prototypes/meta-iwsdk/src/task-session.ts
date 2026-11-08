@@ -116,6 +116,13 @@ export class PersonalTaskSession {
     return saved;
   }
 
+  async clearAll(): Promise<boolean> {
+    if (this.phase !== 'ready') return false;
+    const saved = await this.saveThenApply([], 'Saved: list cleared. Add a task.');
+    if (saved) this.lastCompletionAt = Number.NEGATIVE_INFINITY;
+    return saved;
+  }
+
   async startNewList(carryUnfinished: boolean): Promise<boolean> {
     if (this.phase !== 'ready') return false;
 

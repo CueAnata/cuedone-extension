@@ -31,7 +31,7 @@ export function observeTaskEntry(
 }
 
 /** Native/Quest keyboard actions save explicitly; ordinary editing never saves. */
-export function bindTaskEntry(input: EventTarget, submit: () => void, form?: EventTarget): () => void {
+export function bindTaskEntry(input: EventTarget, submit: () => void, form?: EventTarget): (() => void) & {reset(): void} {
   let enterHandled = false;
   let composing = false;
   const isReturn = (key: KeyboardEvent) =>
@@ -81,8 +81,8 @@ export function bindTaskEntry(input: EventTarget, submit: () => void, form?: Eve
   // Capture before UI-library keyboard handlers can consume a native Return.
   for(const [type,listener] of listeners)input.addEventListener(type,listener,{capture: true});
   form?.addEventListener('submit',onSubmit);
-  return () => {
+  return Object.assign(() => {
     for(const [type,listener] of listeners)input.removeEventListener(type,listener,{capture: true});
     form?.removeEventListener('submit',onSubmit);
-  };
+  }, {reset: blur});
 }

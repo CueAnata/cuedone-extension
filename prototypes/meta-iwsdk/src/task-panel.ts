@@ -83,7 +83,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private browserXRLayout?: BrowserPanelLayout;
   private addingTask = false;
   private finishingEntry = false;
-  private reviewingClear = false;
+  private resetEntryKeyboard: () => void = () => {};
   private rowSignature = '';
   private rowTheme = '';
   private readonly rows: Array<{row: UIKit.Container; pollen: UIKit.Container; bee: UIKit.Container; id: string; elapsed: number}> = [];
@@ -202,8 +202,6 @@ export class TaskPanelSystem extends createSystem({}) {
     entryToggle.addEventListener('click', toggleEntry);
     this.cleanupFuncs.push(() => entryToggle.removeEventListener('click', toggleEntry));
     const completeButton = panel.requireElementById('complete-button');
-    const newListButton = panel.requireElementById('new-list-button');
-    const carryButton = panel.requireElementById('carry-button');
     const emptyButton = panel.requireElementById('empty-button');
     const cancelNewListButton = panel.requireElementById('cancel-new-list');
     const retryButton = panel.requireElementById('retry-button');
@@ -256,7 +254,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => panel.requireElementById('entry-done-button').removeEventListener('click', finishEntry));
     bind('reset-button', () => {void this.resetList(panel);});
     bind('clear-button', () => {
-      this.openNewListReview(panel, taskInput, true);
+      this.openClearConfirmation(panel, taskInput);
     });
     this.cleanupFuncs.push(() => this.disposeRows());
 
@@ -264,9 +262,7 @@ export class TaskPanelSystem extends createSystem({}) {
     panel.requireElementById('show-add-button').name = 'OpenTaskEntry';
     panel.requireElementById('entry-done-button').name = 'FinishTaskEntry';
     completeButton.name = 'CompleteTask';
-    newListButton.name = 'NewList';
-    carryButton.name = 'CarryUnfinishedTasks';
-    emptyButton.name = 'StartEmptyList';
+    emptyButton.name = 'ConfirmClearAll';
     cancelNewListButton.name = 'CancelNewList';
     retryButton.name = 'RetryLoad';
     xrButton.name = 'EnterXR';
@@ -278,10 +274,8 @@ export class TaskPanelSystem extends createSystem({}) {
       },
     });
 
-    const onNewList = () => this.openNewListReview(panel, taskInput);
-    const onCarry = () => void this.createNewList(panel, taskInput, true);
-    const onEmpty = () => void this.createNewList(panel, taskInput, false);
-    const onCancelNewList = () => this.cancelNewListReview(panel);
+    const onEmpty = () => void this.clearAll(panel, taskInput);
+    const onCancelNewList = () => this.cancelClearConfirmation(panel);
     const onRetry = () => void this.load(panel);
     const overlay = required<HTMLElement>('#xr-overlay');
     const overlayExit = required<HTMLButtonElement>('#overlay-exit-button');
@@ -305,15 +299,9 @@ export class TaskPanelSystem extends createSystem({}) {
       this.render(panel);
     };
     const onBrowserComplete = () => void this.completeTask(panel);
-    const onBrowserNewList = () => this.openNewListReview(panel, taskInput);
-    const onBrowserCarry = () =>
-      void this.createNewList(panel, taskInput, true);
-    const onBrowserEmpty = () =>
-      void this.createNewList(panel, taskInput, false);
-    const onBrowserCancel = () => this.cancelNewListReview(panel);
+    const onBrowserEmpty = onEmpty;
+    const onBrowserCancel = onCancelNewList;
 
-    newListButton.addEventListener('click', onNewList);
-    carryButton.addEventListener('click', onCarry);
     emptyButton.addEventListener('click', onEmpty);
     cancelNewListButton.addEventListener('click', onCancelNewList);
     retryButton.addEventListener('click', onRetry);
@@ -422,6 +410,8 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.input.addEventListener('input', resetReturn);
     this.browser.input.addEventListener('blur', resetReturn);
     this.browser.form.addEventListener('submit', onTaskSubmit);
+    const spatialEntry = bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form'));
+    this.resetEntryKeyboard = () => {resetReturn(); spatialEntry.reset();};
     this.cleanupFuncs.push(
       () => {
         this.browser.input.removeEventListener('keydown', onTaskKeydown);
@@ -430,19 +420,16 @@ export class TaskPanelSystem extends createSystem({}) {
         this.browser.input.removeEventListener('blur', resetReturn);
         this.browser.form.removeEventListener('submit', onTaskSubmit);
       },
-      bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form')),
+      spatialEntry,
+      () => {this.resetEntryKeyboard = () => {};},
     );
     this.browser.completeButton.addEventListener('click', onBrowserComplete);
-    this.browser.newListButton.addEventListener('click', onBrowserNewList);
-    this.browser.carryButton.addEventListener('click', onBrowserCarry);
     this.browser.emptyButton.addEventListener('click', onBrowserEmpty);
     this.browser.cancelButton.addEventListener('click', onBrowserCancel);
     this.browser.retryButton.addEventListener('click', onRetry);
     this.browser.xrButton.addEventListener('click', onEnterXR);
 
     this.cleanupFuncs.push(
-      () => newListButton.removeEventListener('click', onNewList),
-      () => carryButton.removeEventListener('click', onCarry),
       () => emptyButton.removeEventListener('click', onEmpty),
       () => cancelNewListButton.removeEventListener('click', onCancelNewList),
       () => retryButton.removeEventListener('click', onRetry),
@@ -454,13 +441,6 @@ export class TaskPanelSystem extends createSystem({}) {
           'click',
           onBrowserComplete,
         ),
-      () =>
-        this.browser.newListButton.removeEventListener(
-          'click',
-          onBrowserNewList,
-        ),
-      () =>
-        this.browser.carryButton.removeEventListener('click', onBrowserCarry),
       () =>
         this.browser.emptyButton.removeEventListener('click', onBrowserEmpty),
       () =>
@@ -715,67 +695,69 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
   }
 
-  private openNewListReview(panel: UIKitMLAsset, input: TaskInput, clear = false): void {
-    this.inputLog('review-opening', {clear});
-    if (this.session.phase !== 'ready') return;
+  private openClearConfirmation(panel: UIKitMLAsset, input: TaskInput): void {
+    if (this.session.phase !== 'ready' || this.reviewingNewList) return;
+    this.inputLog('clear-confirmation-opening');
     this.reviewingNewList = true;
-    this.reviewingClear = clear;
     input.input.blur();
     this.browser.input.blur();
     this.render(panel);
     if (this.isBrowser()) this.browser.cancelButton.focus();
   }
 
-  private cancelNewListReview(panel: UIKitMLAsset): void {
+  private cancelClearConfirmation(panel: UIKitMLAsset): void {
     if (this.session.phase === 'saving') return;
     this.reviewingNewList = false;
     this.render(panel);
-    if (this.isBrowser()) this.browser.newListButton.focus();
+    if (this.isBrowser()) required<HTMLButtonElement>('#browser-clear-button').focus();
+    this.inputLog('clear-canceled');
   }
 
-  private async createNewList(
-    panel: UIKitMLAsset,
-    input: TaskInput,
-    carryUnfinished: boolean,
-  ): Promise<void> {
-    if (this.session.phase !== 'ready' && this.session.phase !== 'saving') return;
-    const submittedDraft = this.draft;
+  private async clearAll(panel: UIKitMLAsset, input: TaskInput): Promise<void> {
+    if (!this.reviewingNewList || this.session.phase !== 'ready') return;
     const wasBrowser = this.isBrowser();
-    const pending = this.session.startNewList(carryUnfinished);
+    input.input.blur();
+    this.browser.input.blur();
+    const pending = this.session.clearAll();
     this.render(panel);
-    const saved = await pending;
-    if (saved) {
-      this.reviewingNewList = false;
-      this.collapsed = false;
-      this.entryOpen = true;
-      this.reviewingClear = false;
-      if (this.draft === submittedDraft) {
-        this.draft = '';
-        input.input.uncontrolledSignal.value = '';
-        this.browser.input.value = '';
-      }
+    if (!await pending) {
+      this.render(panel);
+      this.inputLog('clear-save-failed');
+      return;
     }
+
+    this.reviewingNewList = false;
+    this.collapsed = false;
+    this.settingsOpen = false;
+    this.entryOpen = true;
+    this.browserEntryFinished = false;
+    this.browserEntryCollapsed = false;
+    this.draft = '';
+    this.resetEntryKeyboard();
+    input.input.uncontrolledSignal.value = '';
+    input.input.element.value = '';
+    this.browser.input.value = '';
     this.render(panel);
-    if (saved && !carryUnfinished && wasBrowser && this.isBrowser()) {
-      const previousFocus = document.activeElement;
-      requestAnimationFrame(() => {
-        const active = document.activeElement;
-        if (!this.isBrowser() || this.session.phase !== 'ready' || this.reviewingNewList ||
-          this.settingsOpen || this.collapsed || !this.entryOpen || this.browser.form.hidden ||
-          this.browserEntryCollapsed || this.browser.input.disabled || !this.browser.input.isConnected) return;
-        if (active !== previousFocus && active !== document.body) return;
-        if (active !== document.body && active !== this.browser.input && active !== this.browser.emptyButton) return;
-        this.browser.input.focus();
-      });
-    } else if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
-    this.inputLog('new-list-review-finished', {carryUnfinished});
+    this.inputLog('clear-ready');
+
+    const previousFocus = document.activeElement;
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (wasBrowser !== this.isBrowser() || this.session.phase !== 'ready' || this.reviewingNewList ||
+        this.settingsOpen || this.collapsed || !this.entryOpen) return;
+      if (wasBrowser && (this.browser.input.disabled || this.browser.form.hidden || !this.browser.input.isConnected)) return;
+      if (active !== previousFocus && active !== document.body) return;
+      if (active !== document.body && active !== this.browser.emptyButton && active !== this.browser.input &&
+        active !== input.input.element) return;
+      this.focusTaskEntry(input);
+      this.inputLog('clear-entry-focused');
+    });
   }
 
   private async resetList(panel: UIKitMLAsset): Promise<void> {
     const pending = this.session.reset();
     this.render(panel);
     await pending;
-    this.reviewingClear = false;
     this.render(panel);
   }
 
@@ -1120,14 +1102,7 @@ export class TaskPanelSystem extends createSystem({}) {
     panel.requireElementById<UIKit.Text>('waiting-text').setProperties({
       text: `${waitingCount} ${waitingCount === 1 ? 'task' : 'tasks'} waiting`,
     });
-    const unfinishedCount = this.session.unfinishedTaskCount;
-    panel.requireElementById<UIKit.Text>('new-list-copy').setProperties({
-      text:
-        unfinishedCount === 0
-          ? 'No unfinished tasks remain. Start empty to remove completed tasks.'
-          : `${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'task' : 'tasks'}. Carry forward only unfinished tasks, or start empty. Completed tasks will be removed.`,
-    });
-    if(this.reviewingClear)panel.requireElementById('new-list-copy').setProperties({text: 'Delete every task? This clears the saved list. Cancel keeps all tasks.'});
+    panel.requireElementById('new-list-copy').setProperties({text: 'Delete every task? Cancel keeps your list.'});
     const statusMessage = this.session.message;
     const statusIsError =
       loadFailed ||
@@ -1165,18 +1140,20 @@ export class TaskPanelSystem extends createSystem({}) {
       display: this.collapsed || this.settingsOpen || this.reviewingNewList || !this.entryOpen ? 'none' : 'flex',
     });
     panel.requireElementById('new-list-button').setProperties({
-      display: this.reviewingNewList ? 'none' : 'flex',
-      disabled: isLoading || isSaving || loadFailed,
+      display: 'none',
+      disabled: true,
     });
+    panel.requireElementById('clear-button').setProperties({display: this.reviewingNewList ? 'none' : 'flex'});
+    required<HTMLElement>('#browser-clear-button').hidden = this.reviewingNewList;
     panel.requireElementById('new-list-review').setProperties({
       display: this.reviewingNewList ? 'flex' : 'none',
     });
     panel.requireElementById('carry-button').setProperties({
-      display: unfinishedCount > 0 && !this.reviewingClear ? 'flex' : 'none',
+      display: 'none',
       disabled: isSaving,
     });
     panel.requireElementById('empty-button').setProperties({
-      text: this.reviewingClear ? 'Clear All' : 'Start empty',
+      text: 'Clear All',
       disabled: isSaving,
     });
     panel.requireElementById('cancel-new-list').setProperties({
@@ -1201,7 +1178,7 @@ export class TaskPanelSystem extends createSystem({}) {
       panel.requireElementById(id).setProperties({disabled: unavailable});
       if(id !== 'show-add-button')required<HTMLButtonElement>(`#browser-${id}`).disabled = unavailable;
     }
-    const reviewTitle = this.reviewingClear ? 'Clear all tasks?' : 'Start a new list?';
+    const reviewTitle = 'Clear all tasks?';
     panel.requireElementById('new-list-title').setProperties({text: reviewTitle});
     required<HTMLElement>('#browser-new-list-title').textContent = reviewTitle;
     this.renderRows(panel, disabled);
@@ -1216,7 +1193,6 @@ export class TaskPanelSystem extends createSystem({}) {
   ): void {
     const active = this.session.activeTask;
     const waitingCount = this.session.waitingTaskCount;
-    const unfinishedCount = this.session.unfinishedTaskCount;
     const busy = isLoading || isSaving;
 
     this.browser.root.setAttribute('aria-busy', String(busy));
@@ -1248,17 +1224,13 @@ export class TaskPanelSystem extends createSystem({}) {
     required<HTMLButtonElement>('#browser-add-task-button').disabled = busy || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
-    this.browser.newListButton.hidden = this.reviewingNewList;
+    this.browser.newListButton.hidden = true;
     this.browser.newListButton.disabled = busy || loadFailed;
     this.browser.review.hidden = !this.reviewingNewList;
-    this.browser.reviewCopy.textContent =
-      unfinishedCount === 0
-        ? 'No unfinished tasks remain. Start empty to remove completed tasks, or Cancel to keep this list.'
-        : `${unfinishedCount} unfinished ${unfinishedCount === 1 ? 'task' : 'tasks'} can carry forward in the same order. Completed tasks will be removed. Start empty removes every task. Cancel changes nothing.`;
-    this.browser.carryButton.hidden = unfinishedCount === 0 || this.reviewingClear;
-    this.browser.carryButton.disabled = isSaving;
-    this.browser.emptyButton.textContent = this.reviewingClear ? 'Clear All' : 'Start empty';
-    if(this.reviewingClear)this.browser.reviewCopy.textContent = 'Delete every task? This clears the saved list. Cancel keeps all tasks.';
+    this.browser.reviewCopy.textContent = 'Delete every task? Cancel keeps your list.';
+    this.browser.carryButton.hidden = true;
+    this.browser.carryButton.disabled = true;
+    this.browser.emptyButton.textContent = 'Clear All';
     this.browser.emptyButton.disabled = isSaving;
     this.browser.cancelButton.disabled = isSaving;
     this.browser.retryButton.hidden = !loadFailed;
