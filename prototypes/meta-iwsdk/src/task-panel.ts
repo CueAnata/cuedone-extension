@@ -156,6 +156,7 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     const saveExperience = () => {
       const next = experience.value === '3d' ? '3d' : '2d';
+      this.inputLog('mode-toggle-before', {requested: next});
       try {
         window.localStorage.setItem(PANEL_EXPERIENCE_KEY, next);
         this.finaleStyle = next;
@@ -164,6 +165,7 @@ export class TaskPanelSystem extends createSystem({}) {
         experience.value = this.finaleStyle;
         experienceStatus.textContent = 'Could not save the panel experience. Your previous choice is unchanged.';
       }
+      this.inputLog('mode-toggle-after', {requested: next});
     };
     restoreExperience();
     required<HTMLElement>('#browser-panel-experience-help').textContent =
@@ -338,12 +340,17 @@ export class TaskPanelSystem extends createSystem({}) {
     const snapshot = () => ({
       activeElement: describe(document.activeElement),
       browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
-        inputmodeAttribute: this.browser.input.getAttribute('inputmode'), disabled: this.browser.input.disabled, value: this.browser.input.value},
+        inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
+        disabled: this.browser.input.disabled, value: this.browser.input.value},
       spatial: {type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
-        inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
+        inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), pattern: spatialKeyboard.getAttribute('pattern'),
+        disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
         hasFocus: taskInput.input.hasFocus.peek()},
       phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
       addingTask: this.addingTask, draft: this.draft, returnHandled,
+      experience: this.finaleStyle, sessionPresent: !!this.world.session,
+      xrPresenting: this.world.renderer.xr.isPresenting, layoutPinned: this.browserXRLayout?.pinned ?? false,
+      browserInert: this.browser.root.inert,
     });
     this.inputLog = (event, detail = {}) => {
       try {
@@ -388,6 +395,9 @@ export class TaskPanelSystem extends createSystem({}) {
       },
     );
     this.inputLog('diagnostics-ready');
+    const logSessionEnd = () => this.inputLog('ar-native-session-ended');
+    this.world.renderer.xr.addEventListener('sessionend', logSessionEnd);
+    this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', logSessionEnd));
     const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
     const onTaskKeydown = (event: KeyboardEvent) => {
       if(event.isComposing || event.keyCode === 229)return;
@@ -1026,6 +1036,7 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private preserveBrowserLayout(panel:UIKitMLAsset,input:TaskInput):()=>void {
     if(!this.isBrowser() || this.browserXRLayout)return ()=>{};
+    this.inputLog('ar-entry-before-layout-pin');
     const elements=[document.scrollingElement,this.browser.root,
       document.querySelector('#browser-panel-body'),document.querySelector('#browser-task-list')]
       .filter((element):element is Element=>element!==null);
@@ -1034,13 +1045,16 @@ export class TaskPanelSystem extends createSystem({}) {
     let released=false;
     return ()=>{
       if(released)return;
+      this.inputLog('ar-return-before-layout-restore');
       released=true;layout.release();
       if(this.isBrowser())this.syncPresentation(panel,input);
+      this.inputLog('ar-return-after-layout-restore');
     };
   }
 
   private syncPresentation(panel: UIKitMLAsset, input: TaskInput): void {
     const isBrowser = this.isBrowser();
+    this.inputLog('presentation-sync-before', {target: isBrowser ? 'browser' : 'spatial'});
     const pinned=this.browserXRLayout?.pinned ?? false;
     panel.visible = !isBrowser;
     // Retain the DOM footprint so XR entry never collapses the page's layout.
@@ -1062,6 +1076,7 @@ export class TaskPanelSystem extends createSystem({}) {
     // Visibility can become NonImmersive before Three finishes session teardown.
     // The saved coordinates must survive until the temporary styles/spacer are gone.
     if(isBrowser && this.browserXRLayout?.restore())this.browserXRLayout=undefined;
+    this.inputLog('presentation-sync-after', {target: isBrowser ? 'browser' : 'spatial'});
   }
 
   private render(panel: UIKitMLAsset): void {
