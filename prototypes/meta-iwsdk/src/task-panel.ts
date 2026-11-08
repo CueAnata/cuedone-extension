@@ -742,8 +742,9 @@ export class TaskPanelSystem extends createSystem({}) {
     this.render(panel);
     this.inputLog('clear-ready');
 
+    if (wasBrowser) this.browser.input.blur();
     const previousFocus = document.activeElement;
-    requestAnimationFrame(() => {
+    const restoreEntryFocus = () => {
       const active = document.activeElement;
       if (wasBrowser !== this.isBrowser() || this.session.phase !== 'ready' || this.reviewingNewList ||
         this.settingsOpen || this.collapsed || !this.entryOpen) return;
@@ -752,8 +753,11 @@ export class TaskPanelSystem extends createSystem({}) {
       if (active !== document.body && active !== this.browser.emptyButton && active !== this.browser.input &&
         active !== input.input.element) return;
       this.focusTaskEntry(input);
+      if (wasBrowser) this.browser.input.click();
       this.inputLog('clear-entry-focused');
-    });
+    };
+    if (wasBrowser) setTimeout(restoreEntryFocus, 100);
+    else requestAnimationFrame(restoreEntryFocus);
   }
 
   private async resetList(panel: UIKitMLAsset): Promise<void> {
