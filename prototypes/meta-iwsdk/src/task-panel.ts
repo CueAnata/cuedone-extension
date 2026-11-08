@@ -671,8 +671,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const submittedDraft = this.draft;
     const pending = this.session.startNewList(carryUnfinished);
     this.render(panel);
-    const saved = await pending;
-    if (saved) {
+    if (await pending) {
       this.reviewingNewList = false;
       this.collapsed = false;
       this.entryOpen = true;
@@ -684,7 +683,6 @@ export class TaskPanelSystem extends createSystem({}) {
       }
     }
     this.render(panel);
-    if (saved && !this.isBrowser()) this.focusTaskEntry(input);
     if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
   }
 
