@@ -1062,7 +1062,9 @@ export class TaskPanelSystem extends createSystem({}) {
 
     if (isBrowser) {
       input.input.blur();
-      this.browser.input.value = this.draft;
+      if (document.activeElement !== this.browser.input && this.browser.input.value !== this.draft) {
+        this.browser.input.value = this.draft;
+      }
     } else {
       this.browser.input.blur();
       input.input.uncontrolledSignal.value = this.draft;
