@@ -740,9 +740,11 @@ export class TaskPanelSystem extends createSystem({}) {
   ): Promise<void> {
     if (this.session.phase !== 'ready' && this.session.phase !== 'saving') return;
     const submittedDraft = this.draft;
+    const wasBrowser = this.isBrowser();
     const pending = this.session.startNewList(carryUnfinished);
     this.render(panel);
-    if (await pending) {
+    const saved = await pending;
+    if (saved) {
       this.reviewingNewList = false;
       this.collapsed = false;
       this.entryOpen = true;
@@ -754,7 +756,18 @@ export class TaskPanelSystem extends createSystem({}) {
       }
     }
     this.render(panel);
-    if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
+    if (saved && !carryUnfinished && wasBrowser && this.isBrowser()) {
+      const previousFocus = document.activeElement;
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (!this.isBrowser() || this.session.phase !== 'ready' || this.reviewingNewList ||
+          this.settingsOpen || this.collapsed || !this.entryOpen || this.browser.form.hidden ||
+          this.browserEntryCollapsed || this.browser.input.disabled || !this.browser.input.isConnected) return;
+        if (active !== previousFocus && active !== document.body) return;
+        if (active !== document.body && active !== this.browser.input && active !== this.browser.emptyButton) return;
+        this.browser.input.focus();
+      });
+    } else if (!this.reviewingNewList && this.isBrowser()) this.browser.input.focus();
     this.inputLog('new-list-review-finished', {carryUnfinished});
   }
 
