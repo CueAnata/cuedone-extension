@@ -146,6 +146,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const experience = required<HTMLSelectElement>('#browser-panel-experience');
     const experienceStatus = required<HTMLElement>('#browser-panel-experience-status');
     const restoreExperience = () => {
+      const previous = this.finaleStyle;
       try {
         this.finaleStyle = window.localStorage.getItem(PANEL_EXPERIENCE_KEY) === '3d' ? '3d' : '2d';
         experienceStatus.textContent = '';
@@ -153,6 +154,7 @@ export class TaskPanelSystem extends createSystem({}) {
         experienceStatus.textContent = 'Could not restore the panel experience. Your current choice is unchanged.';
       }
       experience.value = this.finaleStyle;
+      if (previous !== this.finaleStyle) this.forceTextInputMode('mode-restored');
     };
     const saveExperience = () => {
       const next = experience.value === '3d' ? '3d' : '2d';
@@ -160,6 +162,7 @@ export class TaskPanelSystem extends createSystem({}) {
       try {
         window.localStorage.setItem(PANEL_EXPERIENCE_KEY, next);
         this.finaleStyle = next;
+        this.forceTextInputMode('mode-toggle');
         experienceStatus.textContent = 'Panel experience saved locally.';
       } catch {
         experience.value = this.finaleStyle;
@@ -500,6 +503,18 @@ export class TaskPanelSystem extends createSystem({}) {
     this.remoteFeedback=false;
   }
 
+  private forceTextInputMode(reason: string): void {
+    const spatial = this.world.requireSceneObject<UIKitMLAsset>('task-panel')
+      .requireElementById<TaskInput>('task-input').input.element;
+    this.inputLog('text-inputmode-before', {reason});
+    for (const field of [this.browser.input, spatial]) {
+      if (field instanceof HTMLInputElement) field.type = 'text';
+      field.setAttribute('inputmode', 'text');
+      field.inputMode = 'text';
+    }
+    this.inputLog('text-inputmode-after', {reason});
+  }
+
   private focusTaskEntry(input: TaskInput): void {
     if(this.isBrowser())this.browser.input.focus({preventScroll: true});
     else input.input.focus();
@@ -750,6 +765,7 @@ export class TaskPanelSystem extends createSystem({}) {
     input.input.element.value = '';
     this.browser.input.value = '';
     this.render(panel);
+    this.forceTextInputMode('clear-all');
     this.inputLog('clear-ready');
 
     if (wasBrowser) this.browser.input.blur();
@@ -1048,6 +1064,7 @@ export class TaskPanelSystem extends createSystem({}) {
       this.inputLog('ar-return-before-layout-restore');
       released=true;layout.release();
       if(this.isBrowser())this.syncPresentation(panel,input);
+      this.forceTextInputMode('ar-return');
       this.inputLog('ar-return-after-layout-restore');
     };
   }
