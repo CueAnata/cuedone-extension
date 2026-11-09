@@ -81,6 +81,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private browserEntryFinished = false;
   private browserEntryCollapsed = false;
   private browserXRLayout?: BrowserPanelLayout;
+  private finaleReturnPending = false;
+  private finaleReturnTap?: (event: Event) => void;
   private addingTask = false;
   private finishingEntry = false;
   private resetEntryKeyboard: () => void = () => {};
@@ -106,7 +108,10 @@ export class TaskPanelSystem extends createSystem({}) {
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
-    this.cleanupFuncs.push(()=>{this.browserXRLayout?.release();this.browserXRLayout?.restore();this.browserXRLayout=undefined;});
+    this.cleanupFuncs.push(()=>{
+      this.browserXRLayout?.release();this.browserXRLayout?.restore();this.browserXRLayout=undefined;
+      if(this.finaleReturnTap)this.browser.root.removeEventListener('pointerup', this.finaleReturnTap, true);
+    });
     document.getElementById('browser-done-button')?.remove();
     panel.requireElementById('done-button').setProperties({display: 'none'});
     required<HTMLElement>('#browser-reset-button').textContent = 'Reset List';
@@ -823,14 +828,8 @@ export class TaskPanelSystem extends createSystem({}) {
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
     const enhanced = this.finaleStyle === '3d';
-    let arRun = enhanced ? finalTaskAR.begin(before) : undefined;
+    const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
     let enhancedError = '';
-    if(arRun && this.isBrowser()) {
-      // Immersive finale pins the panel and leaves Quest document focus false before Clear All. Do not enter XR from this tap.
-      this.inputLog('finale-ar-skipped');
-      finalTaskAR.cancel(arRun);
-      arRun = undefined;
-    }
     if(arRun) {
       // Snapshot before requestSession can resize or blur the browser viewport.
       const restoreLayout=this.preserveBrowserLayout(panel,panel.requireElementById<TaskInput>('task-input'));
@@ -1216,23 +1215,50 @@ export class TaskPanelSystem extends createSystem({}) {
       if(released)return;
       this.inputLog('ar-return-before-layout-restore');
       released=true;layout.release();
-      if(this.isBrowser())this.syncPresentation(panel,input);
+      // launchAR calls this only after the renderer is no longer presenting.
+      // Re-enter the browser panel before any focus gesture. Do not call window.focus().
+      this.finaleReturnPending=!this.world.renderer.xr.isPresenting;
+      this.syncPresentation(panel,input);
       this.forceTextInputMode('ar-return');
+      if(this.finaleReturnPending || this.isBrowser())this.armFinaleReturnTap();
       this.inputLog('ar-return-after-layout-restore');
     };
   }
 
+  /** The next tap is the user gesture. Programmatic focus cannot restore Quest document focus. */
+  private armFinaleReturnTap(): void {
+    const root=this.browser.root;
+    const field=this.browser.input;
+    if(this.finaleReturnTap)root.removeEventListener('pointerup', this.finaleReturnTap, true);
+    const onTap=(event:Event)=>{
+      root.removeEventListener('pointerup', onTap, true);
+      if(this.finaleReturnTap===onTap)this.finaleReturnTap=undefined;
+      const before=document.hasFocus();
+      if(field.isConnected && !field.disabled)field.focus({preventScroll:true});
+      this.inputLog('finale-return-tap', {
+        hasFocusBefore:before, hasFocusAfter:document.hasFocus(),
+        target:event.target instanceof Element ? (event.target.id || event.target.tagName.toLowerCase()) : null,
+      });
+    };
+    this.finaleReturnTap=onTap;
+    root.addEventListener('pointerup', onTap, true);
+  }
+
   private syncPresentation(panel: UIKitMLAsset, input: TaskInput): void {
     const isBrowser = this.isBrowser();
-    this.inputLog('presentation-sync-before', {target: isBrowser ? 'browser' : 'spatial'});
+    const presenting=this.world.renderer.xr.isPresenting;
+    const returned=this.finaleReturnPending && !presenting;
+    const showBrowser=isBrowser || returned;
+    this.inputLog('presentation-sync-before', {target: showBrowser ? 'browser' : 'spatial'});
     const pinned=this.browserXRLayout?.pinned ?? false;
-    panel.visible = !isBrowser;
+    panel.visible = !showBrowser;
     // Retain the DOM footprint so XR entry never collapses the page's layout.
     this.browser.root.hidden = false;
-    this.browser.root.dataset.xrSuspended = String(!isBrowser || pinned);
-    this.browser.root.inert = !isBrowser || pinned;
+    this.browser.root.dataset.xrSuspended = String(!showBrowser || pinned);
+    // A finished session must not stay inert while visibility is still catching up.
+    this.browser.root.inert = !showBrowser || (pinned && !returned);
 
-    if (isBrowser) {
+    if (showBrowser) {
       input.input.blur();
       if (document.activeElement !== this.browser.input && this.browser.input.value !== this.draft) {
         this.browser.input.value = this.draft;
@@ -1246,7 +1272,8 @@ export class TaskPanelSystem extends createSystem({}) {
     // Visibility can become NonImmersive before Three finishes session teardown.
     // The saved coordinates must survive until the temporary styles/spacer are gone.
     if(isBrowser && this.browserXRLayout?.restore())this.browserXRLayout=undefined;
-    this.inputLog('presentation-sync-after', {target: isBrowser ? 'browser' : 'spatial'});
+    if(returned && isBrowser)this.finaleReturnPending=false;
+    this.inputLog('presentation-sync-after', {target: showBrowser ? 'browser' : 'spatial'});
   }
 
   private render(panel: UIKitMLAsset): void {
