@@ -342,6 +342,31 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
     let returnHandled = false;
+    let passiveCueLog = new URLSearchParams(window.location.search).get('cueLogPassive') === '1';
+    const composition = {
+      browser: {active: false, lastEvent: 'none', data: null as string | null, events: 0},
+      spatial: {active: false, lastEvent: 'none', data: null as string | null, events: 0},
+    };
+    for (const [source, field, state] of [
+      ['browser', this.browser.input, composition.browser], ['spatial', spatialKeyboard, composition.spatial],
+    ] as const) {
+      const trackComposition = (event: Event) => {
+        if (event.type === 'blur') state.active = false;
+        if (event.type.startsWith('composition')) {
+          state.lastEvent = event.type;
+          state.data = (event as CompositionEvent).data ?? null;
+          state.events++;
+          if (event.type === 'compositionstart') state.active = true;
+          if (event.type === 'compositionend') state.active = false;
+        }
+        this.inputLog(`native:${event.type}`, {source});
+      };
+      const types = ['compositionstart', 'compositionupdate', 'compositionend', 'focus', 'blur'];
+      for (const type of types) field.addEventListener(type, trackComposition, {capture: true});
+      this.cleanupFuncs.push(() => {
+        for (const type of types) field.removeEventListener(type, trackComposition, {capture: true});
+      });
+    }
     const debug = document.createElement('pre');
     debug.id = 'cue-input-debug';
     debug.setAttribute('aria-label', 'Temporary Quest input diagnostics');
@@ -358,6 +383,9 @@ export class TaskPanelSystem extends createSystem({}) {
       `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element === spatialKeyboard ? '[spatial]' : element === this.browser.input ? '[browser]' : ''}`;
     const snapshot = () => ({
       activeElement: describe(document.activeElement),
+      isBrowser: this.isBrowser(), visibilityState: this.world.visibilityState.value,
+      documentVisibilityState: document.visibilityState, documentHasFocus: document.hasFocus(),
+      composition, frameValuePolling: !passiveCueLog, spatialDebugUpdates: !passiveCueLog,
       browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
         inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
         disabled: this.browser.input.disabled, readOnly: this.browser.input.readOnly,
@@ -383,7 +411,7 @@ export class TaskPanelSystem extends createSystem({}) {
         if (lines.length > 20) lines.shift();
         debug.textContent = `CUE-LOG — TEMPORARY INPUT DIAGNOSTICS (last 20)\n${lines.join('\n')}`;
         debug.scrollTop = debug.scrollHeight;
-        spatialDebug.setProperties({text: debug.textContent});
+        if (!passiveCueLog) spatialDebug.setProperties({text: debug.textContent});
       } catch { /* Diagnostics must never interrupt task entry or saving. */ }
     };
     // Native events cannot reveal silent programmatic value replacements. Observe
@@ -391,6 +419,7 @@ export class TaskPanelSystem extends createSystem({}) {
     let lastSnapshot = JSON.stringify(snapshot());
     let debugFrame = 0;
     const observeValues = () => {
+      if (passiveCueLog) return;
       const next = JSON.stringify(snapshot());
       if (next !== lastSnapshot) {
         this.inputLog('input-state-change', {previous: JSON.parse(lastSnapshot)});
@@ -398,7 +427,42 @@ export class TaskPanelSystem extends createSystem({}) {
       }
       debugFrame = requestAnimationFrame(observeValues);
     };
-    debugFrame = requestAnimationFrame(observeValues);
+    if (!passiveCueLog) debugFrame = requestAnimationFrame(observeValues);
+    const logMode = document.createElement('button');
+    logMode.id = 'cue-log-mode'; logMode.type = 'button';
+    logMode.style.cssText = 'position:fixed;right:8px;bottom:calc(36vh + 12px);z-index:10000;font:12px monospace;';
+    const showLogMode = () => {
+      logMode.textContent = `CUE-LOG frame/spatial updates: ${passiveCueLog ? 'OFF' : 'ON'}`;
+      logMode.setAttribute('aria-pressed', String(!passiveCueLog));
+    };
+    const toggleLogMode = () => {
+      passiveCueLog = !passiveCueLog;
+      cancelAnimationFrame(debugFrame);
+      if (!passiveCueLog) {
+        lastSnapshot = JSON.stringify(snapshot());
+        debugFrame = requestAnimationFrame(observeValues);
+      }
+      showLogMode();
+      this.inputLog('diagnostic-log-mode-changed');
+    };
+    const keepLogToggleFocus = (event: Event) => {
+      if (document.activeElement === this.browser.input || document.activeElement === spatialKeyboard) event.preventDefault();
+    };
+    logMode.addEventListener('pointerdown', keepLogToggleFocus);
+    logMode.addEventListener('click', toggleLogMode);
+    showLogMode(); this.browser.root.append(logMode);
+    const logDocumentVisibility = () => this.inputLog('document-visibility-change');
+    const logWindowFocus = (event: Event) => this.inputLog(`window:${event.type}`);
+    document.addEventListener('visibilitychange', logDocumentVisibility);
+    window.addEventListener('focus', logWindowFocus);
+    window.addEventListener('blur', logWindowFocus);
+    this.cleanupFuncs.push(() => {
+      document.removeEventListener('visibilitychange', logDocumentVisibility);
+      window.removeEventListener('focus', logWindowFocus);
+      window.removeEventListener('blur', logWindowFocus);
+      logMode.removeEventListener('pointerdown', keepLogToggleFocus);
+      logMode.removeEventListener('click', toggleLogMode); logMode.remove();
+    });
     const observeSubmit = (event: Event) => {
       this.inputLog(`submit:${event.type}`, {target: describe(event.target as Element),
         text: this.isBrowser() ? this.browser.input.value : spatialKeyboard.value});
@@ -482,9 +546,10 @@ export class TaskPanelSystem extends createSystem({}) {
         this.browser.cancelButton.removeEventListener('click', onBrowserCancel),
       () => this.browser.retryButton.removeEventListener('click', onRetry),
       () => this.browser.xrButton.removeEventListener('click', onEnterXR),
-      this.world.visibilityState.subscribe(() =>
-        this.syncPresentation(panel, taskInput),
-      ),
+      this.world.visibilityState.subscribe(() => {
+        this.inputLog('xr-visibility-change');
+        this.syncPresentation(panel, taskInput);
+      }),
     );
 
     this.cleanupFuncs.push(watchLocalStorage(window,[TASK_STORE_KEY],source=>{
