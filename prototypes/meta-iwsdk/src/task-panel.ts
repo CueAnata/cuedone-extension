@@ -83,6 +83,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private browserXRLayout?: BrowserPanelLayout;
   private finaleReturnPending = false;
   private finaleReturnTap?: (event: Event) => void;
+  private finaleExitGesture = false;
+  private deferredSessionEnd?: () => Promise<void>;
   private addingTask = false;
   private finishingEntry = false;
   private resetEntryKeyboard: () => void = () => {};
@@ -344,8 +346,21 @@ export class TaskPanelSystem extends createSystem({}) {
       });
     };
     const onExitXR = () => {
-      if(finalTaskAR.busy)finalTaskAR.end();
-      else void this.world.exitXR();
+      // Quest drops document focus when the finale timer calls session.end(). End from this tap instead.
+      this.inputLog('finale-exit-gesture');
+      this.finaleExitGesture = true;
+      try {
+        if(this.deferredSessionEnd) {
+          const end = this.deferredSessionEnd;
+          this.deferredSessionEnd = undefined;
+          void end();
+          return;
+        }
+        if(finalTaskAR.busy)finalTaskAR.end();
+        else void this.world.exitXR();
+      } finally {
+        this.finaleExitGesture = false;
+      }
     };
     const onBrowserInput = () => {
       this.draft = this.browser.input.value;
@@ -836,7 +851,17 @@ export class TaskPanelSystem extends createSystem({}) {
       // Start the native request in the final-task click, before awaiting storage.
       // FinalTaskAR counts 5.75 seconds from its first visible saved-list XR frame.
       void launchAR(this.world, required<HTMLElement>('#xr-overlay'), gestureXR,
-        session => finalTaskAR.attach(arRun, session), restoreLayout).then(started => {
+        session => {
+          const nativeEnd = session.end.bind(session);
+          session.end = () => {
+            if(this.finaleExitGesture)return nativeEnd();
+            this.deferredSessionEnd = nativeEnd;
+            this.inputLog('finale-end-deferred');
+            return Promise.resolve();
+          };
+          session.addEventListener('end', () => {this.deferredSessionEnd = undefined;}, {once: true});
+          finalTaskAR.attach(arRun, session);
+        }, restoreLayout).then(started => {
         traceEnhanced('launcher-finished', {started});
         if(!started) {finalTaskAR.cancel(arRun);restoreLayout();}
       }).catch((error: unknown) => {
