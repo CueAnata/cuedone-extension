@@ -14,7 +14,7 @@ import { publishSpatialProgress } from './spatial-presentation.js';
 import { LocalTaskStore, TASK_STORE_KEY } from './task-store.js';
 import { watchLocalStorage } from './local-sync.js';
 import { isFinalCompletion, isForwardCompletion } from './garden-progress.js';
-import { bindTaskEntry, observeTaskEntry } from './task-entry.js';
+import { bindTaskEntry } from './task-entry.js';
 import { PersonalTaskSession } from './task-session.js';
 import { normalizeTaskText, setTaskCompleted } from '../../../src/shared/tasks.js';
 
@@ -99,15 +99,11 @@ export class TaskPanelSystem extends createSystem({}) {
   private draft = '';
   private reviewingNewList = false;
   private clearSavePending = false;
-  private postClearCycle = 0;
-  private postClearEventCounts: Record<string, number> = {};
   private remotePending = false;
   private remoteFeedback = false;
   private allowRemoteFeedback = false;
   private syncQueued = false;
   private audioContext: AudioContext | null = null;
-  // TEMPORARY Quest diagnostics. Local console/screen only; remove before submission.
-  private inputLog: (event: string, detail?: Record<string, unknown>) => void = () => {};
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
@@ -170,7 +166,6 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     const saveExperience = () => {
       const next = experience.value === '3d' ? '3d' : '2d';
-      this.inputLog('mode-toggle-before', {requested: next});
       try {
         window.localStorage.setItem(PANEL_EXPERIENCE_KEY, next);
         this.finaleStyle = next;
@@ -180,7 +175,6 @@ export class TaskPanelSystem extends createSystem({}) {
         experience.value = this.finaleStyle;
         experienceStatus.textContent = 'Could not save the panel experience. Your previous choice is unchanged.';
       }
-      this.inputLog('mode-toggle-after', {requested: next});
     };
     restoreExperience();
     required<HTMLElement>('#browser-panel-experience-help').textContent =
@@ -256,7 +250,8 @@ export class TaskPanelSystem extends createSystem({}) {
       const button = panel.requireElementById(id);
       const scroll = () => {
         const list = panel.requireElementById<UIKit.Container>('task-list');
-        const target = !this.settingsOpen && !this.reviewingNewList && (list.maxScrollPosition.value[1] ?? 0) > 0 ? list : body;
+        // In AR the buttons exist only to bring Exit AR into view, so they move the panel body.
+        const target = !this.isBrowser() || this.settingsOpen || this.reviewingNewList || !((list.maxScrollPosition.value[1] ?? 0) > 0) ? body : list;
         const [x,y] = target.scrollPosition.value;
         target.scrollPosition.value = [x,Math.max(0,Math.min(target.maxScrollPosition.value[1] ?? 0,y+direction*24))];
       };
@@ -274,7 +269,6 @@ export class TaskPanelSystem extends createSystem({}) {
       // Browser Clear All skips the review dialog. That dialog is the step that drops Quest document focus, and window.focus cannot restore it.
       if (this.isBrowser()) {
         this.browser.input.focus({preventScroll: true});
-        this.inputLog('clear-direct-before');
         void this.clearAll(panel, taskInput, true);
         return;
       }
@@ -291,7 +285,6 @@ export class TaskPanelSystem extends createSystem({}) {
       if (!field.isConnected || field.disabled) return;
       event.preventDefault();
       field.focus({preventScroll: true});
-      this.inputLog('clear-press-focus', {nativeType: event.type, cancelable: event.cancelable});
     };
     const browserClear = required<HTMLElement>('#browser-clear-button');
     const spatialClear = panel.requireElementById<UIKit.Container>('clear-button');
@@ -378,183 +371,7 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
     let returnHandled = false;
-    let nativeEventSequence = 0;
-    for (const [source, field] of [['browser', this.browser.input], ['spatial', spatialKeyboard]] as const) {
-      const capturePostClearEvent = (event: Event) => {
-        if (!this.postClearCycle) return;
-        const key = event as KeyboardEvent;
-        const edit = event as InputEvent;
-        const text = edit.data ?? (key.key?.length === 1 ? key.key : '');
-        const hasLetters = /\p{L}/u.test(text), hasDigits = /\p{N}/u.test(text);
-        const category = hasLetters && hasDigits ? 'mixed' : hasLetters ? 'letter' : hasDigits ? 'digit' :
-          key.key === 'Unidentified' || key.keyCode === 229 ? 'unknown' : 'other';
-        const countKey = `${source}:${event.type}:${category}`;
-        this.postClearEventCounts[countKey] = (this.postClearEventCounts[countKey] ?? 0) + 1;
-        this.inputLog('post-clear-native-event', {
-          eventId: ++nativeEventSequence, source, nativeType: event.type, category,
-          key: key.key ?? null, code: key.code ?? null, keyCode: key.keyCode ?? null,
-          data: edit.data ?? null, inputType: edit.inputType ?? null, isComposing: edit.isComposing ?? null,
-          documentHasFocusAtEvent: document.hasFocus(), activeAtEvent: document.activeElement === field,
-          valueAtEvent: field.value, defaultPreventedAtCapture: event.defaultPrevented,
-          pointerType: (event as PointerEvent).pointerType ?? null,
-        });
-      };
-      const types = ['keydown', 'beforeinput', 'input', 'pointerdown', 'focus', 'blur'];
-      for (const type of types) field.addEventListener(type, capturePostClearEvent, {capture: true});
-      this.cleanupFuncs.push(() => {
-        for (const type of types) field.removeEventListener(type, capturePostClearEvent, {capture: true});
-      });
-    }
-    let passiveCueLog = new URLSearchParams(window.location.search).get('cueLogPassive') === '1';
-    const composition = {
-      browser: {active: false, lastEvent: 'none', data: null as string | null, events: 0},
-      spatial: {active: false, lastEvent: 'none', data: null as string | null, events: 0},
-    };
-    for (const [source, field, state] of [
-      ['browser', this.browser.input, composition.browser], ['spatial', spatialKeyboard, composition.spatial],
-    ] as const) {
-      const trackComposition = (event: Event) => {
-        if (event.type === 'blur') state.active = false;
-        if (event.type.startsWith('composition')) {
-          state.lastEvent = event.type;
-          state.data = (event as CompositionEvent).data ?? null;
-          state.events++;
-          if (event.type === 'compositionstart') state.active = true;
-          if (event.type === 'compositionend') state.active = false;
-        }
-        this.inputLog(`native:${event.type}`, {source});
-      };
-      const types = ['compositionstart', 'compositionupdate', 'compositionend', 'focus', 'blur'];
-      for (const type of types) field.addEventListener(type, trackComposition, {capture: true});
-      this.cleanupFuncs.push(() => {
-        for (const type of types) field.removeEventListener(type, trackComposition, {capture: true});
-      });
-    }
-    const debug = document.createElement('pre');
-    debug.id = 'cue-input-debug';
-    debug.setAttribute('aria-label', 'Temporary Quest input diagnostics');
-    debug.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:9999;width:min(46vw,600px);max-height:36vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.3 monospace;background:#fff;color:#111;border:2px solid #111;padding:6px;margin:0;';
-    this.browser.root.append(debug);
-    const spatialDebug = new UIKit.Text({text: 'CUE-LOG: waiting for input', fontSize: 1.1,
-      width: '100%', color: '#111111', backgroundColor: '#FFFFFF'});
-    const spatialDebugPanel = new UIKit.Container({height: 30, flexShrink: 0, overflow: 'scroll'});
-    spatialDebugPanel.add(spatialDebug);
-    panel.requireElementById<UIKit.Container>('panel-body').add(spatialDebugPanel);
-    const lines: string[] = [];
-    let sequence = 0;
-    const describe = (element: Element | null) => element == null ? null :
-      `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element === spatialKeyboard ? '[spatial]' : element === this.browser.input ? '[browser]' : ''}`;
-    const snapshot = () => ({
-      activeElement: describe(document.activeElement),
-      isBrowser: this.isBrowser(), visibilityState: this.world.visibilityState.value,
-      documentVisibilityState: document.visibilityState, documentHasFocus: document.hasFocus(),
-      composition, frameValuePolling: !passiveCueLog, spatialDebugUpdates: !passiveCueLog,
-      postClearCycle: this.postClearCycle, postClearEventCounts: this.postClearEventCounts,
-      browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
-        inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
-        disabled: this.browser.input.disabled, readOnly: this.browser.input.readOnly,
-        connected: this.browser.input.isConnected, value: this.browser.input.value},
-      spatial: {type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
-        inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), pattern: spatialKeyboard.getAttribute('pattern'),
-        disabled: spatialKeyboard.disabled, readOnly: spatialKeyboard.readOnly,
-        connected: spatialKeyboard.isConnected, value: spatialKeyboard.value,
-        hasFocus: taskInput.input.hasFocus.peek()},
-      phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
-      clearSavePending: this.clearSavePending,
-      browserEntryHidden: this.browser.form.hidden,
-      addingTask: this.addingTask, draft: this.draft, returnHandled,
-      experience: this.finaleStyle, sessionPresent: !!this.world.session,
-      xrPresenting: this.world.renderer.xr.isPresenting, layoutPinned: this.browserXRLayout?.pinned ?? false,
-      browserInert: this.browser.root.inert,
-    });
-    this.inputLog = (event, detail = {}) => {
-      try {
-        const record = {n: ++sequence, time: Math.round(performance.now()), event, ...detail, ...snapshot()};
-        console.log('CUE-LOG', JSON.stringify(record));
-        lines.push(JSON.stringify(record));
-        if (lines.length > 20) lines.shift();
-        debug.textContent = `CUE-LOG — TEMPORARY INPUT DIAGNOSTICS (last 20)\n${lines.join('\n')}`;
-        debug.scrollTop = debug.scrollHeight;
-        if (!passiveCueLog) spatialDebug.setProperties({text: debug.textContent});
-      } catch { /* Diagnostics must never interrupt task entry or saving. */ }
-    };
-    // Native events cannot reveal silent programmatic value replacements. Observe
-    // both inputs each frame, without writing to either input or changing focus.
-    let lastSnapshot = JSON.stringify(snapshot());
-    let debugFrame = 0;
-    const observeValues = () => {
-      if (passiveCueLog) return;
-      const next = JSON.stringify(snapshot());
-      if (next !== lastSnapshot) {
-        this.inputLog('input-state-change', {previous: JSON.parse(lastSnapshot)});
-        lastSnapshot = next;
-      }
-      debugFrame = requestAnimationFrame(observeValues);
-    };
-    if (!passiveCueLog) debugFrame = requestAnimationFrame(observeValues);
-    const logMode = document.createElement('button');
-    logMode.id = 'cue-log-mode'; logMode.type = 'button';
-    logMode.style.cssText = 'position:fixed;right:8px;bottom:calc(36vh + 12px);z-index:10000;font:12px monospace;';
-    const showLogMode = () => {
-      logMode.textContent = `CUE-LOG frame/spatial updates: ${passiveCueLog ? 'OFF' : 'ON'}`;
-      logMode.setAttribute('aria-pressed', String(!passiveCueLog));
-    };
-    const toggleLogMode = () => {
-      passiveCueLog = !passiveCueLog;
-      cancelAnimationFrame(debugFrame);
-      if (!passiveCueLog) {
-        lastSnapshot = JSON.stringify(snapshot());
-        debugFrame = requestAnimationFrame(observeValues);
-      }
-      showLogMode();
-      this.inputLog('diagnostic-log-mode-changed');
-    };
-    const keepLogToggleFocus = (event: Event) => {
-      if (document.activeElement === this.browser.input || document.activeElement === spatialKeyboard) event.preventDefault();
-    };
-    logMode.addEventListener('pointerdown', keepLogToggleFocus);
-    logMode.addEventListener('click', toggleLogMode);
-    showLogMode(); this.browser.root.append(logMode);
-    const logDocumentVisibility = () => this.inputLog('document-visibility-change');
-    const logWindowFocus = (event: Event) => this.inputLog(`window:${event.type}`);
-    const logViewport = () => {
-      if (this.postClearCycle) this.inputLog('post-clear-viewport-resize', {
-        width: window.visualViewport?.width, height: window.visualViewport?.height,
-      });
-    };
-    document.addEventListener('visibilitychange', logDocumentVisibility);
-    window.addEventListener('focus', logWindowFocus);
-    window.addEventListener('blur', logWindowFocus);
-    window.visualViewport?.addEventListener('resize', logViewport);
-    this.cleanupFuncs.push(() => {
-      document.removeEventListener('visibilitychange', logDocumentVisibility);
-      window.removeEventListener('focus', logWindowFocus);
-      window.removeEventListener('blur', logWindowFocus);
-      window.visualViewport?.removeEventListener('resize', logViewport);
-      logMode.removeEventListener('pointerdown', keepLogToggleFocus);
-      logMode.removeEventListener('click', toggleLogMode); logMode.remove();
-    });
-    const observeSubmit = (event: Event) => {
-      this.inputLog(`submit:${event.type}`, {target: describe(event.target as Element),
-        text: this.isBrowser() ? this.browser.input.value : spatialKeyboard.value});
-    };
-    const submitSources: Array<[EventTarget, string]> = [
-      [this.browser.form, 'submit'], [required('#spatial-task-form'), 'submit'],
-      [required('#browser-add-task-button'), 'click'],
-    ];
-    for (const [target, type] of submitSources) target.addEventListener(type, observeSubmit, {capture: true});
-    this.cleanupFuncs.push(
-      observeTaskEntry(spatialKeyboard, 'spatial', this.inputLog),
-      observeTaskEntry(this.browser.input, 'browser', this.inputLog),
-      () => {
-        for (const [target, type] of submitSources) target.removeEventListener(type, observeSubmit, {capture: true});
-        cancelAnimationFrame(debugFrame); this.inputLog = () => {}; debug.remove();
-        spatialDebugPanel.removeFromParent(); spatialDebug.removeFromParent(); spatialDebug.dispose(); spatialDebugPanel.dispose();
-      },
-    );
-    this.inputLog('diagnostics-ready');
     const logSessionEnd = () => {
-      this.inputLog('ar-native-session-ended');
       this.noteXrSessionEnded();
     };
     this.world.renderer.xr.addEventListener('sessionend', logSessionEnd);
@@ -621,7 +438,6 @@ export class TaskPanelSystem extends createSystem({}) {
       () => this.browser.retryButton.removeEventListener('click', onRetry),
       () => this.browser.xrButton.removeEventListener('click', onEnterXR),
       this.world.visibilityState.subscribe(() => {
-        this.inputLog('xr-visibility-change');
         this.syncPresentation(panel, taskInput);
       }),
     );
@@ -662,16 +478,14 @@ export class TaskPanelSystem extends createSystem({}) {
     this.remoteFeedback=false;
   }
 
-  private forceTextInputMode(reason: string): void {
+  private forceTextInputMode(_reason: string): void {
     const spatial = this.world.requireSceneObject<UIKitMLAsset>('task-panel')
       .requireElementById<TaskInput>('task-input').input.element;
-    this.inputLog('text-inputmode-before', {reason});
     for (const field of [this.browser.input, spatial]) {
       if (field instanceof HTMLInputElement) field.type = 'text';
       field.setAttribute('inputmode', 'text');
       field.inputMode = 'text';
     }
-    this.inputLog('text-inputmode-after', {reason});
   }
 
   private focusTaskEntry(input: TaskInput): void {
@@ -714,8 +528,6 @@ export class TaskPanelSystem extends createSystem({}) {
   }
 
   private async addTask(panel: UIKitMLAsset, input: TaskInput): Promise<boolean> {
-    this.inputLog('addTask-received', {source: this.isBrowser() ? 'browser' : 'spatial',
-      text: this.isBrowser() ? this.browser.input.value : input.input.element.value});
     if(this.session.phase !== 'ready' || this.reviewingNewList || (!this.entryOpen && !this.isBrowser()) || this.addingTask)return false;
     const wasBrowser = this.isBrowser();
     const keyboard = wasBrowser ? this.browser.input : input.input.element;
@@ -734,7 +546,6 @@ export class TaskPanelSystem extends createSystem({}) {
     };
     this.addingTask = true;
     try {
-      this.inputLog('session.add-received', {text: submitted});
       const pending = this.session.add(submitted);
       this.render(panel);
       restoreScroll();
@@ -861,7 +672,6 @@ export class TaskPanelSystem extends createSystem({}) {
     const saved = await pending;
     this.render(panel);
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
-    if(isFinal && this.isBrowser()) this.inputLog('finale-focus-after-save');
     if(enhancedError)this.session.message = enhancedError;
     if(arRun) {
       if(isFinal)finalTaskAR.saved(arRun, this.session.tasks);
@@ -884,17 +694,14 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private openClearConfirmation(panel: UIKitMLAsset, input: TaskInput): void {
     if (this.session.phase !== 'ready' || this.reviewingNewList) return;
-    this.inputLog('clear-confirmation-opening');
     this.reviewingNewList = true;
     this.render(panel);
-    this.inputLog('clear-confirmation-open');
   }
 
   private cancelClearConfirmation(panel: UIKitMLAsset): void {
     if (this.session.phase === 'saving') return;
     this.reviewingNewList = false;
     this.render(panel);
-    this.inputLog('clear-canceled');
   }
 
   private async clearAll(panel: UIKitMLAsset, input: TaskInput, direct = false): Promise<void> {
@@ -903,12 +710,10 @@ export class TaskPanelSystem extends createSystem({}) {
     this.clearSavePending = true;
     const pending = this.session.clearAll();
     this.render(panel);
-    this.inputLog('clear-saving');
     const saved = await pending;
     this.clearSavePending = false;
     if (!saved) {
       this.render(panel);
-      this.inputLog('clear-save-failed');
       return;
     }
 
@@ -920,9 +725,6 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browserEntryCollapsed = false;
     this.render(panel);
     this.forceTextInputMode('clear-all');
-    this.postClearCycle++;
-    this.postClearEventCounts = {};
-    this.inputLog('clear-ready');
 
     const previousFocus = document.activeElement;
     const restoreEntryFocus = () => {
@@ -935,12 +737,10 @@ export class TaskPanelSystem extends createSystem({}) {
         active !== input.input.element) return;
       const keyboard = wasBrowser ? this.browser.input : input.input.element;
       if (active === keyboard) {
-        this.inputLog('clear-entry-focus-preserved');
         return;
       }
       this.focusTaskEntry(input);
       if (wasBrowser) this.browser.input.click();
-      this.inputLog('clear-entry-focused');
     };
     if (!wasBrowser) requestAnimationFrame(restoreEntryFocus);
   }
@@ -1211,7 +1011,6 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private preserveBrowserLayout(panel:UIKitMLAsset,input:TaskInput):()=>void {
     if(!this.isBrowser() || this.browserXRLayout)return ()=>{};
-    this.inputLog('ar-entry-before-layout-pin');
     const elements=[document.scrollingElement,this.browser.root,
       document.querySelector('#browser-panel-body'),document.querySelector('#browser-task-list')]
       .filter((element):element is Element=>element!==null);
@@ -1220,7 +1019,6 @@ export class TaskPanelSystem extends createSystem({}) {
     let released=false;
     return ()=>{
       if(released)return;
-      this.inputLog('ar-return-before-layout-restore');
       released=true;layout.release();
       // launchAR calls this only after the renderer is no longer presenting.
       // Re-enter the browser panel before any focus gesture. Do not call window.focus().
@@ -1229,7 +1027,6 @@ export class TaskPanelSystem extends createSystem({}) {
       this.forceTextInputMode('ar-return');
       if(this.finaleReturnPending || this.isBrowser())this.armFinaleReturnTap();
       this.queueXrReturnFocusCheck();
-      this.inputLog('ar-return-after-layout-restore');
     };
   }
 
@@ -1251,11 +1048,9 @@ export class TaskPanelSystem extends createSystem({}) {
         return;
       }
       const documentHasFocus = document.hasFocus();
-      this.inputLog('xr-return-focus-check', {documentHasFocus});
       this.xrReturnEnded = false;
       if(documentHasFocus)return;
       this.xrReturnReloadSent = true;
-      this.inputLog('xr-return-reload', {reason: 'document-hasFocus-false-after-xr-return', documentHasFocus});
       location.reload();
     }, 1500);
   }
@@ -1265,15 +1060,10 @@ export class TaskPanelSystem extends createSystem({}) {
     const root=this.browser.root;
     const field=this.browser.input;
     if(this.finaleReturnTap)root.removeEventListener('pointerup', this.finaleReturnTap, true);
-    const onTap=(event:Event)=>{
+    const onTap=()=>{
       root.removeEventListener('pointerup', onTap, true);
       if(this.finaleReturnTap===onTap)this.finaleReturnTap=undefined;
-      const before=document.hasFocus();
       if(field.isConnected && !field.disabled)field.focus({preventScroll:true});
-      this.inputLog('finale-return-tap', {
-        hasFocusBefore:before, hasFocusAfter:document.hasFocus(),
-        target:event.target instanceof Element ? (event.target.id || event.target.tagName.toLowerCase()) : null,
-      });
     };
     this.finaleReturnTap=onTap;
     root.addEventListener('pointerup', onTap, true);
@@ -1284,7 +1074,6 @@ export class TaskPanelSystem extends createSystem({}) {
     const presenting=this.world.renderer.xr.isPresenting;
     const returned=this.finaleReturnPending && !presenting;
     const showBrowser=isBrowser || returned;
-    this.inputLog('presentation-sync-before', {target: showBrowser ? 'browser' : 'spatial'});
     const pinned=this.browserXRLayout?.pinned ?? false;
     panel.visible = !showBrowser;
     // Retain the DOM footprint so XR entry never collapses the page's layout.
@@ -1309,24 +1098,28 @@ export class TaskPanelSystem extends createSystem({}) {
     if(isBrowser && this.browserXRLayout?.restore())this.browserXRLayout=undefined;
     if(returned && isBrowser)this.finaleReturnPending=false;
     if(isBrowser && !presenting)this.queueXrReturnFocusCheck();
-    this.inputLog('presentation-sync-after', {target: showBrowser ? 'browser' : 'spatial'});
   }
 
   private render(panel: UIKitMLAsset): void {
     publishSpatialProgress(this.session.tasks,
       this.progression === 'smooth' && (this.session.message === 'Task complete.' || this.remoteFeedback));
-    panel.requireElementById('grab-handle').setProperties({display: this.collapsed ? 'none' : 'flex'});
-    panel.requireElementById('scroll-controls').setProperties({display: this.collapsed ? 'none' : 'flex'});
-    panel.requireElementById('task-view').setProperties({display: this.settingsOpen ? 'none' : 'flex'});
-    required<HTMLElement>('#browser-task-view').hidden = this.settingsOpen;
+    const isBrowser = this.isBrowser();
+    const ar = !isBrowser;
+    const bodyScroll = panel.requireElementById<UIKit.Container>('panel-body').maxScrollPosition.value[1] ?? 0;
+    panel.requireElementById('grab-handle').setProperties({display: ar || this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('scroll-controls').setProperties({display: ar && !this.collapsed && bodyScroll > 0 ? 'flex' : 'none'});
+    panel.requireElementById('task-view').setProperties({display: ar || !this.settingsOpen ? 'flex' : 'none'});
+    required<HTMLElement>('#browser-task-view').hidden = !ar && this.settingsOpen;
     panel.requireElementById('panel-body').setProperties({display: this.collapsed ? 'none' : 'flex'});
     panel.requireElementById('panel-surface').setProperties({height: this.collapsed ? 'auto' : 100});
-    panel.requireElementById('settings-toggle').setProperties({display: this.collapsed ? 'none' : 'flex'});
-    this.collapseUp?.setProperties({display: this.collapsed ? 'none' : 'flex'});
-    this.collapseDown?.setProperties({display: this.collapsed ? 'flex' : 'none'});
+    panel.requireElementById('settings-toggle').setProperties({display: ar || this.collapsed ? 'none' : 'flex'});
+    this.collapseUp?.setProperties({display: ar || this.collapsed ? 'none' : 'flex'});
+    this.collapseDown?.setProperties({display: ar || !this.collapsed ? 'none' : 'flex'});
+    panel.requireElementById('collapse-toggle').setProperties({display: ar ? 'none' : 'flex'});
     panel.requireElementById('collapse-toggle').name = this.collapsed ? 'Expand CueDone' : 'Collapse CueDone';
     required<HTMLElement>('#browser-panel-body').hidden = this.collapsed;
-    required<HTMLElement>('#browser-settings-toggle').hidden = this.collapsed;
+    required<HTMLElement>('#browser-settings-toggle').hidden = ar || this.collapsed;
+    required<HTMLButtonElement>('#browser-collapse-toggle').hidden = ar;
     const collapsedBar = required<HTMLElement>('#browser-collapsed-bar');
     const collapsedText = required<HTMLElement>('#browser-collapsed-text');
     collapsedBar.hidden = !this.collapsed;
@@ -1340,7 +1133,6 @@ export class TaskPanelSystem extends createSystem({}) {
     const isLoading = this.session.phase === 'loading';
     const isSaving = this.session.phase === 'saving';
     const loadFailed = this.session.phase === 'load-error';
-    const isBrowser = this.isBrowser();
     const preserveClearEntry = this.reviewingNewList || this.clearSavePending;
 
     panel.requireElementById<UIKit.Text>('task-text').setProperties({
@@ -1365,6 +1157,7 @@ export class TaskPanelSystem extends createSystem({}) {
       statusMessage.includes('failed');
     const statusConfirmsAdd = statusMessage.startsWith('Saved:');
     panel.requireElementById<UIKit.Text>('status-text').setProperties({
+      display: ar ? 'none' : 'flex',
       text: statusMessage,
       color: statusIsError
         ? '#8F2430'
@@ -1392,16 +1185,19 @@ export class TaskPanelSystem extends createSystem({}) {
         active == null,
     });
     panel.requireElementById('task-controls').setProperties({
-      display: this.collapsed || this.settingsOpen || !this.entryOpen ? 'none' : 'flex',
+      display: ar || this.collapsed || this.settingsOpen || !this.entryOpen ? 'none' : 'flex',
     });
     panel.requireElementById('new-list-button').setProperties({
       display: 'none',
       disabled: true,
     });
-    panel.requireElementById('clear-button').setProperties({display: this.reviewingNewList ? 'none' : 'flex'});
-    required<HTMLElement>('#browser-clear-button').hidden = this.reviewingNewList;
+    panel.requireElementById('reset-button').setProperties({display: ar ? 'none' : 'flex'});
+    panel.requireElementById('show-add-button').setProperties({display: ar ? 'none' : 'flex'});
+    panel.requireElementById('clear-button').setProperties({display: ar || this.reviewingNewList ? 'none' : 'flex'});
+    required<HTMLElement>('#browser-clear-button').hidden = ar || this.reviewingNewList;
+    required<HTMLElement>('#browser-reset-button').hidden = ar;
     panel.requireElementById('new-list-review').setProperties({
-      display: this.reviewingNewList ? 'flex' : 'none',
+      display: !ar && this.reviewingNewList ? 'flex' : 'none',
     });
     panel.requireElementById('carry-button').setProperties({
       display: 'none',
@@ -1415,7 +1211,7 @@ export class TaskPanelSystem extends createSystem({}) {
       disabled: isSaving,
     });
     panel.requireElementById('retry-button').setProperties({
-      display: loadFailed ? 'flex' : 'none',
+      display: !ar && loadFailed ? 'flex' : 'none',
     });
     panel.requireElementById('xr-button').setProperties({
       display: this.world.xrEnabled && isBrowser ? 'flex' : 'none',
@@ -1425,8 +1221,8 @@ export class TaskPanelSystem extends createSystem({}) {
     });
 
     const disabled = isLoading || isSaving || loadFailed || this.reviewingNewList;
-    panel.requireElementById('settings-panel').setProperties({display: this.settingsOpen ? 'flex' : 'none'});
-    required<HTMLElement>('#browser-settings-panel').hidden = !this.settingsOpen;
+    panel.requireElementById('settings-panel').setProperties({display: !ar && this.settingsOpen ? 'flex' : 'none'});
+    required<HTMLElement>('#browser-settings-panel').hidden = ar || !this.settingsOpen;
     required<HTMLElement>('#browser-settings-toggle').setAttribute('aria-expanded', String(this.settingsOpen));
     for(const id of ['reset-button', 'clear-button', 'show-add-button']) {
       const unavailable = disabled || (id === 'reset-button' ? !this.session.completedCount : id === 'clear-button' ? !this.session.tasks.length : false);
@@ -1467,10 +1263,14 @@ export class TaskPanelSystem extends createSystem({}) {
           ? 'success'
           : 'neutral';
 
+    const immersed = !this.isBrowser();
     const entryFinished = this.browserEntryFinished && !this.entryOpen;
     this.browser.root.dataset.entryFinished = String(entryFinished);
-    required<HTMLElement>('#browser-reopen-entry').hidden = !entryFinished || this.collapsed || this.settingsOpen;
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || entryFinished;
+    required<HTMLElement>('#browser-reopen-entry').hidden = immersed || !entryFinished || this.collapsed || this.settingsOpen;
+    this.browser.form.hidden = immersed || this.collapsed || this.settingsOpen || entryFinished;
+    const entryHelp = document.querySelector<HTMLElement>('#browser-task-view > .browser-entry-help');
+    if(entryHelp) entryHelp.hidden = immersed;
+    this.browser.statusText.hidden = immersed;
     required<HTMLElement>('#browser-entry-fields').hidden = this.browserEntryCollapsed;
     const entryToggle = required<HTMLButtonElement>('#browser-entry-toggle');
     entryToggle.textContent = this.browserEntryCollapsed ? 'Edit' : 'Done';
@@ -1483,15 +1283,15 @@ export class TaskPanelSystem extends createSystem({}) {
       busy || loadFailed || this.reviewingNewList || active == null;
     this.browser.newListButton.hidden = true;
     this.browser.newListButton.disabled = busy || loadFailed;
-    this.browser.review.hidden = !this.reviewingNewList;
+    this.browser.review.hidden = immersed || !this.reviewingNewList;
     this.browser.reviewCopy.textContent = 'Delete every task? Cancel keeps your list.';
     this.browser.carryButton.hidden = true;
     this.browser.carryButton.disabled = true;
     this.browser.emptyButton.textContent = 'Clear All';
     this.browser.emptyButton.disabled = isSaving;
     this.browser.cancelButton.disabled = isSaving;
-    this.browser.retryButton.hidden = !loadFailed;
+    this.browser.retryButton.hidden = immersed || !loadFailed;
     this.browser.retryButton.disabled = isLoading;
-    this.browser.xrButton.hidden = !this.world.xrEnabled;
+    this.browser.xrButton.hidden = immersed || !this.world.xrEnabled;
   }
 }
