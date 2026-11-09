@@ -85,6 +85,9 @@ export class TaskPanelSystem extends createSystem({}) {
   private finaleReturnTap?: (event: Event) => void;
   private finaleExitGesture = false;
   private deferredSessionEnd?: () => Promise<void>;
+  private xrReturnEnded = false;
+  private xrReturnReloadSent = false;
+  private xrReturnFocusTimer?: ReturnType<typeof setTimeout>;
   private addingTask = false;
   private finishingEntry = false;
   private resetEntryKeyboard: () => void = () => {};
@@ -113,6 +116,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.cleanupFuncs.push(()=>{
       this.browserXRLayout?.release();this.browserXRLayout?.restore();this.browserXRLayout=undefined;
       if(this.finaleReturnTap)this.browser.root.removeEventListener('pointerup', this.finaleReturnTap, true);
+      if(this.xrReturnFocusTimer)clearTimeout(this.xrReturnFocusTimer);
     });
     document.getElementById('browser-done-button')?.remove();
     panel.requireElementById('done-button').setProperties({display: 'none'});
@@ -564,7 +568,10 @@ export class TaskPanelSystem extends createSystem({}) {
       },
     );
     this.inputLog('diagnostics-ready');
-    const logSessionEnd = () => this.inputLog('ar-native-session-ended');
+    const logSessionEnd = () => {
+      this.inputLog('ar-native-session-ended');
+      this.noteXrSessionEnded();
+    };
     this.world.renderer.xr.addEventListener('sessionend', logSessionEnd);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', logSessionEnd));
     const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
@@ -1246,8 +1253,36 @@ export class TaskPanelSystem extends createSystem({}) {
       this.syncPresentation(panel,input);
       this.forceTextInputMode('ar-return');
       if(this.finaleReturnPending || this.isBrowser())this.armFinaleReturnTap();
+      this.queueXrReturnFocusCheck();
       this.inputLog('ar-return-after-layout-restore');
     };
+  }
+
+  /** A finished XR session may leave Quest document focus false. Reload once only after 2D return confirms that. */
+  private noteXrSessionEnded(): void {
+    this.xrReturnReloadSent = false;
+    this.xrReturnEnded = true;
+    this.queueXrReturnFocusCheck();
+  }
+
+  private queueXrReturnFocusCheck(): void {
+    if(!this.xrReturnEnded || this.xrReturnFocusTimer || this.xrReturnReloadSent)return;
+    if(!this.isBrowser() || this.world.renderer.xr.isPresenting)return;
+    this.xrReturnFocusTimer = setTimeout(() => {
+      this.xrReturnFocusTimer = undefined;
+      if(!this.xrReturnEnded || this.xrReturnReloadSent)return;
+      if(!this.isBrowser() || this.world.renderer.xr.isPresenting){
+        this.queueXrReturnFocusCheck();
+        return;
+      }
+      const documentHasFocus = document.hasFocus();
+      this.inputLog('xr-return-focus-check', {documentHasFocus});
+      this.xrReturnEnded = false;
+      if(documentHasFocus)return;
+      this.xrReturnReloadSent = true;
+      this.inputLog('xr-return-reload', {reason: 'document-hasFocus-false-after-xr-return', documentHasFocus});
+      location.reload();
+    }, 1500);
   }
 
   /** The next tap is the user gesture. Programmatic focus cannot restore Quest document focus. */
@@ -1298,6 +1333,7 @@ export class TaskPanelSystem extends createSystem({}) {
     // The saved coordinates must survive until the temporary styles/spacer are gone.
     if(isBrowser && this.browserXRLayout?.restore())this.browserXRLayout=undefined;
     if(returned && isBrowser)this.finaleReturnPending=false;
+    if(isBrowser && !presenting)this.queueXrReturnFocusCheck();
     this.inputLog('presentation-sync-after', {target: showBrowser ? 'browser' : 'spatial'});
   }
 
