@@ -264,6 +264,7 @@ export class TaskPanelSystem extends createSystem({}) {
     bind('clear-button', () => {
       // Browser Clear All skips the review dialog. That dialog is the step that drops Quest document focus, and window.focus cannot restore it.
       if (this.isBrowser()) {
+        this.browser.input.focus({preventScroll: true});
         this.inputLog('clear-direct-before');
         void this.clearAll(panel, taskInput, true);
         return;
@@ -275,7 +276,25 @@ export class TaskPanelSystem extends createSystem({}) {
         event.preventDefault();
       }
     };
-    for (const id of ['clear-button', 'empty-button', 'cancel-new-list']) {
+    // Quest drops document focus when Clear All takes the field. Keep the field focused; do not let the button become the focus target.
+    const keepClearInputFocused = (event: Event) => {
+      const field = this.browser.input;
+      if (!field.isConnected || field.disabled) return;
+      event.preventDefault();
+      field.focus({preventScroll: true});
+      this.inputLog('clear-press-focus', {nativeType: event.type, cancelable: event.cancelable});
+    };
+    const browserClear = required<HTMLElement>('#browser-clear-button');
+    const spatialClear = panel.requireElementById<UIKit.Container>('clear-button');
+    browserClear.addEventListener('pointerdown', keepClearInputFocused, {capture: true});
+    browserClear.addEventListener('mousedown', keepClearInputFocused, {capture: true});
+    spatialClear.setProperties({onPointerDown: event => preserveEntryFocus(event.nativeEvent)});
+    this.cleanupFuncs.push(() => {
+      browserClear.removeEventListener('pointerdown', keepClearInputFocused, {capture: true});
+      browserClear.removeEventListener('mousedown', keepClearInputFocused, {capture: true});
+      spatialClear.setProperties({onPointerDown: undefined});
+    });
+    for (const id of ['empty-button', 'cancel-new-list']) {
       const button = required<HTMLElement>(`#browser-${id}`);
       const spatial = panel.requireElementById<UIKit.Container>(id);
       button.addEventListener('pointerdown', preserveEntryFocus);
@@ -1341,8 +1360,9 @@ export class TaskPanelSystem extends createSystem({}) {
     required<HTMLElement>('#browser-settings-toggle').setAttribute('aria-expanded', String(this.settingsOpen));
     for(const id of ['reset-button', 'clear-button', 'show-add-button']) {
       const unavailable = disabled || (id === 'reset-button' ? !this.session.completedCount : id === 'clear-button' ? !this.session.tasks.length : false);
-      panel.requireElementById(id).setProperties({disabled: unavailable});
-      if(id !== 'show-add-button')required<HTMLButtonElement>(`#browser-${id}`).disabled = unavailable;
+      const keepPressedClear = id === 'clear-button' && this.clearSavePending;
+      panel.requireElementById(id).setProperties({disabled: keepPressedClear ? false : unavailable});
+      if(id !== 'show-add-button')required<HTMLButtonElement>(`#browser-${id}`).disabled = keepPressedClear ? false : unavailable;
     }
     const reviewTitle = 'Clear all tasks?';
     panel.requireElementById('new-list-title').setProperties({text: reviewTitle});
