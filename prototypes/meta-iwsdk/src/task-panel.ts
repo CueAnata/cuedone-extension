@@ -100,7 +100,6 @@ export class TaskPanelSystem extends createSystem({}) {
   private audioContext: AudioContext | null = null;
   // TEMPORARY Quest diagnostics. Local console/screen only; remove before submission.
   private inputLog: (event: string, detail?: Record<string, unknown>) => void = () => {};
-  private recreateBrowserInput: () => void = () => {};
 
   init(): void {
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
@@ -300,6 +299,10 @@ export class TaskPanelSystem extends createSystem({}) {
       if(finalTaskAR.busy)finalTaskAR.end();
       else void this.world.exitXR();
     };
+    const onBrowserInput = () => {
+      this.draft = this.browser.input.value;
+      this.render(panel);
+    };
     const onBrowserComplete = () => void this.completeTask(panel);
     const onBrowserEmpty = onEmpty;
     const onBrowserCancel = onCancelNewList;
@@ -316,12 +319,13 @@ export class TaskPanelSystem extends createSystem({}) {
       overlayExit.removeEventListener('click', onExitXR);
       overlayExit.removeEventListener('beforexrselect', preventXRSelect);
     });
+    this.browser.input.addEventListener('input', onBrowserInput);
     const spatialKeyboard = taskInput.input.element;
     spatialKeyboard.enterKeyHint = 'enter';
     spatialKeyboard.setAttribute('form', 'spatial-task-form');
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
-    let readBrowserReturnHandled = () => false;
+    let returnHandled = false;
     const debug = document.createElement('pre');
     debug.id = 'cue-input-debug';
     debug.setAttribute('aria-label', 'Temporary Quest input diagnostics');
@@ -334,26 +338,19 @@ export class TaskPanelSystem extends createSystem({}) {
     panel.requireElementById<UIKit.Container>('panel-body').add(spatialDebugPanel);
     const lines: string[] = [];
     let sequence = 0;
-    let nextInputReference = 0;
-    const inputReferences = new WeakMap<Element, string>();
-    const referenceId = (element: Element) => {
-      let id = inputReferences.get(element);
-      if (!id) {id = `input-${++nextInputReference}`; inputReferences.set(element, id);}
-      return id;
-    };
     const describe = (element: Element | null) => element == null ? null :
       `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element === spatialKeyboard ? '[spatial]' : element === this.browser.input ? '[browser]' : ''}`;
     const snapshot = () => ({
       activeElement: describe(document.activeElement),
-      browser: {referenceId: referenceId(this.browser.input), type: this.browser.input.type, inputMode: this.browser.input.inputMode,
+      browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
         inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
         disabled: this.browser.input.disabled, value: this.browser.input.value},
-      spatial: {referenceId: referenceId(spatialKeyboard), type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
+      spatial: {type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
         inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), pattern: spatialKeyboard.getAttribute('pattern'),
         disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
         hasFocus: taskInput.input.hasFocus.peek()},
       phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
-      addingTask: this.addingTask, draft: this.draft, returnHandled: readBrowserReturnHandled(),
+      addingTask: this.addingTask, draft: this.draft, returnHandled,
       experience: this.finaleStyle, sessionPresent: !!this.world.session,
       xrPresenting: this.world.renderer.xr.isPresenting, layoutPinned: this.browserXRLayout?.pinned ?? false,
       browserInert: this.browser.root.inert,
@@ -393,6 +390,7 @@ export class TaskPanelSystem extends createSystem({}) {
     for (const [target, type] of submitSources) target.addEventListener(type, observeSubmit, {capture: true});
     this.cleanupFuncs.push(
       observeTaskEntry(spatialKeyboard, 'spatial', this.inputLog),
+      observeTaskEntry(this.browser.input, 'browser', this.inputLog),
       () => {
         for (const [target, type] of submitSources) target.removeEventListener(type, observeSubmit, {capture: true});
         cancelAnimationFrame(debugFrame); this.inputLog = () => {}; debug.remove();
@@ -403,79 +401,39 @@ export class TaskPanelSystem extends createSystem({}) {
     const logSessionEnd = () => this.inputLog('ar-native-session-ended');
     this.world.renderer.xr.addEventListener('sessionend', logSessionEnd);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', logSessionEnd));
-    const installBrowserEntry = (field: HTMLInputElement) => {
-      let returnHandled = false;
-      const reset = () => {returnHandled = false;};
-      const onInput = () => {this.draft = field.value; this.render(panel);};
-      const onKeydown = (event: KeyboardEvent) => {
-        if(event.isComposing || event.keyCode === 229)return;
-        if(event.key !== 'Enter' && event.key !== 'Return' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
-        event.preventDefault();
-        if(!event.repeat && !returnHandled)this.browser.form.requestSubmit();
-      };
-      const onBeforeInput = (event: InputEvent) => {
-        if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
-        event.preventDefault();
-        if(!returnHandled)this.browser.form.requestSubmit();
-      };
-      const submit = (event: SubmitEvent) => {
-        event.preventDefault(); event.stopPropagation();
-        if(!returnHandled) {returnHandled = true; void this.addTask(panel, taskInput);}
-      };
-      field.addEventListener('input', onInput);
-      field.addEventListener('keydown', onKeydown);
-      field.addEventListener('beforeinput', onBeforeInput);
-      field.addEventListener('input', reset);
-      field.addEventListener('blur', reset);
-      const stopObserving = observeTaskEntry(field, 'browser', this.inputLog);
-      const onFocus = () => this.inputLog('browser-input-focus-context', {inputReferenceId: referenceId(field)});
-      const focusFrame = requestAnimationFrame(() => {
-        if (field.isConnected && this.browser.input === field) field.addEventListener('focus', onFocus);
-      });
-      readBrowserReturnHandled = () => returnHandled;
-      return {reset, submit, dispose: () => {
-        cancelAnimationFrame(focusFrame);
-        field.removeEventListener('input', onInput);
-        field.removeEventListener('keydown', onKeydown);
-        field.removeEventListener('beforeinput', onBeforeInput);
-        field.removeEventListener('input', reset);
-        field.removeEventListener('blur', reset);
-        field.removeEventListener('focus', onFocus);
-        stopObserving();
-      }};
+    const submitBrowserTask = () => {void this.addTask(panel, taskInput);};
+    const onTaskKeydown = (event: KeyboardEvent) => {
+      if(event.isComposing || event.keyCode === 229)return;
+      if(event.key !== 'Enter' && event.key !== 'Return' && event.code !== 'NumpadEnter' && event.keyCode !== 13)return;
+      event.preventDefault();
+      if(event.repeat)return;
+      if(!returnHandled)this.browser.form.requestSubmit();
     };
-    let browserEntry = installBrowserEntry(this.browser.input);
-    const onTaskSubmit = (event: SubmitEvent) => browserEntry.submit(event);
+    const onTaskBeforeInput = (event: InputEvent) => {
+      if(event.isComposing || !['insertLineBreak', 'insertParagraph'].includes(event.inputType))return;
+      event.preventDefault();
+      if(!returnHandled)this.browser.form.requestSubmit();
+    };
+    const resetReturn = () => {returnHandled = false;};
+    const onTaskSubmit = (event: SubmitEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if(!returnHandled) {returnHandled = true; submitBrowserTask();}
+    };
+    this.browser.input.addEventListener('keydown', onTaskKeydown);
+    this.browser.input.addEventListener('beforeinput', onTaskBeforeInput);
+    this.browser.input.addEventListener('input', resetReturn);
+    this.browser.input.addEventListener('blur', resetReturn);
     this.browser.form.addEventListener('submit', onTaskSubmit);
-    this.recreateBrowserInput = () => {
-      const old = this.browser.input;
-      const parent = old.parentElement;
-      if (!parent) throw new Error('Task entry is unavailable.');
-      const nextSibling = old.nextSibling;
-      const fresh = document.createElement('input');
-      // Copy presentation/form metadata only; never clone the node or its state.
-      for (const name of ['id', 'class', 'name', 'placeholder', 'aria-label', 'aria-describedby',
-        'form', 'maxlength', 'autocomplete', 'enterkeyhint']) {
-        const value = old.getAttribute(name);
-        if (value !== null) fresh.setAttribute(name, value);
-      }
-      fresh.type = 'text'; fresh.setAttribute('inputmode', 'text'); fresh.inputMode = 'text';
-      this.inputLog('browser-input-removing', {oldReferenceId: referenceId(old)});
-      old.blur(); browserEntry.dispose(); old.remove();
-      this.browser.input = fresh;
-      parent.insertBefore(fresh, nextSibling);
-      browserEntry = installBrowserEntry(fresh);
-      this.inputLog('browser-input-recreated', {oldReferenceId: referenceId(old),
-        newReferenceId: referenceId(fresh), oldConnected: old.isConnected});
-    };
     const spatialEntry = bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form'));
-    this.resetEntryKeyboard = () => {browserEntry.reset(); spatialEntry.reset();};
+    this.resetEntryKeyboard = () => {resetReturn(); spatialEntry.reset();};
     this.cleanupFuncs.push(
       () => {
-        browserEntry.dispose();
+        this.browser.input.removeEventListener('keydown', onTaskKeydown);
+        this.browser.input.removeEventListener('beforeinput', onTaskBeforeInput);
+        this.browser.input.removeEventListener('input', resetReturn);
+        this.browser.input.removeEventListener('blur', resetReturn);
         this.browser.form.removeEventListener('submit', onTaskSubmit);
-        this.recreateBrowserInput = () => {};
-        readBrowserReturnHandled = () => false;
       },
       spatialEntry,
       () => {this.resetEntryKeyboard = () => {};},
@@ -492,6 +450,7 @@ export class TaskPanelSystem extends createSystem({}) {
       () => retryButton.removeEventListener('click', onRetry),
       () => xrButton.removeEventListener('click', onEnterXR),
       () => exitButton.removeEventListener('click', onExitXR),
+      () => this.browser.input.removeEventListener('input', onBrowserInput),
       () =>
         this.browser.completeButton.removeEventListener(
           'click',
@@ -804,7 +763,7 @@ export class TaskPanelSystem extends createSystem({}) {
     this.resetEntryKeyboard();
     input.input.uncontrolledSignal.value = '';
     input.input.element.value = '';
-    this.recreateBrowserInput();
+    this.browser.input.value = '';
     this.render(panel);
     this.forceTextInputMode('clear-all');
     this.inputLog('clear-ready');
@@ -823,7 +782,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if (wasBrowser) this.browser.input.click();
       this.inputLog('clear-entry-focused');
     };
-    if (wasBrowser) requestAnimationFrame(() => setTimeout(restoreEntryFocus, 100));
+    if (wasBrowser) setTimeout(restoreEntryFocus, 100);
     else requestAnimationFrame(restoreEntryFocus);
   }
 
