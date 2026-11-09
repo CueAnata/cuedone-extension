@@ -823,8 +823,14 @@ export class TaskPanelSystem extends createSystem({}) {
     }
     const before = this.session.tasks.map(({id,completed}) => ({id,completed}));
     const enhanced = this.finaleStyle === '3d';
-    const arRun = enhanced ? finalTaskAR.begin(before) : undefined;
+    let arRun = enhanced ? finalTaskAR.begin(before) : undefined;
     let enhancedError = '';
+    if(arRun && this.isBrowser()) {
+      // Immersive finale pins the panel and leaves Quest document focus false before Clear All. Do not enter XR from this tap.
+      this.inputLog('finale-ar-skipped');
+      finalTaskAR.cancel(arRun);
+      arRun = undefined;
+    }
     if(arRun) {
       // Snapshot before requestSession can resize or blur the browser viewport.
       const restoreLayout=this.preserveBrowserLayout(panel,panel.requireElementById<TaskInput>('task-input'));
@@ -849,6 +855,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const saved = await pending;
     this.render(panel);
     const isFinal = saved && isFinalCompletion(before, this.session.tasks);
+    if(isFinal && this.isBrowser()) this.inputLog('finale-focus-after-save');
     if(enhancedError)this.session.message = enhancedError;
     if(arRun) {
       if(isFinal)finalTaskAR.saved(arRun, this.session.tasks);
