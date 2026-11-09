@@ -94,6 +94,8 @@ export class TaskPanelSystem extends createSystem({}) {
   private draft = '';
   private reviewingNewList = false;
   private clearSavePending = false;
+  private postClearCycle = 0;
+  private postClearEventCounts: Record<string, number> = {};
   private remotePending = false;
   private remoteFeedback = false;
   private allowRemoteFeedback = false;
@@ -342,6 +344,33 @@ export class TaskPanelSystem extends createSystem({}) {
     spatialKeyboard.maxLength = 200;
     spatialKeyboard.autocomplete = 'off';
     let returnHandled = false;
+    let nativeEventSequence = 0;
+    for (const [source, field] of [['browser', this.browser.input], ['spatial', spatialKeyboard]] as const) {
+      const capturePostClearEvent = (event: Event) => {
+        if (!this.postClearCycle) return;
+        const key = event as KeyboardEvent;
+        const edit = event as InputEvent;
+        const text = edit.data ?? (key.key?.length === 1 ? key.key : '');
+        const hasLetters = /\p{L}/u.test(text), hasDigits = /\p{N}/u.test(text);
+        const category = hasLetters && hasDigits ? 'mixed' : hasLetters ? 'letter' : hasDigits ? 'digit' :
+          key.key === 'Unidentified' || key.keyCode === 229 ? 'unknown' : 'other';
+        const countKey = `${source}:${event.type}:${category}`;
+        this.postClearEventCounts[countKey] = (this.postClearEventCounts[countKey] ?? 0) + 1;
+        this.inputLog('post-clear-native-event', {
+          eventId: ++nativeEventSequence, source, nativeType: event.type, category,
+          key: key.key ?? null, code: key.code ?? null, keyCode: key.keyCode ?? null,
+          data: edit.data ?? null, inputType: edit.inputType ?? null, isComposing: edit.isComposing ?? null,
+          documentHasFocusAtEvent: document.hasFocus(), activeAtEvent: document.activeElement === field,
+          valueAtEvent: field.value, defaultPreventedAtCapture: event.defaultPrevented,
+          pointerType: (event as PointerEvent).pointerType ?? null,
+        });
+      };
+      const types = ['keydown', 'beforeinput', 'input', 'pointerdown', 'focus', 'blur'];
+      for (const type of types) field.addEventListener(type, capturePostClearEvent, {capture: true});
+      this.cleanupFuncs.push(() => {
+        for (const type of types) field.removeEventListener(type, capturePostClearEvent, {capture: true});
+      });
+    }
     let passiveCueLog = new URLSearchParams(window.location.search).get('cueLogPassive') === '1';
     const composition = {
       browser: {active: false, lastEvent: 'none', data: null as string | null, events: 0},
@@ -386,6 +415,7 @@ export class TaskPanelSystem extends createSystem({}) {
       isBrowser: this.isBrowser(), visibilityState: this.world.visibilityState.value,
       documentVisibilityState: document.visibilityState, documentHasFocus: document.hasFocus(),
       composition, frameValuePolling: !passiveCueLog, spatialDebugUpdates: !passiveCueLog,
+      postClearCycle: this.postClearCycle, postClearEventCounts: this.postClearEventCounts,
       browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
         inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
         disabled: this.browser.input.disabled, readOnly: this.browser.input.readOnly,
@@ -453,13 +483,20 @@ export class TaskPanelSystem extends createSystem({}) {
     showLogMode(); this.browser.root.append(logMode);
     const logDocumentVisibility = () => this.inputLog('document-visibility-change');
     const logWindowFocus = (event: Event) => this.inputLog(`window:${event.type}`);
+    const logViewport = () => {
+      if (this.postClearCycle) this.inputLog('post-clear-viewport-resize', {
+        width: window.visualViewport?.width, height: window.visualViewport?.height,
+      });
+    };
     document.addEventListener('visibilitychange', logDocumentVisibility);
     window.addEventListener('focus', logWindowFocus);
     window.addEventListener('blur', logWindowFocus);
+    window.visualViewport?.addEventListener('resize', logViewport);
     this.cleanupFuncs.push(() => {
       document.removeEventListener('visibilitychange', logDocumentVisibility);
       window.removeEventListener('focus', logWindowFocus);
       window.removeEventListener('blur', logWindowFocus);
+      window.visualViewport?.removeEventListener('resize', logViewport);
       logMode.removeEventListener('pointerdown', keepLogToggleFocus);
       logMode.removeEventListener('click', toggleLogMode); logMode.remove();
     });
@@ -845,6 +882,8 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browserEntryCollapsed = false;
     this.render(panel);
     this.forceTextInputMode('clear-all');
+    this.postClearCycle++;
+    this.postClearEventCounts = {};
     this.inputLog('clear-ready');
 
     const previousFocus = document.activeElement;
