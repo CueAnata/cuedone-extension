@@ -93,6 +93,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private motionEnabled = true;
   private draft = '';
   private reviewingNewList = false;
+  private clearSavePending = false;
   private remotePending = false;
   private remoteFeedback = false;
   private allowRemoteFeedback = false;
@@ -261,6 +262,21 @@ export class TaskPanelSystem extends createSystem({}) {
     bind('clear-button', () => {
       this.openClearConfirmation(panel, taskInput);
     });
+    const preserveEntryFocus = (event: Event) => {
+      if (document.activeElement === this.browser.input || document.activeElement === taskInput.input.element) {
+        event.preventDefault();
+      }
+    };
+    for (const id of ['clear-button', 'empty-button', 'cancel-new-list']) {
+      const button = required<HTMLElement>(`#browser-${id}`);
+      const spatial = panel.requireElementById<UIKit.Container>(id);
+      button.addEventListener('pointerdown', preserveEntryFocus);
+      spatial.setProperties({onPointerDown: event => preserveEntryFocus(event.nativeEvent)});
+      this.cleanupFuncs.push(() => {
+        button.removeEventListener('pointerdown', preserveEntryFocus);
+        spatial.setProperties({onPointerDown: undefined});
+      });
+    }
     this.cleanupFuncs.push(() => this.disposeRows());
 
     taskInput.name = 'TaskInput';
@@ -344,12 +360,16 @@ export class TaskPanelSystem extends createSystem({}) {
       activeElement: describe(document.activeElement),
       browser: {type: this.browser.input.type, inputMode: this.browser.input.inputMode,
         inputmodeAttribute: this.browser.input.getAttribute('inputmode'), pattern: this.browser.input.getAttribute('pattern'),
-        disabled: this.browser.input.disabled, value: this.browser.input.value},
+        disabled: this.browser.input.disabled, readOnly: this.browser.input.readOnly,
+        connected: this.browser.input.isConnected, value: this.browser.input.value},
       spatial: {type: spatialKeyboard.type, inputMode: spatialKeyboard.inputMode,
         inputmodeAttribute: spatialKeyboard.getAttribute('inputmode'), pattern: spatialKeyboard.getAttribute('pattern'),
-        disabled: spatialKeyboard.disabled, value: spatialKeyboard.value,
+        disabled: spatialKeyboard.disabled, readOnly: spatialKeyboard.readOnly,
+        connected: spatialKeyboard.isConnected, value: spatialKeyboard.value,
         hasFocus: taskInput.input.hasFocus.peek()},
       phase: this.session.phase, entryOpen: this.entryOpen, reviewingNewList: this.reviewingNewList,
+      clearSavePending: this.clearSavePending,
+      browserEntryHidden: this.browser.form.hidden,
       addingTask: this.addingTask, draft: this.draft, returnHandled,
       experience: this.finaleStyle, sessionPresent: !!this.world.session,
       xrPresenting: this.world.renderer.xr.isPresenting, layoutPinned: this.browserXRLayout?.pinned ?? false,
@@ -726,28 +746,27 @@ export class TaskPanelSystem extends createSystem({}) {
     if (this.session.phase !== 'ready' || this.reviewingNewList) return;
     this.inputLog('clear-confirmation-opening');
     this.reviewingNewList = true;
-    input.input.blur();
-    this.browser.input.blur();
     this.render(panel);
-    if (this.isBrowser()) this.browser.cancelButton.focus();
+    this.inputLog('clear-confirmation-open');
   }
 
   private cancelClearConfirmation(panel: UIKitMLAsset): void {
     if (this.session.phase === 'saving') return;
     this.reviewingNewList = false;
     this.render(panel);
-    if (this.isBrowser()) required<HTMLButtonElement>('#browser-clear-button').focus();
     this.inputLog('clear-canceled');
   }
 
   private async clearAll(panel: UIKitMLAsset, input: TaskInput): Promise<void> {
     if (!this.reviewingNewList || this.session.phase !== 'ready') return;
     const wasBrowser = this.isBrowser();
-    input.input.blur();
-    this.browser.input.blur();
+    this.clearSavePending = true;
     const pending = this.session.clearAll();
     this.render(panel);
-    if (!await pending) {
+    this.inputLog('clear-saving');
+    const saved = await pending;
+    this.clearSavePending = false;
+    if (!saved) {
       this.render(panel);
       this.inputLog('clear-save-failed');
       return;
@@ -759,16 +778,10 @@ export class TaskPanelSystem extends createSystem({}) {
     this.entryOpen = true;
     this.browserEntryFinished = false;
     this.browserEntryCollapsed = false;
-    this.draft = '';
-    this.resetEntryKeyboard();
-    input.input.uncontrolledSignal.value = '';
-    input.input.element.value = '';
-    this.browser.input.value = '';
     this.render(panel);
     this.forceTextInputMode('clear-all');
     this.inputLog('clear-ready');
 
-    if (wasBrowser) this.browser.input.blur();
     const previousFocus = document.activeElement;
     const restoreEntryFocus = () => {
       const active = document.activeElement;
@@ -778,6 +791,11 @@ export class TaskPanelSystem extends createSystem({}) {
       if (active !== previousFocus && active !== document.body) return;
       if (active !== document.body && active !== this.browser.emptyButton && active !== this.browser.input &&
         active !== input.input.element) return;
+      const keyboard = wasBrowser ? this.browser.input : input.input.element;
+      if (active === keyboard) {
+        this.inputLog('clear-entry-focus-preserved');
+        return;
+      }
       this.focusTaskEntry(input);
       if (wasBrowser) this.browser.input.click();
       this.inputLog('clear-entry-focused');
@@ -1125,6 +1143,7 @@ export class TaskPanelSystem extends createSystem({}) {
     const isSaving = this.session.phase === 'saving';
     const loadFailed = this.session.phase === 'load-error';
     const isBrowser = this.isBrowser();
+    const preserveClearEntry = this.reviewingNewList || this.clearSavePending;
 
     panel.requireElementById<UIKit.Text>('task-text').setProperties({
       text: isLoading
@@ -1161,7 +1180,7 @@ export class TaskPanelSystem extends createSystem({}) {
           : '#F3EBDD',
     });
     panel.requireElementById('task-input').setProperties({
-      disabled: isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList,
+      disabled: !preserveClearEntry && (isLoading || (isSaving && !this.addingTask) || loadFailed),
     });
     panel.requireElementById('entry-done-button').setProperties({
       disabled: isLoading || isSaving || loadFailed || this.reviewingNewList || this.finishingEntry,
@@ -1175,7 +1194,7 @@ export class TaskPanelSystem extends createSystem({}) {
         active == null,
     });
     panel.requireElementById('task-controls').setProperties({
-      display: this.collapsed || this.settingsOpen || this.reviewingNewList || !this.entryOpen ? 'none' : 'flex',
+      display: this.collapsed || this.settingsOpen || !this.entryOpen ? 'none' : 'flex',
     });
     panel.requireElementById('new-list-button').setProperties({
       display: 'none',
@@ -1252,13 +1271,14 @@ export class TaskPanelSystem extends createSystem({}) {
     const entryFinished = this.browserEntryFinished && !this.entryOpen;
     this.browser.root.dataset.entryFinished = String(entryFinished);
     required<HTMLElement>('#browser-reopen-entry').hidden = !entryFinished || this.collapsed || this.settingsOpen;
-    this.browser.form.hidden = this.collapsed || this.settingsOpen || this.reviewingNewList || entryFinished;
+    this.browser.form.hidden = this.collapsed || this.settingsOpen || entryFinished;
     required<HTMLElement>('#browser-entry-fields').hidden = this.browserEntryCollapsed;
     const entryToggle = required<HTMLButtonElement>('#browser-entry-toggle');
     entryToggle.textContent = this.browserEntryCollapsed ? 'Edit' : 'Done';
     entryToggle.setAttribute('aria-label', this.browserEntryCollapsed ? 'Edit tasks' : 'Done with task entry');
     entryToggle.setAttribute('aria-expanded', String(!this.browserEntryCollapsed));
-    this.browser.input.disabled = isLoading || (isSaving && !this.addingTask) || loadFailed || this.reviewingNewList;
+    this.browser.input.disabled = !(this.reviewingNewList || this.clearSavePending) &&
+      (isLoading || (isSaving && !this.addingTask) || loadFailed);
     required<HTMLButtonElement>('#browser-add-task-button').disabled = busy || loadFailed || this.reviewingNewList;
     this.browser.completeButton.disabled =
       busy || loadFailed || this.reviewingNewList || active == null;
