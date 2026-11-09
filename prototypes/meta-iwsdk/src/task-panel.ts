@@ -546,6 +546,15 @@ export class TaskPanelSystem extends createSystem({}) {
     this.browser.input.addEventListener('input', resetReturn);
     this.browser.input.addEventListener('blur', resetReturn);
     this.browser.form.addEventListener('submit', onTaskSubmit);
+    // A retap focuses the element without focusing the window. Recover document focus in that gesture.
+    const refocusInputAfterClear = () => {
+      if (this.postClearCycle > 0 && !document.hasFocus()) this.refocusClearedDocument('input-pointerdown');
+    };
+    const refocusConfirmGesture = () => {
+      if (this.reviewingNewList || this.clearSavePending) this.refocusClearedDocument('confirm-pointerup');
+    };
+    this.browser.input.addEventListener('pointerdown', refocusInputAfterClear, {capture: true});
+    this.browser.emptyButton.addEventListener('pointerup', refocusConfirmGesture);
     const spatialEntry = bindTaskEntry(spatialKeyboard, () => {void this.addTask(panel, taskInput);}, required<HTMLFormElement>('#spatial-task-form'));
     this.resetEntryKeyboard = () => {resetReturn(); spatialEntry.reset();};
     this.cleanupFuncs.push(
@@ -555,6 +564,8 @@ export class TaskPanelSystem extends createSystem({}) {
         this.browser.input.removeEventListener('input', resetReturn);
         this.browser.input.removeEventListener('blur', resetReturn);
         this.browser.form.removeEventListener('submit', onTaskSubmit);
+        this.browser.input.removeEventListener('pointerdown', refocusInputAfterClear, {capture: true});
+        this.browser.emptyButton.removeEventListener('pointerup', refocusConfirmGesture);
       },
       spatialEntry,
       () => {this.resetEntryKeyboard = () => {};},
@@ -859,9 +870,17 @@ export class TaskPanelSystem extends createSystem({}) {
     this.inputLog('clear-canceled');
   }
 
+  /** Quest commits letters only while the document is focused. Element focus does not restore that. */
+  private refocusClearedDocument(reason: string): void {
+    const before = document.hasFocus();
+    if (!before) window.focus();
+    this.inputLog('clear-document-refocus', {reason, before, hasFocusAfter: document.hasFocus()});
+  }
+
   private async clearAll(panel: UIKitMLAsset, input: TaskInput): Promise<void> {
     if (!this.reviewingNewList || this.session.phase !== 'ready') return;
     const wasBrowser = this.isBrowser();
+    if (wasBrowser) this.refocusClearedDocument('clear-confirm');
     this.clearSavePending = true;
     const pending = this.session.clearAll();
     this.render(panel);
@@ -904,7 +923,7 @@ export class TaskPanelSystem extends createSystem({}) {
       if (wasBrowser) this.browser.input.click();
       this.inputLog('clear-entry-focused');
     };
-    if (wasBrowser) setTimeout(restoreEntryFocus, 100);
+    if (wasBrowser) this.refocusClearedDocument('clear-ready');
     else requestAnimationFrame(restoreEntryFocus);
   }
 
