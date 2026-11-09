@@ -861,7 +861,6 @@ export class TaskPanelSystem extends createSystem({}) {
 
   private async clearAll(panel: UIKitMLAsset, input: TaskInput): Promise<void> {
     if (!this.reviewingNewList || this.session.phase !== 'ready') return;
-    const wasBrowser = this.isBrowser();
     this.clearSavePending = true;
     const pending = this.session.clearAll();
     this.render(panel);
@@ -885,27 +884,6 @@ export class TaskPanelSystem extends createSystem({}) {
     this.postClearCycle++;
     this.postClearEventCounts = {};
     this.inputLog('clear-ready');
-
-    const previousFocus = document.activeElement;
-    const restoreEntryFocus = () => {
-      const active = document.activeElement;
-      if (wasBrowser !== this.isBrowser() || this.session.phase !== 'ready' || this.reviewingNewList ||
-        this.settingsOpen || this.collapsed || !this.entryOpen) return;
-      if (wasBrowser && (this.browser.input.disabled || this.browser.form.hidden || !this.browser.input.isConnected)) return;
-      if (active !== previousFocus && active !== document.body) return;
-      if (active !== document.body && active !== this.browser.emptyButton && active !== this.browser.input &&
-        active !== input.input.element) return;
-      const keyboard = wasBrowser ? this.browser.input : input.input.element;
-      if (active === keyboard) {
-        this.inputLog('clear-entry-focus-preserved');
-        return;
-      }
-      this.focusTaskEntry(input);
-      if (wasBrowser) this.browser.input.click();
-      this.inputLog('clear-entry-focused');
-    };
-    if (wasBrowser) setTimeout(restoreEntryFocus, 100);
-    else requestAnimationFrame(restoreEntryFocus);
   }
 
   private async resetList(panel: UIKitMLAsset): Promise<void> {
