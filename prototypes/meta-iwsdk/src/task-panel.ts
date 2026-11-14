@@ -20,6 +20,45 @@ import { normalizeTaskText, setTaskCompleted } from '../../../src/shared/tasks.j
 
 type TaskInput = UIKit.Input & { input: UIKit.Input };
 const PANEL_EXPERIENCE_KEY = 'cuedone.vr.panelExperience.v1';
+const PANEL_RETURN_OFFSET_KEY = 'cuedone.vr.panelReturnOffset.v1';
+const PANEL_OFFSET_VALUE = /^-?\d+(?:\.\d+)?px$/;
+
+/** Keep the restored 2D menu offset across the one focus reload. sessionStorage ends with the tab. */
+function rememberPanelReturnOffset(root: HTMLElement): void {
+  try {
+    const left = PANEL_OFFSET_VALUE.test(root.style.left) ? root.style.left : '';
+    const top = PANEL_OFFSET_VALUE.test(root.style.top) ? root.style.top : '';
+    if (!left && !top) {
+      sessionStorage.removeItem(PANEL_RETURN_OFFSET_KEY);
+      return;
+    }
+    sessionStorage.setItem(PANEL_RETURN_OFFSET_KEY, JSON.stringify({left, top}));
+  } catch {
+    /* Storage failure must still allow the focus reload. */
+  }
+}
+
+function applyPanelReturnOffset(root: HTMLElement): void {
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PANEL_RETURN_OFFSET_KEY);
+    sessionStorage.removeItem(PANEL_RETURN_OFFSET_KEY);
+  } catch {
+    return;
+  }
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw) as {left?: unknown; top?: unknown};
+    if (typeof saved.left === 'string' && (saved.left === '' || PANEL_OFFSET_VALUE.test(saved.left))) {
+      root.style.left = saved.left;
+    }
+    if (typeof saved.top === 'string' && (saved.top === '' || PANEL_OFFSET_VALUE.test(saved.top))) {
+      root.style.top = saved.top;
+    }
+  } catch {
+    /* A damaged snapshot is already cleared. */
+  }
+}
 
 interface BrowserPanelElements {
   root: HTMLElement;
@@ -106,6 +145,7 @@ export class TaskPanelSystem extends createSystem({}) {
   private audioContext: AudioContext | null = null;
 
   init(): void {
+    applyPanelReturnOffset(this.browser.root);
     const panel = this.world.requireSceneObject<UIKitMLAsset>('task-panel');
     this.cleanupFuncs.push(()=>{
       this.browserXRLayout?.release();this.browserXRLayout?.restore();this.browserXRLayout=undefined;
@@ -1051,6 +1091,8 @@ export class TaskPanelSystem extends createSystem({}) {
       this.xrReturnEnded = false;
       if(documentHasFocus)return;
       this.xrReturnReloadSent = true;
+      // The in-memory lock is on the element restore() already positioned. A pinned absolute style is not that offset.
+      if(!this.browserXRLayout?.pinned)rememberPanelReturnOffset(this.browser.root);
       location.reload();
     }, 1500);
   }
